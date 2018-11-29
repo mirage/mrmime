@@ -1,0 +1,4 @@
+(library
+ (name mrmime)
+ (public_name mrmime)
+ (libraries ipaddr base64 uutf rosetta pecu rresult fmt angstrom))

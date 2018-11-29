@@ -1,0 +1,21 @@
+opam-version: "2.0"
+name:         "mrmime"
+version:      "dev"
+maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
+authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
+homepage:     "https://github.com/oklm-wsh/MrMime"
+bug-reports:  "https://github.com/oklm-wsh/MrMime/issues"
+dev-repo:     "git+https://github.com/oklm-wsh/MrMime.git"
+license:      "MIT"
+synopsis:     "Mr. MIME"
+
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+]
+
+depends: [
+  "ocaml"    {>= "4.03.0"}
+  "dune"     {build}
+  "uutf"
+  "angstrom"
+]
