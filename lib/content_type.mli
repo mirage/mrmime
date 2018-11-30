@@ -38,7 +38,7 @@ module Parameters : sig
   type value
 
   val key : string -> key option
-  val value : string -> value
+  val value : string -> value option
 
   (* / *)
 

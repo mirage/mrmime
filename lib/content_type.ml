@@ -119,6 +119,8 @@ module Parameters = struct
       Some (String.lowercase_ascii key)
     with Invalid_token -> None
 
+  exception Invalid_utf8
+
   let value value =
     let to_token x =
       try
@@ -128,6 +130,13 @@ module Parameters = struct
         Some (`Token x)
       with Invalid_token -> None
     in
+    (* XXX(dinosaure): [is_quoted_pair] accepts characters \000-\127. UTF-8
+       extends to \000-\255. However, qtext invalids some of them: \009, \010,
+       \013, \032, \034 and \092. Most of them need to be escaped.
+
+       About \032, this case is little bit weird when [qcontent] accepts [FWS].
+       At the end, \032, is possible in a quoted-string however, number of it
+       does not look significant - so we don't try to escape it. *)
     let need_to_escape = function
       | '\009' | '\010' | '\013' | '\034' | '\092' -> true
       | _ -> false
@@ -150,9 +159,33 @@ module Parameters = struct
         x ;
       Buffer.contents buf
     in
+    let utf8 x =
+      try
+        Uutf.String.fold_utf_8
+          (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
+            | `Uchar _ -> () )
+          () x ;
+        Some x
+      with Invalid_utf8 -> None
+    in
     match to_token value with
-    | Some v -> v
-    | None -> `String (escape_characters value)
+    | Some _ as v -> v
+    | None ->
+        (* UTF-8 respects an interval of values and it's possible to have an
+         invalid UTF-8 string. So we need to check it. UTF-8 is a superset of
+         ASCII, so we need, firstly to check if it's a valid UTF-8 string. In
+         this case, and mostly because we can escape anything (see
+         [is_quoted_pair]), we do a pass to escape some of ASCII characters only
+         then.
+
+         At the end, if [value] is a valid UTF-8 string, we will don't have a
+         problem to encode it if we take care to escape invalid [qtext]
+         characters.
+
+         However, order is really important semantically. UTF-8 -> escape
+         expects a special process to decoder (escape -> UTF-8). About history,
+         unicorn and so on, it should be the best to keep this order. *)
+        Option.(utf8 value >>| escape_characters >>| fun x -> `String x)
 
   let empty = X.empty
 
