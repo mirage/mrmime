@@ -62,7 +62,7 @@ module Parameters : sig
   val equal : t -> t -> bool
 end
 
-type t
+type t = Rfc2045.content
 
 val make : Type.t -> Subtype.t -> Parameters.t -> t
 

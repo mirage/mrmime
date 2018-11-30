@@ -1,0 +1,3 @@
+(executable
+ (name rfc2045)
+ (libraries alcotest mrmime))
