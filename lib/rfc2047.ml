@@ -1,3 +1,11 @@
+(* Note that RFC 2047 comes from RFC 1521, RFC 1522 and RFC 1590. Purpose of its
+   RFC is to able to able to use encoding (like ISO-8859-1) when only 8bit is
+   accepted by SMTP and utf8 is accepted by eSMTP.
+
+   We handle only ASCII and [Rosetta.encoding] and normalize them to utf8 with
+   [Uutf]. Otherwise, we keep data as is and let the user to normalize it to
+   utf8. *)
+
 type charset = [Rosetta.encoding | `ASCII | `Charset of string]
 type encoding = Quoted_printable | Base64
 
@@ -17,6 +25,11 @@ let charset_of_string = function
 
 open Angstrom
 
+(* From RFC 2047
+
+        especials = "(" / ")" / "<" / ">" / "@" / "," / ";" / ":" / "
+                    <"> / "/" / "[" / "]" / "?" / "." / "="
+*)
 let is_especials = function
   | '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '"' | '/' | '[' | ']'
    |'?' | '.' | '=' ->
@@ -26,6 +39,10 @@ let is_especials = function
 let is_ctl = function '\000' .. '\031' -> true | _ -> false
 let is_space = ( = ) ' '
 
+(* From RFC 2047
+
+        token = 1*<Any CHAR except SPACE, CTLs, and especials>
+*)
 let token =
   take_while1 (fun chr -> not (is_especials chr || is_ctl chr || is_space chr))
 
@@ -146,16 +163,55 @@ let normalize ?chunk ~charset ~encoding raw =
 
 let invalid_encoding = Fmt.kstrf fail "Invalid encoding '%c'"
 
-let inline_encoded_string =
+(* From RFC 2047
+
+        encoded-text = 1*<Any printable ASCII character other than "?"
+                          or SPACE>
+                       ; (but see "Use of encoded-words in message
+                       ; headers", section 5)
+*)
+let encoded_text = take_while1 (function '?' | ' ' -> false | _ -> true)
+
+(* From RFC 2047
+
+        encoded-word = "=?" charset "?" encoding "?" encoded-text "?="
+        charset = token    ; see section 3
+        encoding = token   ; see section 4
+
+      Both 'encoding' and 'charset' names are case-independent.  Thus the
+      charset name "ISO-8859-1" is equivalent to "iso-8859-1", and the
+      encoding named "Q" may be spelled either "Q" or "q".
+
+    About charset
+
+      The 'charset' portion of an 'encoded-word' specifies the character
+      set associated with the unencoded text.  A 'charset' can be any of
+      the character set names allowed in an MIME "charset" parameter of a
+      "text/plain" body part, or any character set name registered with
+      IANA for use with the MIME text/plain content-type.
+
+    About encoding
+
+      Initially, the legal values for "encoding" are "Q" and "B".  These
+      encodings are described below.  The "Q" encoding is recommended for
+      use when most of the characters to be encoded are in the ASCII
+      character set; otherwise, the "B" encoding should be used.
+      Nevertheless, a mail reader which claims to recognize 'encoded-word's
+      MUST be able to accept either encoding for any character set which it
+      supports.
+
+   See [pecu], [rosetta] and [ocaml-base64] for more details about encoding.
+*)
+let encoded_word =
   string "=?" *> token
   >>| charset_of_string
   >>= fun charset ->
-  char '?' *> satisfy (function 'Q' | 'B' -> true | _ -> false)
+  char '?' *> satisfy (function 'Q' | 'q' | 'B' | 'b' -> true | _ -> false)
   >>= (function
-        | 'Q' -> return Quoted_printable
-        | 'B' -> return Base64
+        | 'Q' | 'q' -> return Quoted_printable
+        | 'B' | 'b' -> return Base64
         | encoding -> invalid_encoding encoding)
   >>= fun encoding ->
-  char '?' *> take_while (( <> ) '?')
+  char '?' *> encoded_text
   >>| normalize ~chunk:512 ~charset ~encoding
   >>= fun data -> string "?=" *> return {charset; encoding; data}
