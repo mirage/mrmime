@@ -1,3 +1,9 @@
+(* To be clear, RFC 5321 describes SMTP protocol. However, this is not the
+   purpose of mrmime to implement SMTP. Purpose of this module is to recognize
+   domain part of e-mail address according to SMTP protocol. To avoid conflict
+   and unrelated parser in random place inside this project, rfc5321.ml
+   implements only a little part of RFC 5321. *)
+
 type literal_domain =
   | IPv4 of Ipaddr.V4.t
   | IPv6 of Ipaddr.V6.t
