@@ -252,8 +252,7 @@ let addr_spec =
      word            =   atom / quoted-string
 *)
 let word_with_encoded_word =
-  option () Rfc822.cfws
-  *> (Rfc2047.inline_encoded_string >>| fun x -> `Encoded x)
+  option () Rfc822.cfws *> (Rfc2047.encoded_word >>| fun x -> `Encoded x)
   <* option () Rfc822.cfws
   <|> (Rfc822.word >>| fun x -> `Word x)
 
@@ -540,7 +539,7 @@ let obs_unstruct : unstructured t =
     | `End_of_input -> return 0
   in
   let word =
-    Rfc2047.inline_encoded_string
+    Rfc2047.encoded_word
     >>| (fun e -> `Encoded e)
     <|> (Rfc6532.with_uutf is_obs_utext >>| fun e -> `Text e)
   in
