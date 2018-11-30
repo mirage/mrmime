@@ -87,7 +87,6 @@ let of_string s a =
       definition of "specials" with the addition of the three characters
       "/", "?", and "=", and the removal of ".".
 *)
-
 let is_tspecials = function
   | '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '['
    |']' | '?' | '=' ->
@@ -214,7 +213,8 @@ let subty ty =
             >>| fun v ->
             try
               `Iana_token
-                (Iana.Set.find v (Iana.Map.find (ty_to_string ty) Iana.iana))
+                (Iana.Set.find v
+                   (Iana.Map.find (ty_to_string ty) Iana.database))
             with _exn -> `X_token v ))
   >>| fun subty -> (ty, subty)
 
