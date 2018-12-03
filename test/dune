@@ -1,3 +1,9 @@
 (executable
  (name rfc2045)
+ (modules rfc2045)
+ (libraries alcotest mrmime))
+
+(executable
+ (name rfc2047)
+ (modules rfc2047)
  (libraries alcotest mrmime))

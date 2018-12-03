@@ -1,5 +1,5 @@
 type phrase =
-  [`Dot | `Word of Rfc822.word | `Encoded of Rfc2047.encoded_string] list
+  [`Dot | `Word of Rfc822.word | `Encoded of Rfc2047.encoded_word] list
 
 type domain =
   [ `Domain of string list
@@ -54,7 +54,7 @@ type unstructured =
   | `LF of int
   | `CRLF
   | `WSP
-  | `Encoded of Rfc2047.encoded_string ]
+  | `Encoded of Rfc2047.encoded_word ]
   list
 
 type phrase_or_msg_id = [`Phrase of phrase | `MsgID of Rfc822.msg_id]
@@ -256,6 +256,40 @@ let word_with_encoded_word =
   <* option () Rfc822.cfws
   <|> (Rfc822.word >>| fun x -> `Word x)
 
+(* From RFC 724
+
+         <phrase>          ::=   <word>
+                               | <word> <phrase>
+
+   From RFC 822
+
+     phrase      =  1*word                       ; Sequence of words
+
+        The one exception to this rule  is  that  a  single  SPACE  is
+        assumed  to  exist  between  contiguous words in a phrase, and
+        this interpretation is independent of  the  actual  number  of
+        LWSP-chars  that  the  creator  places  between the words.  To
+        include more than one SPACE, the creator must make  the  LWSP-
+        chars be part of a quoted-string.
+
+   From RFC 2822
+
+     obs-phrase      =       word *(word / "." / CFWS)
+
+   From RFC 5322
+
+        Note: The "period" (or "full stop") character (".") in obs-phrase
+        is not a form that was allowed in earlier versions of this or any
+        other specification.  Period (nor any other character from
+        specials) was not allowed in phrase because it introduced a
+        parsing difficulty distinguishing between phrases and portions of
+        an addr-spec (see section 4.4).  It appears here because the
+        period character is currently used in many messages in the
+        display-name portion of addresses, especially for initials in
+        names, and therefore must be interpreted properly.
+
+     obs-phrase      =   word *(word / "." / CFWS)
+*)
 let obs_phrase =
   word_with_encoded_word
   >>= fun first ->
@@ -271,6 +305,24 @@ let obs_phrase =
       <|> return [] )
   >>| fun rest -> first :: rest
 
+(* From RFC 724
+
+     <phrase>          ::=   <word>
+                           | <word> <phrase>
+
+   From RFC 822
+
+     phrase      =  1*word                       ; Sequence of words
+
+        The one exception to this rule  is  that  a  single  SPACE  is
+        assumed  to  exist  between  contiguous words in a phrase, and
+        this interpretation is independent of  the  actual  number  of
+        LWSP-chars  that  the  creator  places  between the words.  To
+        include more than one SPACE, the creator must make  the  LWSP-
+        chars be part of a quoted-string.
+
+   From RFC 
+*)
 let phrase = obs_phrase <|> many1 word_with_encoded_word
 let display_name = phrase
 
