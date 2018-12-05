@@ -9,3 +9,5 @@ module Rfc6532 = Rfc6532
 
 module Content_type = Content_type
 module Encoded_word = Encoded_word
+module Address = Address
+module Option = Option

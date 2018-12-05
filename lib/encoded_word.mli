@@ -16,6 +16,7 @@ type t = Rfc2047.encoded_word
 
 val is_normalized : t -> bool
 val make : encoding:encoding -> string -> t option
+val make_exn : encoding:encoding -> string -> t
 
 (** Accessors. *)
 

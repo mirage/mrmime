@@ -22,6 +22,11 @@ let make ~encoding value =
     Some {Rfc2047.charset= `UTF_8; encoding; data= Ok value}
   else None
 
+let make_exn ~encoding value =
+  match make ~encoding value with
+  | Some v -> v
+  | None -> Fmt.invalid_arg "make_exn: invalid encoded-word"
+
 let encoding {Rfc2047.encoding; _} = encoding
 let charset {Rfc2047.charset; _} = charset
 let data {Rfc2047.data; _} = data
