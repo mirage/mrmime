@@ -1,5 +1,3 @@
-[@@@warning "-32-34"]
-
 type word = [`Atom of string | `String of string]
 type phrase = [`Dot | `Word of word | `Encoded of Encoded_word.t] list
 
@@ -15,9 +13,6 @@ type local = word list
 
 type mailbox = Rfc5322.mailbox =
   {name: phrase option; local: local; domain: domain * domain list}
-
-type group = Rfc5322.group = {name: phrase; mailbox: mailbox list}
-type address = [`Group of group | `Mailbox of mailbox]
 
 exception Invalid_utf8
 exception Invalid_char
@@ -272,3 +267,37 @@ let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox option =
 
 let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
  fun name mailbox -> {mailbox with Rfc5322.name= Some name}
+
+let pp_word ppf = function
+  | `Atom x -> Fmt.string ppf x
+  | `String x -> Fmt.pf ppf "%S" x
+
+let pp_phrase : phrase Fmt.t =
+  let pp_elt ppf = function
+    | `Dot -> Fmt.string ppf "."
+    | `Word w -> pp_word ppf w
+    | `Encoded e -> Encoded_word.pp ppf e
+  in
+  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
+
+let pp_literal_domain ppf = function
+  | IPv4 v -> Ipaddr.V4.pp_hum ppf v
+  | IPv6 v -> Ipaddr.V6.pp_hum ppf v
+  | Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
+
+let pp_domain ppf = function
+  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
+  | `Literal s -> Fmt.pf ppf "[%s]" s
+  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
+
+let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
+
+let pp_mailbox : mailbox Fmt.t =
+ fun ppf x ->
+  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
+    Fmt.(hvbox (Dump.option pp_phrase))
+    x.Rfc5322.name
+    Fmt.(hvbox pp_local)
+    x.Rfc5322.local
+    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
+    x.Rfc5322.domain

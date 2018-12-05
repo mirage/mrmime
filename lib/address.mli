@@ -97,3 +97,12 @@ end
 
 val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> mailbox option
 val with_name : phrase -> mailbox -> mailbox
+
+(* / *)
+
+val pp_phrase : phrase Fmt.t
+val pp_word : word Fmt.t
+val pp_literal_domain : literal_domain Fmt.t
+val pp_domain : domain Fmt.t
+val pp_local : local Fmt.t
+val pp_mailbox : mailbox Fmt.t
