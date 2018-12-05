@@ -321,11 +321,98 @@ let obs_phrase =
         include more than one SPACE, the creator must make  the  LWSP-
         chars be part of a quoted-string.
 
-   From RFC 
+   From RFC 1342
+
+     - As a replacement for a "word" entity within a "phrase", for example,
+       one that precedes an address in a From, To, or Cc header.  The EBNF
+       definition for phrase from RFC 822 thus becomes:
+
+       phrase = 1*(encoded-word / word)
+
+     XXX(dinosaure): RFC 1342 explains something more but implementation
+     should be more explained in rfc2047.ml
+
+   From RFC 1522
+
+     (3) As a replacement for a "word" entity within a "phrase", for
+         example, one that precedes an address in a From, To, or Cc
+         header.  The ABNF definition for phrase from RFC 822 thus
+         becomes:
+
+         phrase = 1*(encoded-word / word)
+
+         In this case the set of characters that may be used in a "Q"-
+         encoded encoded-word is restricted to: <upper and lower case
+         ASCII letters, decimal digits, "!", "*", "+", "-", "/", "=", and
+         "_" (underscore, ASCII 95.)>.  An encoded-word that appears
+         within a "phrase" MUST be separated from any adjacent "word",
+         "text" or "special" by linear-white-space.
+
+   From RFC 2047
+
+     (3) As a replacement for a 'word' entity within a 'phrase', for example,
+         one that precedes an address in a From, To, or Cc header.  The ABNF
+         definition for 'phrase' from RFC 822 thus becomes:
+
+         phrase = 1*( encoded-word / word )
+
+         In this case the set of characters that may be used in a "Q"-encoded
+         'encoded-word' is restricted to: <upper and lower case ASCII
+         letters, decimal digits, "!", "*", "+", "-", "/", "=", and "_"
+         (underscore, ASCII 95.)>.  An 'encoded-word' that appears within a
+         'phrase' MUST be separated from any adjacent 'word', 'text' or
+         'special' by 'linear-white-space'.
+
+   From RFC 2822
+
+     phrase          =       1*word / obs-phrase
+     obs-phrase      =       word *(word / "." / CFWS)
+
+     Differences from earlier standards:
+
+     1. Period allowed in obsolete form of phrase.
+
+   From RFC 5322
+
+     phrase          =   1*word / obs-phrase
+
+       Note: The "period" (or "full stop") character (".") in obs-phrase
+       is not a form that was allowed in earlier versions of this or any
+       other specification.  Period (nor any other character from
+       specials) was not allowed in phrase because it introduced a
+       parsing difficulty distinguishing between phrases and portions of
+       an addr-spec (see section 4.4).  It appears here because the
+       period character is currently used in many messages in the
+       display-name portion of addresses, especially for initials in
+       names, and therefore must be interpreted properly.
+
+     obs-phrase      =   word *(word / "." / CFWS)
+
+     Differences from Earlier Specifications
+
+     1.   Period allowed in obsolete form of phrase.
 *)
 let phrase = obs_phrase <|> many1 word_with_encoded_word
+
+(* From RFC 2822
+
+     display-name    =       phrase
+
+   From RFC 5322
+
+     display-name    =   phrase
+*)
 let display_name = phrase
 
+(* From RFC 2822
+
+     obs-domain-list =       "@" domain *( *(CFWS / "," ) [CFWS] "@" domain)
+
+   From RFC 5322
+
+     obs-domain-list =   *(CFWS / ",") "@" domain
+                         *("," [CFWS] ["@" domain])
+*)
 let obs_domain_list =
   let first =
     fix (fun m ->
@@ -344,8 +431,24 @@ let obs_domain_list =
   in
   first *> char '@' *> domain >>= fun x -> rest >>| fun r -> x :: r
 
+(* From RFC 2822
+
+     obs-route       =       [CFWS] obs-domain-list ":" [CFWS]
+
+   From RFC 5322
+
+     obs-route       =   obs-domain-list ":"
+*)
 let obs_route = obs_domain_list <* char ':'
 
+(* From RFC 2822
+
+     obs-angle-addr  =       [CFWS] "<" [obs-route] addr-spec ">" [CFWS]
+
+   From RFC 5322
+
+     obs-angle-addr  =   [CFWS] "<" obs-route addr-spec ">" [CFWS]
+*)
 let obs_angle_addr =
   option () Rfc822.cfws *> char '<' *> obs_route
   >>= fun domains ->
@@ -354,6 +457,15 @@ let obs_angle_addr =
   char '>' *> option () Rfc822.cfws
   >>| fun () -> {name; local; domain= (domain, domains)}
 
+(* From RFC 2822
+
+     angle-addr      =       [CFWS] "<" addr-spec ">" [CFWS] / obs-angle-addr
+
+   From RFC 5322
+
+     angle-addr      =   [CFWS] "<" addr-spec ">" [CFWS] /
+                         obs-angle-addr
+*)
 let angle_addr =
   obs_angle_addr
   <|> ( option () Rfc822.cfws *> char '<' *> addr_spec
@@ -361,6 +473,14 @@ let angle_addr =
       char '>' *> option () Rfc822.cfws
       >>| fun _ -> {name; local; domain= (domain, [])} )
 
+(* From RFC 2822
+
+     name-addr       =       [display-name] angle-addr
+
+   From RFC 5322
+
+     name-addr       =   [display-name] angle-addr
+*)
 let name_addr =
   option None (display_name >>| fun x -> Some x)
   >>= fun name -> angle_addr >>| fun {local; domain; _} -> {name; local; domain}
