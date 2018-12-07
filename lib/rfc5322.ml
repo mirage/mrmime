@@ -143,7 +143,13 @@ let domain_literal =
 
 let domain = Rfc5321.domain
 
-(* From RFC 822
+(* From RFC 724
+
+     <host-indicator>  ::=   <at-indicator> <host-name>
+     <host-name>       ::=   <atom>  | <decimal host address>
+     <host-phrase>     ::=   <phrase> <host-indicator>
+
+   From RFC 822
 
      addr-spec   =  local-part "@" domain        ; global address
 
@@ -485,8 +491,38 @@ let name_addr =
   option None (display_name >>| fun x -> Some x)
   >>= fun name -> angle_addr >>| fun {local; domain; _} -> {name; local; domain}
 
+(* From RFC 724
+
+     <mailbox>         ::=   <host-phrase>
+
+   From RFC 822
+
+     mailbox     =  addr-spec                    ; simple address
+                 /  phrase route-addr            ; name & addr-spec
+
+   From RFC 2822
+
+     mailbox         =       name-addr / addr-spec
+
+   From RFC 5322
+
+     mailbox         =   name-addr / addr-spec
+*)
 let mailbox = name_addr <|> addr_spec
 
+(* From RFC 2822
+
+     obs-mbox-list   =       1*([mailbox] [CFWS] "," [CFWS]) [mailbox]
+
+   From RFC 5322
+
+     obs-mbox-list   =   *([CFWS] ",") mailbox *("," [mailbox / CFWS])
+
+     The following are changes from [RFC2822]:
+     17.  Fixed all obsolete list syntax (obs-domain-list, obs-mbox-list,
+          obs-addr-list, obs-phrase-list, and the newly added obs-group-
+          list).
+*)
 let obs_mbox_list =
   let rest =
     fix (fun m ->
@@ -503,18 +539,48 @@ let obs_mbox_list =
   many (option () Rfc822.cfws *> char ',') *> mailbox
   >>= fun x -> rest >>| fun r -> x :: r
 
+(* From RFC 5322
+
+     obs-group-list  =   1*([CFWS] ",") [CFWS]
+*)
 let obs_group_list =
   many1 (option () Rfc822.cfws *> char ',') *> option () Rfc822.cfws
 
+(* From RFC 724
+
+     <mailbox-list>    ::=   <mailbox>
+                           | <mailbox> "," <mailbox-list>
+
+   From RFC 2822
+
+     mailbox-list    =       (mailbox *("," mailbox)) / obs-mbox-list
+
+   From RFC 5322
+
+     mailbox-list    =   (mailbox *("," mailbox)) / obs-mbox-list
+*)
 let mailbox_list =
   obs_mbox_list
   <|> (mailbox >>= fun x -> many (char ',' *> mailbox) >>| fun r -> x :: r)
 
+(* From RFC 5322
+
+     group-list      =   mailbox-list / CFWS / obs-group-list
+*)
 let group_list =
   mailbox_list
   <|> (obs_group_list >>| fun () -> [])
   <|> (Rfc822.cfws >>| fun () -> [])
 
+(* From RFC 2822
+
+     group           =       display-name ":" [mailbox-list / CFWS] ";"
+                             [CFWS]
+
+   From RFC 5322
+
+     group           =   display-name ":" [group-list] ";" [CFWS]
+*)
 let group =
   display_name
   >>= fun name ->
@@ -522,9 +588,30 @@ let group =
   >>= fun lst ->
   char ';' *> option () Rfc822.cfws >>| fun _ -> {name; mailbox= lst}
 
+(* From RFC 822
+
+     address     =  mailbox                      ; one addressee
+                 /  group                        ; named list
+
+   From RFC 2822
+
+     address         =       mailbox / group
+
+   From RFC 5322
+
+     address         =   mailbox / group
+*)
 let address =
   group >>| (fun g -> `Group g) <|> (mailbox >>| fun m -> `Mailbox m)
 
+(* From RFC 2822
+
+     obs-addr-list   =       1*([address] [CFWS] "," [CFWS]) [address]
+
+   From RFC 5322
+
+     obs-addr-list   =   *([CFWS] ",") address *("," [address / CFWS])
+*)
 let obs_addr_list =
   let rest =
     fix (fun m ->
@@ -541,6 +628,20 @@ let obs_addr_list =
   many (option () Rfc822.cfws *> char ',') *> address
   >>= fun x -> rest >>| fun r -> x :: r
 
+(* From RFC 724
+
+     <address-list>    ::=   <null>
+                           | <address-item>
+                           | <address-item> "," <address-list>
+
+   From RFC 2822
+
+     address-list    =       (address *("," address)) / obs-addr-list
+
+   From RFC 5322
+
+     address-list    =   (address *("," address)) / obs-addr-list
+*)
 let address_list =
   obs_addr_list
   <|> (address >>= fun x -> many (char ',' *> address) >>| fun r -> x :: r)
@@ -584,34 +685,162 @@ let one_or_two_digit =
       advance 1 *> return (Bytes.unsafe_to_string res)
   | _ -> return (String.make 1 one)
 
+(* From RFC 2822
+
+     obs-hour        =       [CFWS] 2DIGIT [CFWS]
+
+   From RFC 5322
+
+     obs-hour        =   [CFWS] 2DIGIT [CFWS]
+*)
 let obs_hour =
   option () Rfc822.cfws *> two_digit <* option () Rfc822.cfws >>| int_of_string
 
-let obs_minute = option () Rfc822.cfws *> two_digit >>| int_of_string
-let obs_second = option () Rfc822.cfws *> two_digit >>| int_of_string
+(* From RFC 2822
+
+     obs-minute      =       [CFWS] 2DIGIT [CFWS]
+
+   From RFC 5322
+
+     obs-minute      =   [CFWS] 2DIGIT [CFWS]
+*)
+let obs_minute = option () Rfc822.cfws *> two_digit <* option () Rfc822.cfws >>| int_of_string
+
+(* From RFC 2822
+
+     obs-second      =       [CFWS] 2DIGIT [CFWS]
+
+   From RFC 5322
+
+     obs-second      =   [CFWS] 2DIGIT [CFWS]
+*)
+let obs_second = option () Rfc822.cfws *> two_digit <* option () Rfc822.cfws >>| int_of_string
+
+(* From RFC 2822
+
+     hour            =       2DIGIT / obs-hour
+
+   From RFC 5322
+
+     hour            =   2DIGIT / obs-hour
+*)
 let hour = obs_hour <|> (two_digit >>| int_of_string)
+
+(* From RFC 2822
+
+     minute          =       2DIGIT / obs-minute
+
+   From RFC 5322
+
+     minute          =   2DIGIT / obs-minute
+*)
 let minute = obs_minute <|> (two_digit >>| int_of_string)
+
+(* From RFC 2822
+
+     second          =       2DIGIT / obs-second
+
+   From RFC 5322
+
+     second          =   2DIGIT / obs-second
+*)
 let second = obs_second <|> (two_digit >>| int_of_string)
 
+(* From RFC 2822
+
+     obs-year        =       [CFWS] 2*DIGIT [CFWS]
+
+   From RFC 5322
+
+     obs-year        =   [CFWS] 2*DIGIT [CFWS]
+*)
 let obs_year =
   option () Rfc822.cfws *> at_least_n_digit 2
   <* option () Rfc822.cfws
   >>| int_of_string
 
+(* From RFC 2822
+
+     year            =       4*DIGIT / obs-year
+
+     Where a two or three digit year occurs in a date, the year is to be
+     interpreted as follows: If a two digit year is encountered whose
+     value is between 00 and 49, the year is interpreted by adding 2000,
+     ending up with a value between 2000 and 2049.  If a two digit year is
+     encountered with a value between 50 and 99, or any three digit year
+     is encountered, the year is interpreted by adding 1900.
+
+     Differences from Earlier Specifications
+     3.   Four or more digits allowed for year.
+     15.  Two digit years not allowed.*
+     16.  Three digit years interpreted, but not allowed for generation.*
+
+   From RFC 5322
+
+     year            =   (FWS 4*DIGIT FWS) / obs-year
+
+     Where a two or three digit year occurs in a date, the year is to be
+     interpreted as follows: If a two digit year is encountered whose
+     value is between 00 and 49, the year is interpreted by adding 2000,
+     ending up with a value between 2000 and 2049.  If a two digit year is
+     encountered with a value between 50 and 99, or any three digit year
+     is encountered, the year is interpreted by adding 1900.
+
+     Differences from Earlier Specifications
+     3.   Four or more digits allowed for year.
+     15.  Two digit years not allowed.*
+     16.  Three digit years interpreted, but not allowed for generation.*
+*)
 let year =
   Rfc822.fws *> at_least_n_digit 4 <* Rfc822.fws >>| int_of_string <|> obs_year
 
+(* From RFC 2822
+
+     obs-day         =       [CFWS] 1*2DIGIT [CFWS]
+
+   From RFC 5322
+
+     obs-day         =   [CFWS] 1*2DIGIT [CFWS]
+*)
 let obs_day =
   option () Rfc822.cfws *> one_or_two_digit
   <* option () Rfc822.cfws
   >>| int_of_string
 
+(* From RFC 2822
+
+     day             =       ([FWS] 1*2DIGIT) / obs-day
+
+   From RFC 5322
+
+     day             =   ([FWS] 1*2DIGIT FWS) / obs-day
+*)
 let day =
   obs_day
   <|> ( option (false, false, false) Rfc822.fws *> one_or_two_digit
       <* Rfc822.fws
       >>| int_of_string )
 
+(* From RFC 822
+
+     month       =  "Jan"  /  "Feb" /  "Mar"  /  "Apr"
+                 /  "May"  /  "Jun" /  "Jul"  /  "Aug"
+                 /  "Sep"  /  "Oct" /  "Nov"  /  "Dec"
+
+   From RFC 2822
+
+     month           =       (FWS month-name FWS) / obs-month
+
+     month-name      =       "Jan" / "Feb" / "Mar" / "Apr" /
+                             "May" / "Jun" / "Jul" / "Aug" /
+                             "Sep" / "Oct" / "Nov" / "Dec"
+
+   From RFC 5322
+
+     month           =   "Jan" / "Feb" / "Mar" / "Apr" /
+                         "May" / "Jun" / "Jul" / "Aug" /
+                         "Sep" / "Oct" / "Nov" / "Dec"
+*)
 let month =
   string "Jan" *> return Jan
   <|> string "Feb" *> return Feb
@@ -626,6 +855,21 @@ let month =
   <|> string "Nov" *> return Nov
   <|> string "Dec" *> return Dec
 
+(* From RFC 822
+
+     day         =  "Mon"  / "Tue" /  "Wed"  / "Thu"
+                 /  "Fri"  / "Sat" /  "Sun"
+
+   From RFC 2822
+
+     day-name        =       "Mon" / "Tue" / "Wed" / "Thu" /
+                             "Fri" / "Sat" / "Sun"
+
+   From RFC 5322
+
+     day-name        =   "Mon" / "Tue" / "Wed" / "Thu" /
+                         "Fri" / "Sat" / "Sun"
+*)
 let day_name =
   string "Mon" *> return Mon
   <|> string "Tue" *> return Tue
@@ -635,14 +879,55 @@ let day_name =
   <|> string "Sat" *> return Sat
   <|> string "Sun" *> return Sun
 
+(* From RFC 2822
+
+     obs-day-of-week =       [CFWS] day-name [CFWS]
+
+   From RFC 5322
+
+     obs-day-of-week =   [CFWS] day-name [CFWS]
+*)
 let obs_day_of_week =
   option () Rfc822.cfws *> day_name <* option () Rfc822.cfws
 
+(* From RFC 2822
+
+     day-of-week     =       ([FWS] day-name) / obs-day-of-week
+
+   From RFC 5322
+
+     day-of-week     =   ([FWS] day-name) / obs-day-of-week
+*)
 let day_of_week =
   obs_day_of_week <|> option (false, false, false) Rfc822.fws *> day_name
 
+(* From RFC 822
+
+     date        =  1*2DIGIT month 2DIGIT        ; day month year
+                                                 ;  e.g. 20 Jun 82
+
+   From RFC 2822
+
+     date            =       day month year
+
+   From RFC 5322
+
+     date            =   day month year
+*)
 let date = lift3 (fun day month year -> (day, month, year)) day month year
 
+(* From RFC 822
+
+     hour        =  2DIGIT ":" 2DIGIT [":" 2DIGIT]
+
+   From RFC 2822
+
+     time-of-day     =       hour ":" minute [ ":" second ]
+
+   From RFC 5322
+
+     time-of-day     =   hour ":" minute [ ":" second ]
+*)
 let time_of_day =
   hour
   >>= fun hour ->
@@ -658,6 +943,135 @@ let is_military_zone = function
       true
   | _ -> false
 
+(* From RFC 822
+
+     zone        =  "UT"  / "GMT"                ; Universal Time
+                                                 ; North American : UT
+                 /  "EST" / "EDT"                ;  Eastern:  - 5/ - 4
+                 /  "CST" / "CDT"                ;  Central:  - 6/ - 5
+                 /  "MST" / "MDT"                ;  Mountain: - 7/ - 6
+                 /  "PST" / "PDT"                ;  Pacific:  - 8/ - 7
+                 /  1ALPHA                       ; Military: Z = UT;
+                                                 ;  A:-1; (J not used)
+                                                 ;  M:-12; N:+1; Y:+12
+                 / ( ("+" / "-") 4DIGIT )        ; Local differential
+                                                 ;  hours+min. (HHMM)
+
+     Time zone may be indicated in several ways.  "UT" is Univer-
+     sal  Time  (formerly called "Greenwich Mean Time"); "GMT" is per-
+     mitted as a reference to Universal Time.  The  military  standard
+     uses  a  single  character for each zone.  "Z" is Universal Time.
+     "A" indicates one hour earlier, and "M" indicates 12  hours  ear-
+     lier;  "N"  is  one  hour  later, and "Y" is 12 hours later.  The
+     letter "J" is not used.  The other remaining two forms are  taken
+     from ANSI standard X3.51-1975.  One allows explicit indication of
+     the amount of offset from UT; the other uses  common  3-character
+     strings for indicating time zones in North America.
+
+   From RFC 2822
+
+     obs-zone        =       "UT" / "GMT" /          ; Universal Time
+                             "EST" / "EDT" /         ; Eastern:  - 5/ - 4
+                             "CST" / "CDT" /         ; Central:  - 6/ - 5
+                             "MST" / "MDT" /         ; Mountain: - 7/ - 6
+                             "PST" / "PDT" /         ; Pacific:  - 8/ - 7
+                                                     ;
+                             %d65-73 /               ; Military zones - "A"
+                             %d75-90 /               ; through "I" and "K"
+                             %d97-105 /              ; through "Z", both
+                             %d107-122               ; upper and lower case
+
+     In the obsolete time zone, "UT" and "GMT" are indications of
+     "Universal Time" and "Greenwich Mean Time" respectively and are both
+     semantically identical to "+0000".
+
+     The remaining three character zones are the US time zones.  The first
+     letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
+     "Mountain" and "Pacific".  The second letter is either "S" for
+     "Standard" time, or "D" for "Daylight" (or summer) time.  Their
+     interpretations are as follows:
+
+     EDT is semantically equivalent to -0400
+     EST is semantically equivalent to -0500
+     CDT is semantically equivalent to -0500
+     CST is semantically equivalent to -0600
+     MDT is semantically equivalent to -0600
+     MST is semantically equivalent to -0700
+     PDT is semantically equivalent to -0700
+     PST is semantically equivalent to -0800
+
+     The 1 character military time zones were defined in a non-standard
+     way in [RFC822] and are therefore unpredictable in their meaning.
+     The original definitions of the military zones "A" through "I" are
+     equivalent to "+0100" through "+0900" respectively; "K", "L", and "M"
+     are equivalent to  "+1000", "+1100", and "+1200" respectively; "N"
+     through "Y" are equivalent to "-0100" through "-1200" respectively;
+     and "Z" is equivalent to "+0000".  However, because of the error in
+     [RFC822], they SHOULD all be considered equivalent to "-0000" unless
+     there is out-of-band information confirming their meaning.
+
+     Other multi-character (usually between 3 and 5) alphabetic time zones
+     have been used in Internet messages.  Any such time zone whose
+     meaning is not known SHOULD be considered equivalent to "-0000"
+     unless there is out-of-band information confirming their meaning.
+
+   From RFC 5322
+
+     obs-zone        =   "UT" / "GMT" /     ; Universal Time
+                                            ; North American UT
+                                            ; offsets
+                         "EST" / "EDT" /    ; Eastern:  - 5/ - 4
+                         "CST" / "CDT" /    ; Central:  - 6/ - 5
+                         "MST" / "MDT" /    ; Mountain: - 7/ - 6
+                         "PST" / "PDT" /    ; Pacific:  - 8/ - 7
+                                            ;
+                         %d65-73 /          ; Military zones - "A"
+                         %d75-90 /          ; through "I" and "K"
+                         %d97-105 /         ; through "Z", both
+                         %d107-122          ; upper and lower case
+
+     Where a two or three digit year occurs in a date, the year is to be
+     interpreted as follows: If a two digit year is encountered whose
+     value is between 00 and 49, the year is interpreted by adding 2000,
+     ending up with a value between 2000 and 2049.  If a two digit year is
+     encountered with a value between 50 and 99, or any three digit year
+     is encountered, the year is interpreted by adding 1900.
+
+     In the obsolete time zone, "UT" and "GMT" are indications of
+     "Universal Time" and "Greenwich Mean Time", respectively, and are
+     both semantically identical to "+0000".
+
+     The remaining three character zones are the US time zones.  The first
+     letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
+     "Mountain", and "Pacific".  The second letter is either "S" for
+     "Standard" time, or "D" for "Daylight Savings" (or summer) time.
+     Their interpretations are as follows:
+
+        EDT is semantically equivalent to -0400
+        EST is semantically equivalent to -0500
+        CDT is semantically equivalent to -0500
+        CST is semantically equivalent to -0600
+        MDT is semantically equivalent to -0600
+        MST is semantically equivalent to -0700
+        PDT is semantically equivalent to -0700
+        PST is semantically equivalent to -0800
+
+     The 1 character military time zones were defined in a non-standard
+     way in [RFC0822] and are therefore unpredictable in their meaning.
+     The original definitions of the military zones "A" through "I" are
+     equivalent to "+0100" through "+0900", respectively; "K", "L", and
+     "M" are equivalent to "+1000", "+1100", and "+1200", respectively;
+     "N" through "Y" are equivalent to "-0100" through "-1200".
+     respectively; and "Z" is equivalent to "+0000".  However, because of
+     the error in [RFC0822], they SHOULD all be considered equivalent to
+     "-0000" unless there is out-of-band information confirming their
+     meaning.
+
+     Other multi-character (usually between 3 and 5) alphabetic time zones
+     have been used in Internet messages.  Any such time zone whose
+     meaning is not known SHOULD be considered equivalent to "-0000"
+     unless there is out-of-band information confirming their meaning.
+*)
 let obs_zone =
   string "UT" *> return UT
   <|> string "GMT" *> return GMT
@@ -671,6 +1085,43 @@ let obs_zone =
   <|> string "PDT" *> return PDT
   <|> (satisfy is_military_zone >>= fun z -> return (Military_zone z))
 
+(* From RFC 2822
+
+     zone            =       (( "+" / "-" ) 4DIGIT) / obs-zone
+
+     The zone specifies the offset from Coordinated Universal Time (UTC,
+     formerly referred to as "Greenwich Mean Time") that the date and
+     time-of-day represent.  The "+" or "-" indicates whether the
+     time-of-day is ahead of (i.e., east of) or behind (i.e., west of)
+     Universal Time.  The first two digits indicate the number of hours
+     difference from Universal Time, and the last two digits indicate the
+     number of minutes difference from Universal Time.  (Hence, +hhmm
+     means +(hh * 60 + mm) minutes, and -hhmm means -(hh * 60 + mm)
+     minutes).  The form "+0000" SHOULD be used to indicate a time zone at
+     Universal Time.  Though "-0000" also indicates Universal Time, it is
+     used to indicate that the time was generated on a system that may be
+     in a local time zone other than Universal Time and therefore
+     indicates that the date-time contains no information about the local
+     time zone.
+
+   From RFC 5322
+
+     zone            =   (FWS ( "+" / "-" ) 4DIGIT) / obs-zone
+
+     The zone specifies the offset from Coordinated Universal Time (UTC,
+     formerly referred to as "Greenwich Mean Time") that the date and
+     time-of-day represent.  The "+" or "-" indicates whether the time-of-
+     day is ahead of (i.e., east of) or behind (i.e., west of) Universal
+     Time.  The first two digits indicate the number of hours difference
+     from Universal Time, and the last two digits indicate the number of
+     additional minutes difference from Universal Time.  (Hence, +hhmm
+     means +(hh * 60 + mm) minutes, and -hhmm means -(hh * 60 + mm)
+     minutes).  The form "+0000" SHOULD be used to indicate a time zone at
+     Universal Time.  Though "-0000" also indicates Universal Time, it is
+     used to indicate that the time was generated on a system that may be
+     in a local time zone other than Universal Time and that the date-time
+     contains no information about the local time zone.
+*)
 let zone =
   Rfc822.fws *> satisfy (function '+' | '-' -> true | _ -> false)
   >>= (fun sign ->
@@ -680,8 +1131,49 @@ let zone =
         else TZ (int_of_string zone) )
   <|> option () Rfc822.cfws *> obs_zone
 
+(* From RFC 822
+
+     time        =  hour zone                    ; ANSI and Military
+
+   From RFC 2822
+
+     time            =       time-of-day FWS zone
+
+   From RFC 5322
+
+     time            =   time-of-day zone
+*)
 let time = lift2 (fun time zone -> (time, zone)) time_of_day zone
 
+(* From RFC 822
+
+     date-time   =  [ day "," ] date time        ; dd mm yy
+                                                 ;  hh:mm:ss zzz
+
+   From RFC 2822
+
+     Date and time occur in several header fields.  This section specifies
+     the syntax for a full date and time specification.  Though folding
+     white space is permitted throughout the date-time specification, it
+     is RECOMMENDED that a single space be used in each place that FWS
+     appears (whether it is required or optional); some older
+     implementations may not interpret other occurrences of folding white
+     space correctly.
+
+     date-time       =       [ day-of-week "," ] date FWS time [CFWS]
+
+   From RFC 5322
+
+     Date and time values occur in several header fields.  This section
+     specifies the syntax for a full date and time specification.  Though
+     folding white space is permitted throughout the date-time
+     specification, it is RECOMMENDED that a single space be used in each
+     place that FWS appears (whether it is required or optional); some
+     older implementations will not interpret longer sequences of folding
+     white space correctly.
+
+     date-time       =   [ day-of-week "," ] date time [CFWS]
+*)
 let date_time =
   lift3
     (fun day date (time, zone) -> {day; date; time; zone})
