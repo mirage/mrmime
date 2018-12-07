@@ -448,23 +448,50 @@ let fws =
      comment         =   "(" *([FWS] ccontent) [FWS] ")"
 *)
 let comment =
-  let ignore_quoted_pair = quoted_pair >>= fun _ -> return () in
-  let ignore_is_utf8_ctext =
-    Rfc6532.with_uutf is_ctext >>= fun _ -> return ()
-    (* TODO: [with_uutf] or [with_uutf1]? *)
-  in
+  let ignore_quoted_pair = quoted_pair *> return () in
+  let ignore_is_utf8_ctext = Rfc6532.with_uutf1 is_ctext *> return () in
+  (* XXX(dinosaure): [with_uutf1] needs an explanation when ABNF does not say
+     [1*ctext]. Indeed, if we use [with_uutf], [ccontent] will never fail
+     (specifically about empty comment).
+
+     However, [many] is a loop and we need to leave it to check then the close
+     parenthesis. The only way to leave [many] is to fail and it's why we expect
+     at least one character. In other case [many (option (false, false, false)
+     fws) *> ccontent] fails and we expected a close parenthesis. *)
   fix
   @@ fun comment ->
   let ccontent : unit t =
     peek_char_fail
     >>= function
-    | '(' -> comment | '\\' -> ignore_quoted_pair | _ -> ignore_is_utf8_ctext
+    | '(' -> comment
+    | '\\' -> ignore_quoted_pair
+    | _ -> ignore_is_utf8_ctext
   in
   char '('
   *> many (option (false, false, false) fws *> ccontent)
   *> option (false, false, false) fws
   *> char ')'
   *> return ()
+
+(*
+let comment =
+  let ignore_quoted_pair = quoted_pair *> return () in
+  let ignore_is_utf8_ctext = Rfc6532.with_uutf is_ctext *> return () in
+  (fix @@ fun comment ->
+    let ccontent : unit t =
+      peek_char_fail
+      >>= function
+      | '(' -> comment
+      | '\\' -> ignore_quoted_pair
+      | c when is_ctext c -> ignore_is_utf8_ctext
+      | _ -> fail "comment"
+    in
+    char '('
+    *> (many ((option (false, false, false) fws) *> ccontent))
+    *> (option (false, false, false) fws)
+    *> char ')'
+    *> return ())
+*)
 
 (* From RFC 822
 
@@ -681,6 +708,14 @@ let local_part =
   obs_local_part
   <|> (dot_atom >>| List.map (fun x -> `Atom x))
   <|> (quoted_string >>| fun s -> [`String s])
+
+let local_part =
+  local_part >>= fun x ->
+    if List.fold_left (fun a -> function
+        | `Atom x -> a + String.length x
+        | `String x -> a + String.length x) 0 x = 0
+    then fail "empty local-part"
+    else return x
 
 let obs_domain = lift2 (fun x r -> x :: r) atom (many1 (char '.' *> atom))
 
@@ -899,7 +934,13 @@ let domain ~address_literal =
   let of_string ~error p s =
     match parse_string p s with Ok v -> return v | Error _ -> fail error
   in
-  let literal s = return (`Literal s) in
+  let literal s = fail (Fmt.strf "literal domain: %s" s) in
+  (* XXX(dinosaure): according to RFC 5322 and RFC 822 (including RFC 2822), a
+     [`Literal] is a correct domain. However, according RFC 5321, we abort this
+     kind of domain.
+
+     [Mrmime] will be use with a SMTP/IMAP/POP protocol, we decide to fail on
+     [`Literal]. This is an arbitrary choice. *)
   let addr s =
     of_string ~error:"address-literal" address_literal s
     >>| (fun addr -> `Addr addr)

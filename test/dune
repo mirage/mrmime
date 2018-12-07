@@ -7,3 +7,8 @@
  (name rfc2047)
  (modules rfc2047)
  (libraries alcotest mrmime))
+
+(executable
+ (name rfc5322)
+ (modules rfc5322)
+ (libraries alcotest mrmime))
