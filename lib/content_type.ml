@@ -121,7 +121,7 @@ module Parameters = struct
 
   exception Invalid_utf8
 
-  let value value =
+  let value v =
     let to_token x =
       try
         String.iter
@@ -168,7 +168,7 @@ module Parameters = struct
         Some x
       with Invalid_utf8 -> None
     in
-    match to_token value with
+    match to_token v with
     | Some _ as v -> v
     | None ->
         (* UTF-8 respects an interval of values and it's possible to have an
@@ -185,7 +185,7 @@ module Parameters = struct
          However, order is really important semantically. UTF-8 -> escape
          expects a special process to decoder (escape -> UTF-8). About history,
          unicorn and so on, it should be the best to keep this order. *)
-        Option.(utf8 value >>| escape_characters >>| fun x -> `String x)
+        Option.(utf8 v >>| escape_characters >>| fun x -> `String x)
 
   let empty = X.empty
 
