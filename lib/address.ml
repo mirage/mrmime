@@ -281,8 +281,8 @@ let pp_phrase : phrase Fmt.t =
   Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
 
 let pp_literal_domain ppf = function
-  | IPv4 v -> Ipaddr.V4.pp_hum ppf v
-  | IPv6 v -> Ipaddr.V6.pp_hum ppf v
+  | IPv4 v -> Ipaddr.V4.pp ppf v
+  | IPv6 v -> Ipaddr.V6.pp ppf v
   | Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
 
 let pp_domain ppf = function
