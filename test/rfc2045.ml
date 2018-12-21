@@ -11,8 +11,8 @@ let parse_content_type x =
 let content_type =
   Alcotest.testable Mrmime.Content_type.pp Mrmime.Content_type.equal
 
-let make ~name raw expect =
-  Alcotest.test_case name `Quick
+let make raw expect =
+  Alcotest.test_case raw `Quick
   @@ fun () ->
   match parse_content_type raw with
   | Ok value -> Alcotest.(check content_type) raw expect value
@@ -48,7 +48,7 @@ let content_type_2 =
 let () =
   Alcotest.run "rfc2045"
     [ ( "content-type"
-      , [ make ~name:"0" "text/plain; charset=us-ascii (Plain text)"
+      , [ make "text/plain; charset=us-ascii (Plain text)"
             content_type_0
-        ; make ~name:"1" "text/plain; charset=\"us-ascii\"" content_type_1
-        ; make ~name:"2" "text/plain; charset=ISO-8859-1" content_type_2 ] ) ]
+        ; make "text/plain; charset=\"us-ascii\"" content_type_1
+        ; make "text/plain; charset=ISO-8859-1" content_type_2 ] ) ]

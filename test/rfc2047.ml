@@ -16,8 +16,8 @@ let data =
     (Fmt.Dump.result ~ok:Fmt.string ~error:Rresult.R.pp_msg)
     (Rresult.R.equal ~ok:String.equal ~error:(fun (`Msg _) (`Msg _) -> true))
 
-let make ~name raw (expect_charset, expect_encoding, expect_data) =
-  Alcotest.test_case name `Quick
+let make raw (expect_charset, expect_encoding, expect_data) =
+  Alcotest.test_case raw `Quick
   @@ fun () ->
   match parse_encoded_word raw with
   | Ok value ->
@@ -35,22 +35,22 @@ let make ~name raw (expect_charset, expect_encoding, expect_data) =
 let () =
   Alcotest.run "rfc2047"
     [ ( "encoded-word"
-      , [ make ~name:"0" "=?US-ASCII?Q?Keith_Moore?="
+      , [ make "=?US-ASCII?Q?Keith_Moore?="
             (`US_ASCII, Mrmime.Encoded_word.q, Ok "Keith Moore")
-        ; make ~name:"1" "=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?="
+        ; make "=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "Keld Jørn Simonsen")
-        ; make ~name:"2" "=?ISO-8859-1?Q?Andr=E9_?="
+        ; make "=?ISO-8859-1?Q?Andr=E9_?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "André ")
-        ; make ~name:"3" "=?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?="
+        ; make "=?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?="
             (`ISO_8859_1, Mrmime.Encoded_word.b, Ok "If you can read this yo")
-        ; make ~name:"4"
+        ; make
             "=?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?="
             (`ISO_8859_2, Mrmime.Encoded_word.b, Ok "u understand the example.")
-        ; make ~name:"5" "=?ISO-8859-1?Q?Olle_J=E4rnefors?="
+        ; make "=?ISO-8859-1?Q?Olle_J=E4rnefors?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "Olle Järnefors")
-        ; make ~name:"6" "=?ISO-8859-1?Q?Patrik_F=E4ltstr=F6m?="
+        ; make "=?ISO-8859-1?Q?Patrik_F=E4ltstr=F6m?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "Patrik Fältström")
-        ; make ~name:"7" "=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?="
+        ; make "=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?="
             ( `ISO_8859_8
             , Mrmime.Encoded_word.b
             , Ok "םולש ןב ילטפנ" (* Il est un gentleman *) ) ] ) ]
