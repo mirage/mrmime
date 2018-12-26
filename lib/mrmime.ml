@@ -1,3 +1,8 @@
+module Encoder = Encoder
+module Fe = Fe
+
+(* / *)
+
 module Rfc822 = Rfc822
 module Rfc2045 = Rfc2045
 module Rfc2047 = Rfc2047
