@@ -1,4 +1,4 @@
 (library
  (name mrmime)
  (public_name mrmime)
- (libraries ptime ipaddr base64 uutf rosetta pecu rresult fmt angstrom))
+ (libraries ocplib-endian ocplib-endian.bigstring butils ke ptime ipaddr base64 uutf rosetta pecu rresult fmt angstrom))

@@ -12,3 +12,8 @@
  (name rfc5322)
  (modules rfc5322)
  (libraries alcotest mrmime))
+
+(executable
+ (name fe)
+ (modules fe)
+ (libraries jsonm alcotest mrmime))
