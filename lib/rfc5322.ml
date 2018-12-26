@@ -1181,10 +1181,115 @@ let date_time =
     date time
   <* option () Rfc822.cfws
 
+(* From RFC 5322
+
+     obs-utext       =   %d0 / obs-NO-WS-CTL / VCHAR
+*)
 let is_obs_utext = function
   | '\000' -> true
   | c -> Rfc822.is_obs_no_ws_ctl c || Rfc822.is_vchar c
 
+(* From RFC 822
+
+     B.  SIMPLE FIELD PARSING
+
+          Some mail-reading software systems may wish to perform  only
+     minimal  processing,  ignoring  the internal syntax of structured
+     field-bodies and treating them the  same  as  unstructured-field-
+     bodies.  Such software will need only to distinguish:
+
+         o   Header fields from the message body,
+
+         o   Beginnings of fields from lines which continue fields,
+
+         o   Field-names from field-contents.
+
+          The abbreviated set of syntactic rules  which  follows  will
+     suffice  for  this  purpose.  It describes a limited view of mes-
+     sages and is a subset of the syntactic rules provided in the main
+     part of this specification.  One small exception is that the con-
+     tents of field-bodies consist only of text:
+
+     B.1.  SYNTAX
+
+
+     message         =   *field *(CRLF *text)
+
+     field           =    field-name ":" [field-body] CRLF
+
+     field-name      =  1*<any CHAR, excluding CTLs, SPACE, and ":">
+
+     field-body      =   *text [CRLF LWSP-char field-body]
+
+
+     B.2.  SEMANTICS
+
+          Headers occur before the message body and are terminated  by
+     a null line (i.e., two contiguous CRLFs).
+
+          A line which continues a header field begins with a SPACE or
+     HTAB  character,  while  a  line  beginning a field starts with a
+     printable character which is not a colon.
+
+          A field-name consists of one or  more  printable  characters
+     (excluding  colon,  space, and control-characters).  A field-name
+     MUST be contained on one line.  Upper and lower case are not dis-
+     tinguished when comparing field-names.
+
+     NOTE: It's not clear if, in this case (instead [phrase]), [wsp] is
+     significant. Currently, we did count how many [wsp] we consume by
+     [cfws]/[fws] token. But I suspect it should be the case.
+
+   From RFC 2047
+
+     NOTE: I did find any description of [encoded-word] in [obs-unstruct].
+     However, I wrote this kind for a good reason and I prefer to believe
+     the 2 years ago dinosaure.
+
+     (3) As a replacement for a 'word' entity within a 'phrase', for example,
+         one that precedes an address in a From, To, or Cc header.  The ABNF
+         definition for 'phrase' from RFC 822 thus becomes:
+
+         phrase = 1 *( encoded-word / word )
+
+         In this case the set of characters that may be used in a "Q"-encoded
+         'encoded-word' is restricted to: <upper and lower case ASCII
+         letters, decimal digits, "!", "*", "+", "-", "/", "=", and "_"
+         (underscore, ASCII 95.)>.  An 'encoded-word' that appears within a
+         'phrase' MUST be separated from any adjacent 'word', 'text' or
+         'special' by 'linear-white-space'.
+
+        These are the ONLY locations where an 'encoded-word' may appear.  In
+        particular:
+
+        + An 'encoded-word' MUST NOT appear in any portion of an 'addr-spec'.
+
+        + An 'encoded-word' MUST NOT appear within a 'quoted-string'.
+
+        + An 'encoded-word' MUST NOT be used in a Received header field.
+
+        + An 'encoded-word' MUST NOT be used in parameter of a MIME
+          Content-Type or Content-Disposition field, or in any structured
+          field body except within a 'comment' or 'phrase'.
+
+   From RFC 2822
+
+     obs-text        =       *LF *CR *(obs-char *LF *CR)
+
+     obs-char        =       %d0-9 / %d11 /          ; %d0-127 except CR and
+                             %d12 / %d14-127         ;  LF
+
+     obs-utext       =       obs-text
+
+   From RFC 5322
+
+     obs-unstruct    =   *(( *LF *CR *(obs-utext *LF *CR)) / FWS)
+
+     The following are changes from [RFC2882]:
+     15.  Simplified obs-qp.  Fixed and simplified obs-utext (which now
+          only appears in the obsolete syntax).  Removed obs-text and obs-
+          char, adding obs-body.
+*)
 let obs_unstruct : unstructured t =
   let many_cr =
     fix
