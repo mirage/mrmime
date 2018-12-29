@@ -1357,13 +1357,38 @@ let make n f =
   in
   aux [] n
 
+(* From RFC 2822
+
+     Some field bodies in this standard are defined simply as
+     "unstructured" (which is specified below as any US-ASCII characters,
+     except for CR and LF) with no further restrictions.  These are
+     referred to as unstructured field bodies.  Semantically, unstructured
+     field bodies are simply to be treated as a single line of characters
+     with no further processing (except for header "folding" and
+     "unfolding" as described in section 2.2.3).
+
+     unstructured    =       *([FWS] utext) [FWS]
+
+   From RFC 5322
+
+     Some field bodies in this specification are defined simply as
+     "unstructured" (which is specified in section 3.2.5 as any printable
+     US-ASCII characters plus white space characters) with no further
+     restrictions.  These are referred to as unstructured field bodies.
+     Semantically, unstructured field bodies are simply to be treated as a
+     single line of characters with no further processing (except for
+     "folding" and "unfolding" as described in section 2.2.3).
+
+     unstructured    =   ( *([FWS] VCHAR) *WSP ) / obs-unstruct
+*)
 let unstructured =
   obs_unstruct
   <|> ( many
           ( option (false, false, false) Rfc822.fws
           >>= fun (has_wsp, has_crlf, has_wsp') ->
           Rfc6532.with_uutf1 Rfc822.is_vchar
-          (* TODO: with_uutf1 or with_uutf? *)
+          (* XXX(dinosaure): currently, we use [with_uutf1]. However, RFC explains [VCHAR].
+             I suspect an infinite loop if we use [with_uutf]. *)
           >>| fun text ->
           match (has_wsp, has_crlf, has_wsp') with
           | true, true, true -> [`WSP; `CRLF; `WSP; `Text text]
@@ -1382,12 +1407,35 @@ let phrase_or_msg_id =
   many
     (phrase >>| (fun v -> `Phrase v) <|> (Rfc5321.msg_id >>| fun v -> `MsgID v))
 
+(* From RFC 2822
+
+     obs-phrase-list =       phrase / 1*([phrase] [CFWS] "," [CFWS]) [phrase]
+
+   From RFC 5322
+
+     obs-phrase-list =   [phrase / CFWS] *("," [phrase / CFWS])
+
+     The following are changes from [RFC2822]
+     17.  Fixed all obsolete list syntax (obs-domain-list, obs-mbox-list,
+           obs-addr-list, obs-phrase-list, and the newly added obs-group-
+           list).
+*)
 let obs_phrase_list =
   option [] (phrase <|> Rfc822.cfws *> return [])
   >>= fun pre ->
   many (char ',' *> option [] (phrase <|> Rfc822.cfws *> return []))
   >>| fun rst -> pre :: rst
 
+(* From RFC 2822
+
+     keywords        =       "Keywords:" phrase *("," phrase) CRLF
+     obs-keywords    =       "Keywords" *WSP ":" obs-phrase-list CRLF
+
+   From RFC 5322
+
+     keywords        =   "Keywords:" phrase *("," phrase) CRLF
+     obs-keywords    =   "Keywords" *WSP ":" obs-phrase-list CRLF
+*)
 let keywords =
   let sep s p =
     fix (fun m -> lift2 (fun x r -> x :: r) p (s *> m <|> return []))
