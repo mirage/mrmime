@@ -17,3 +17,23 @@
  (name fe)
  (modules fe)
  (libraries jsonm alcotest mrmime))
+
+(alias
+ (name runtest)
+ (deps (:rfc2045 rfc2045.exe))
+ (action (run %{rfc2045} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:rfc2047 rfc2047.exe))
+ (action (run %{rfc2047} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:rfc5322 rfc5322.exe))
+ (action (run %{rfc5322} --color=always)))
+ 
+(alias
+ (name runtest)
+ (deps (:fe fe.exe))
+ (action (run %{fe} --color=always)))
