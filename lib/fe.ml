@@ -214,3 +214,76 @@ let eval : t -> ('ty, 'v) fmt -> 'ty = fun t fmt ->
       finish (continue n)
     | Encoder.End {encoder; _} -> encoder in
   keval t finish fmt
+
+module Box = struct
+  type 'kind box =
+    | HoV : [ `H | `V ] box
+    | HaV : [ `HV ] box
+    | H : [ `H ] box
+    | V : [ `V ] box
+    | None : [ `None ] box
+
+  let hov = HoV
+  let hav = HaV
+  let h = H
+  let v = V
+  let none = None
+
+  type ('ty, 'v) order =
+    | Cut : ('v, 'v) order
+    | Space : ('v, 'v) order
+    | Full : ('v, 'v) order
+    | Fmt : ('ty, 'v) fmt -> ('ty, 'v) order
+
+  let cut = Cut
+  let space = Space
+  let full = Full
+  let fmt fmt = Fmt fmt
+
+  type ('ty, 'v) fmt =
+    | [] : ('v, 'v) fmt
+    | (::) : ('x, 'v) order * ('v, 'r) fmt -> ('x, 'r) fmt
+
+  let keval_order
+    : type ty v. t -> (ty, v) order -> (t Encoder.state -> v) -> ty
+    = fun t order k -> match order with
+      | Fmt fmt -> keval t k fmt
+      | _ -> assert false
+
+  let rec keval_fmt
+    : type ty v. t -> (t Encoder.state -> v) -> (ty, v) fmt -> ty
+    = fun t k fmts ->
+    match fmts with
+    | [] -> k (Encoder.flush (fun e -> Encoder.End {writer= t.writer; encoder= e}) t.encoder)
+    | x :: r ->
+      let rec k' = function
+        | Encoder.End t -> keval_fmt t k r
+        | Encoder.Continue {continue; encoder} -> k' (continue encoder)
+        | Encoder.Flush {continue; iovecs} ->
+          let n = t.writer iovecs in
+          k' (continue n) in
+      keval_order t x k'
+
+  type z = Z : z
+  type 'x s = S : 'x -> 'x s
+
+  type ('ty, 'v, 's) tree =
+    | Leaf : ('ty, 'v) fmt -> ('ty, 'v, z) tree
+    | Node : 'k box * ('ty, 'v, 's) tree -> ('ty, 'v, 's s) tree
+
+  let rec keval
+    : type ty v s. t -> (t Encoder.state -> v) -> (ty, v, s) tree -> ty
+    = fun t k tree -> match tree with
+      | Leaf fmt -> keval_fmt t k fmt
+      | Node (_, tree) ->
+        let rec k' = function
+          | Encoder.End t -> keval t k tree
+          | Encoder.Continue {continue; encoder} -> k' (continue encoder)
+          | Encoder.Flush {continue; iovecs} ->
+            let n = t.writer iovecs in
+            k' (continue n) in
+        k' (Encoder.End t)
+
+  let node box tree = Node (box, tree)
+  let leaf fmt = Leaf fmt
+end

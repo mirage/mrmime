@@ -65,3 +65,34 @@ module Const : sig
   val bytes : ?off:int -> ?len:int -> bytes -> ('v, 'v) order
   val bigstring : ?off:int -> ?len:int -> Bigstringaf.t -> ('v, 'v) order
 end
+
+module Box : sig
+  type 'kind box
+
+  val hov : [ `H | `V ] box
+  val hav : [ `HV ] box
+  val h : [ `H ] box
+  val v : [ `V ] box
+  val none : [ `None ] box
+
+  type ('ty, 'v) order
+
+  val cut : ('v, 'v) order
+  val space : ('v, 'v) order
+  val full : ('v, 'v) order
+  val fmt : ('ty, 'v) fmt -> ('ty, 'v) order
+
+  type ('ty, 'v) fmt =
+    | [] : ('v, 'v) fmt
+    | (::) : ('x, 'v) order * ('v, 'r) fmt -> ('x, 'r) fmt
+
+  type z = Z : z
+  type 'x s = S : 'x -> 'x s
+
+  type ('ty, 'v, 's) tree
+
+  val node : 'kind box -> ('ty, 'v, 's) tree -> ('ty, 'v, 's s) tree
+  val leaf : ('ty, 'v) fmt -> ('ty, 'v, z) tree
+
+  val keval : t -> (t Encoder.state -> 'v) -> ('ty, 'v, 's) tree -> 'ty
+end

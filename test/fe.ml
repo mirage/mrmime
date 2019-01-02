@@ -114,7 +114,7 @@ let tests =
   ; `O [ "a", `A [ `Bool true ; `Bool false ] ]
   ; `A [ `O [ "a", `Bool true ; "b", `Bool false ] ] ]
 
-let writer_of_buf buf = fun lst ->
+let writer_of_buf buf =
   let open Mrmime in
 
   let write a = function
@@ -124,7 +124,7 @@ let writer_of_buf buf = fun lst ->
       Buffer.add_subbytes buf x off len; a + len
     | { Encoder.IOVec.buffer= Encoder.Buffer.Bigstring x; off; len; } ->
       Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
-  List.fold_left write 0 (List.rev lst)
+  List.fold_left write 0
 
 let json =
   Alcotest.testable

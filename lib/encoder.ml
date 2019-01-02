@@ -6,6 +6,7 @@ external bigarray_physically_equal : ('a, 'b) bigarray -> ('a, 'b) bigarray -> b
 module type V = sig
   type t
 
+  val pp : t Fmt.t
   val sentinel : t
   val weight : t -> int
   val merge : t -> t -> t option
@@ -13,41 +14,65 @@ module type V = sig
 end
 
 module RBQ (V : V) = struct
-  module Queue = Ke.Fke
+  module Queue = Ke.Fke.Weighted
 
-  type t = {c: int; w: int; q: V.t Queue.t}
+  type t = {a: V.t array; c: int; m: int; q: (int, Bigarray.int_elt) Queue.t}
   and value = V.t
 
-  let make capacity = {c= capacity; w= 0; q= Queue.empty}
+  let make capacity =
+    let q, capacity = Queue.create ~capacity Bigarray.Int in
+    { a= Array.make capacity V.sentinel
+    ; c= 0
+    ; m= capacity
+    ; q }
 
-  let pp ppf {c; w; q} =
-    Fmt.pf ppf "{ @[<hov>c = %d;@ w = %d;@ q = %a;@] }"
-      c w (Fmt.hvbox (Queue.pp Fmt.nop)) q
+  let pp ppf t =
+    Fmt.pf ppf "{ @[<hov>a = %a;@ \
+                         c = %d;@ \
+                         m = %d;@ \
+                         q = %a;@] }"
+      Fmt.(Dump.array V.pp) t.a
+      t.c t.m
+      (Queue.dump Fmt.int) t.q
 
-  let available t = t.c - t.w
+  let available t = Queue.available t.q
+
+  let[@inline always] mask x t = x land (t.m - 1)
 
   let push t v =
-    let w = t.w + V.weight v in
-    if w > t.c then Error t else Ok { t with w; q= Queue.push t.q v }
+    let i = mask t.c t in
+    match Queue.push t.q i with
+    | Some q ->
+      t.a.(i) <- v ;
+      Ok { t with c= succ t.c; q; }
+    | None -> Error t
 
   let shift_exn t =
-    let v, q = Queue.pop_exn t.q in
-    (v, { t with w= t.w + V.weight v; q; })
+    let i, q = Queue.pop_exn t.q in
+    (t.a.(i), { t with q })
 
   let cons t v =
-    let w = t.w + V.weight v in
-    if w > t.c then Error t else Ok { t with w; q= Queue.cons t.q v }
+    let i = mask t.c t in
+    match Queue.cons t.q i with
+    | Some q ->
+      t.a.(i) <- v ;
+      Ok { t with c= succ t.c; q; }
+    | None -> Error t
 
   exception Full
 
   let cons_exn t v =
-    if t.w + V.weight v > t.c then raise Full ;
-    { t with w= t.w + V.weight v; q= Queue.cons t.q v }
+    match cons t v with
+    | Ok t -> t
+    | Error _ -> raise Full
 
   let weight t =
-    Queue.fold (fun a x -> a + V.weight x) 0 t.q
+    Queue.fold (fun a i -> a + V.weight t.a.(i)) 0 t.q
 
-  let to_list t = Queue.fold (fun a x -> x :: a) [] t.q
+  let to_list t =
+    let res = ref [] in
+    Queue.rev_iter (fun i -> res := t.a.(i) :: !res) t.q ;
+    !res
 end
 
 type 'a blitter = 'a -> int -> Bigstringaf.t -> int -> int -> unit
@@ -75,6 +100,8 @@ module IOVec = struct
   type t = {buffer: Buffer.t; off: int; len: int}
 
   let weight {len; _} = len
+
+  let pp _ _ = assert false
 
   let sentinel =
     let deadbeef = "\222\173\190\239" in
@@ -337,6 +364,11 @@ let write_uint8 =
     Bigstringaf.set dst dst_off (Char.unsafe_chr src)
   in
   fun a k t -> write k ~length ~blit ~off:0 ~len:1 a t
+
+module Box = struct
+  let o _kind k t = continue k t
+  let c k t = continue k t
+end
 
 module type EndianBigstringSig = EndianBigstring.EndianBigstringSig
 module type EndianBytesSig = EndianBytes.EndianBytesSig
