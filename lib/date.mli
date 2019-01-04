@@ -8,7 +8,6 @@ module Day : sig
   val fri : t
   val sat : t
   val sun : t
-
   val pp : t Fmt.t
 end
 
@@ -27,10 +26,8 @@ module Month : sig
   val oct : t
   val nov : t
   val dec : t
-
   val to_int : t -> int
   val of_int : int -> t option
-
   val pp : t Fmt.t
 end
 
@@ -49,7 +46,6 @@ module Zone : sig
   val pdt : t
   val military_zone : char -> t option
   val tz : int -> t option
-
   val pp : t Fmt.t
 end
 

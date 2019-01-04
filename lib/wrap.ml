@@ -1,6 +1,6 @@
 [@@@warning "-32"]
 
-type t =
+type encoder =
   { encoder : Encoder.encoder
   ; mutable scan_stack : scan_atom list
   (* the pretty-printer formatting stack. each element is (left_total, element)
@@ -65,8 +65,8 @@ let size_of_value = function
   | LE_uint32 _ | BE_uint32 _ -> 4
   | LE_uint64 _ | BE_uint64 _ -> 8
 
-type 'r k0 = (t -> 'r Encoder.state) -> t -> 'r Encoder.state
-type ('a, 'r) k1 = 'a -> (t -> 'r Encoder.state) -> t -> 'r Encoder.state
+type 'r k0 = (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
+type ('a, 'r) k1 = 'a -> (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
 
 let enqueue t ({ length; _ } as token) =
   t.right_total <- t.right_total + length ;
@@ -81,8 +81,8 @@ let lift
   :
      writer:('x -> (Encoder.encoder -> 'r Encoder.state) -> Encoder.encoder -> 'r Encoder.state)
   -> 'x
-  -> (t -> 'r Encoder.state)
-  -> t
+  -> (encoder -> 'r Encoder.state)
+  -> encoder
   -> 'r Encoder.state
   = fun ~writer x k t ->
     writer x (fun encoder -> k { t with encoder }) t.encoder

@@ -1,21 +1,20 @@
-type t
+type encoder
+type 'r k0 = (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
 
-type 'r k0 = (t -> 'r Encoder.state) -> t -> 'r Encoder.state
-type ('a, 'r) k1 = 'a -> (t -> 'r Encoder.state) -> t -> 'r Encoder.state
+type ('a, 'r) k1 =
+  'a -> (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
 
 val write_char : (char, 'r) k1
 val write_bytes : (bytes, 'r) k1
 val write_string : (string, 'r) k1
 val write_bigstring : (Bigstringaf.t, 'r) k1
 val write_uint8 : (int, 'r) k1
-
 val new_line : 'r k0
 val flush : 'r k0
 val force_new_line : 'r k0
 val if_new_line : 'r k0
 val space : 'r k0
 val cut : 'r k0
-
 val hbox : 'r k0
 val vbox : (int, 'r) k1
 val hvbox : (int, 'r) k1

@@ -1,0 +1,4 @@
+(executable
+ (name encoder)
+ (modules encoder)
+ (libraries mrmime crowbar jsonm))

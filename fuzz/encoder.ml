@@ -19,6 +19,26 @@ let rec value t x =
   | `A a -> Fe.keval t identity Fe.[ char $ '[' ; !!arr ; char $ ']' ] a
   | `O o -> Fe.keval t identity Fe.[ char $ '{' ; !!obj ; char $ '}' ] o
 
+exception Fail
+
+let json =
+  let open Crowbar in
+
+  let valid str =
+    let is = function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> true | _ -> false in
+    try String.iter (fun chr -> if not (is chr) then raise Fail) str ; true
+    with Fail -> false in
+
+  fix @@ fun m ->
+  let string = map [ bytes ] (fun x -> if valid x then x else bad_test ()) in
+  let binding = map [ string ; m ] (fun k v -> (k, v)) in
+  choose
+    [ const `Null
+    ; map [ bool ] (fun x -> `Bool x)
+    ; map [ string ] (fun x -> `String x)
+    ; map [ list m ] (fun x -> `A x)
+    ; map [ list binding ] (fun x -> `O x) ]
+
 type await = [ `Await ]
 type error = [ `Error of Jsonm.error ]
 type eoi = [ `End ]
@@ -108,12 +128,57 @@ let json_to_string x =
   let buf = Buffer.create 0x100 in
   json_to_output (fun _ -> assert false) (`Buffer buf) x ; Buffer.contents buf
 
-let tests =
-  [ `A [ `Bool true ]
-  ; `O [ "a", `A [ `Bool true ; `Bool false ] ]
-  ; `A [ `O [ "a", `Bool true ; "b", `Bool false ] ] ]
+let rec pp_json ppf = function
+  | `Null -> Fmt.string ppf "<null>"
+  | `Bool v -> Fmt.bool ppf v
+  | `Float v -> Fmt.float ppf v
+  | `String v -> Fmt.string ppf v
+  | `A v -> Fmt.Dump.list pp_json ppf v
+  | `O v -> Fmt.(Dump.list Dump.(pair string pp_json)) ppf v
 
-let writer_of_buf buf =
+let rec list_cmp cmp a b =
+  match a, b with
+  | [], [] -> 0
+  | [], _  -> -1
+  | _ , [] -> 1
+  | x :: xs, y :: ys ->
+    let n = cmp x y in
+    if n = 0 then list_cmp cmp xs ys
+    else n
+
+let cmp_bool a b = match a, b with
+  | true, true | false, false -> 0
+  | true, false -> 1
+  | false, true -> (-1)
+
+let rec cmp_json a b = match a, b with
+  | `Null, `Null -> 0
+  | `Bool a, `Bool b -> cmp_bool a b
+  | `String a, `String b -> String.compare a b
+  | `Float a, `Float b -> Pervasives.compare a b
+  | `A a, `A b -> list_cmp cmp_json a b
+  | `O a, `O b ->
+    let cmp (ka, a) (kb, b) =
+      let x = String.compare ka kb in
+      if x = 0 then cmp_json a b else x in
+    list_cmp cmp a b
+  | `Null, _ -> (-1)
+  | _, `Null -> 1
+  | `Bool _, _ -> (-1)
+  | _, `Bool _ -> 1
+  | `String _, _ -> (-1)
+  | _, `String _ -> 1
+  | `Float _, _ -> (-1)
+  | _, `Float _ -> 1
+  | `A _, _ -> (-1)
+  | _, `A _ -> 1
+  | `O _, _ -> (-1)
+  | _, `O _ -> 1
+  | `AnyOtherTag, `AnyOtherTag -> assert false
+
+let eq_json a b = cmp_json a b = 0
+
+let writer_of_buffer buf =
   let open Mrmime in
 
   let write a = function
@@ -125,27 +190,15 @@ let writer_of_buf buf =
       Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
-let json =
-  Alcotest.testable
-    (Fmt.using json_to_string Fmt.string)
-    (=)
-
-let make v =
-  Alcotest.test_case
-    (json_to_string v)
-    `Quick @@ fun () ->
+let () =
+  Crowbar.add_test ~name:"encoder" [ json ] @@ fun json ->
   let encoder = Mrmime.Encoder.create 0x100 in
   let buffer = Buffer.create 0x100 in
-  let t = Fe.with_writer encoder (writer_of_buf buffer) in
+  let t = Fe.with_writer encoder (writer_of_buffer buffer) in
 
-  let _ = Fe.eval t Fe.[ !!value ; yield ] v in
+  let _ = Fe.eval t Fe.[ !!value ; yield ] json in
   let res = Buffer.contents buffer in
-
-  Fmt.epr "> %s.\n%!" res ;
 
   let res = json_of_string res in
 
-  Alcotest.(check json) "encode:decode:compare" v res
-
-let () =
-  Alcotest.run "fe" [ "json", List.map make tests ]
+  Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res
