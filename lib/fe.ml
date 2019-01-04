@@ -282,7 +282,7 @@ module Box = struct
           | Encoder.Flush {continue; iovecs} ->
             let n = t.writer iovecs in
             k' (continue n) in
-        k' (Encoder.End t)
+        k' (Encoder.End t) (* XXX(dinosaure): apply box. *)
 
   let node box tree = Node (box, tree)
   let leaf fmt = Leaf fmt

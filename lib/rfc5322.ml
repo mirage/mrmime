@@ -9,7 +9,7 @@ type domain =
 type mailbox =
   {name: phrase option; local: Rfc822.local; domain: domain * domain list}
 
-type group = {name: phrase; mailbox: mailbox list}
+type group = {name: phrase; mailboxes: mailbox list}
 type address = [`Group of group | `Mailbox of mailbox]
 
 type month =
@@ -57,7 +57,7 @@ type unstructured =
   | `Encoded of Rfc2047.encoded_word ]
   list
 
-type phrase_or_msg_id = [`Phrase of phrase | `MsgID of Rfc822.msg_id]
+type phrase_or_msg_id = [`Phrase of phrase | `MsgID of Rfc822.nonsense Rfc822.msg_id]
 
 type resent =
   [ `ResentDate of date
@@ -66,7 +66,7 @@ type resent =
   | `ResentTo of address list
   | `ResentCc of address list
   | `ResentBcc of address list
-  | `ResentMessageID of Rfc822.msg_id
+  | `ResentMessageID of Rfc822.nonsense Rfc822.msg_id
   | `ResentReplyTo of address list ]
 
 type trace =
@@ -84,7 +84,7 @@ type field_header =
   | `To of address list
   | `Cc of address list
   | `Bcc of address list
-  | `MessageID of Rfc822.msg_id
+  | `MessageID of Rfc822.nonsense Rfc822.msg_id
   | `InReplyTo of phrase_or_msg_id list
   | `References of phrase_or_msg_id list
   | `Subject of unstructured
@@ -585,8 +585,8 @@ let group =
   display_name
   >>= fun name ->
   char ':' *> option [] group_list
-  >>= fun lst ->
-  char ';' *> option () Rfc822.cfws >>| fun _ -> {name; mailbox= lst}
+  >>= fun mailboxes ->
+  char ';' *> option () Rfc822.cfws >>| fun _ -> {name; mailboxes}
 
 (* From RFC 822
 
@@ -1405,7 +1405,8 @@ let unstructured =
 
 let phrase_or_msg_id =
   many
-    (phrase >>| (fun v -> `Phrase v) <|> (Rfc5321.msg_id >>| fun v -> `MsgID v))
+    ((phrase >>| fun v -> `Phrase v)
+     <|> (Rfc822.msg_id ~address_literal:(fail "Invalid domain") >>| fun v -> `MsgID v))
 
 (* From RFC 2822
 
@@ -1508,7 +1509,7 @@ let field extend field_name =
   | "to" -> address_list <* Rfc822.crlf >>| fun v -> `To v
   | "cc" -> address_list <* Rfc822.crlf >>| fun v -> `Cc v
   | "bcc" -> address_list <* Rfc822.crlf >>| fun v -> `Bcc v
-  | "message-id" -> Rfc5321.msg_id <* Rfc822.crlf >>| fun v -> `MessageID v
+  | "message-id" -> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf >>| fun v -> `MessageID v
   | "in-reply-to" -> phrase_or_msg_id <* Rfc822.crlf >>| fun v -> `InReplyTo v
   | "references" -> phrase_or_msg_id <* Rfc822.crlf >>| fun v -> `References v
   | "subject" -> unstructured <* Rfc822.crlf >>| fun v -> `Subject v
@@ -1520,8 +1521,7 @@ let field extend field_name =
   | "resent-to" -> address_list <* Rfc822.crlf >>| fun v -> `ResentTo v
   | "resent-cc" -> address_list <* Rfc822.crlf >>| fun v -> `ResentCc v
   | "resent-bcc" -> address_list <* Rfc822.crlf >>| fun v -> `ResentBcc v
-  | "resent-message-id" ->
-      Rfc5321.msg_id <* Rfc822.crlf >>| fun v -> `ResentMessageID v
+  | "resent-message-id" -> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf >>| fun v -> `ResentMessageID v
   | "resent-reply-to" ->
       address_list <* Rfc822.crlf >>| fun v -> `ResentReplyTo v
   | "received" -> trace None >>| fun v -> `Trace v
@@ -1541,8 +1541,7 @@ let field extend field_name =
       <?> sp "Unsafe %s" field_name )
 
 let skip_field =
-  fix
-  @@ fun m ->
+  fix @@ fun m ->
   lift2
     (fun line -> function `Rest rest -> line :: rest | `CRLF -> [line])
     (take_while (( <> ) '\r'))
@@ -1557,3 +1556,35 @@ let header extend =
     <* char ':'
     >>= (fun field_name -> field extend field_name)
     <|> (skip_field >>| fun lines -> `Skip lines) )
+
+let parser ~write_line end_of_body =
+  let check_end_of_body =
+    let expected_len = String.length end_of_body in
+    Unsafe.peek expected_len
+      (fun ba ~off ~len ->
+         let raw = Bigstringaf.substring ba ~off ~len in
+         String.equal raw end_of_body) in
+
+  fix @@ fun m ->
+  let choose chunk = function
+    | true ->
+      let chunk = Bytes.sub_string chunk 0 (Bytes.length chunk - 1) in
+      write_line chunk ; commit
+    | false ->
+      Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0] ;
+      write_line (Bytes.unsafe_to_string chunk) ;
+      advance 1 *> m in
+
+  Unsafe.take_while ((<>) end_of_body.[0]) Bigstringaf.substring
+  >>= fun chunk ->
+  let chunk' = Bytes.create (String.length chunk + 1) in
+  Bytes.blit_string chunk 0 chunk' 0 (String.length chunk) ;
+  check_end_of_body >>= choose chunk'
+
+let with_buffer ?(end_of_line = "\n") end_of_body =
+  let buf = Buffer.create 0x100 in
+  let write_line x =
+    Buffer.add_string buf x ;
+    Buffer.add_string buf end_of_line in
+
+  parser ~write_line end_of_body >>| fun () -> Buffer.contents buf

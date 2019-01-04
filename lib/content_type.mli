@@ -64,7 +64,9 @@ end
 
 type t = Rfc2045.content
 
+val default : t
 val make : Type.t -> Subtype.t -> Parameters.t -> t
+val ty : t -> Type.t
 
 (* / *)
 

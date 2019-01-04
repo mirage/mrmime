@@ -6,3 +6,5 @@ let ( >>| ) x f = map f x
 let value ~default = function
   | Some x -> x
   | None -> default
+
+let some x = Some x

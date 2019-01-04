@@ -365,11 +365,6 @@ let write_uint8 =
   in
   fun a k t -> write k ~length ~blit ~off:0 ~len:1 a t
 
-module Box = struct
-  let o _kind k t = continue k t
-  let c k t = continue k t
-end
-
 module type EndianBigstringSig = EndianBigstring.EndianBigstringSig
 module type EndianBytesSig = EndianBytes.EndianBytesSig
 

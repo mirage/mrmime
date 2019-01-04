@@ -1,7 +1,8 @@
 type word = [`Atom of string | `String of string]
-type domain = [`Domain of string list | `Literal of string]
+type 'addr domain = [`Domain of string list | `Literal of string | `Addr of 'addr]
 type local = word list
-type msg_id = local * domain
+type 'addr msg_id = local * 'addr domain
+type nonsense = Nonsense
 
 (* From RFC 5234 (used in RFC 5322)
 

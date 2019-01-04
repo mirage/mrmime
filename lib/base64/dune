@@ -1,0 +1,5 @@
+(library
+ (name mrmime_base64)
+ (public_name mrmime.base64)
+ (wrapped false)
+ (libraries angstrom base64 base64.rfc2045))

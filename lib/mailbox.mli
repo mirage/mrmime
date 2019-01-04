@@ -3,7 +3,7 @@ type phrase = Rfc5322.phrase
 type literal_domain = Rfc5321.literal_domain
 type domain = Rfc5322.domain
 type local = Rfc822.local
-type mailbox
+type t = Rfc5322.mailbox
 
 module Peano : sig
   type z = Z
@@ -95,8 +95,8 @@ module Local : sig
   val make_exn : 'a local -> Rfc822.local
 end
 
-val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> mailbox option
-val with_name : phrase -> mailbox -> mailbox
+val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> t option
+val with_name : phrase -> t -> t
 
 (* / *)
 
@@ -105,4 +105,4 @@ val pp_word : word Fmt.t
 val pp_literal_domain : literal_domain Fmt.t
 val pp_domain : domain Fmt.t
 val pp_local : local Fmt.t
-val pp_mailbox : mailbox Fmt.t
+val pp : t Fmt.t

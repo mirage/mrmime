@@ -34,7 +34,7 @@ type mechanism =
   [ `Bit7
   | `Bit8
   | `Binary
-  | `QuotedPrintable
+  | `Quoted_printable
   | `Base64
   | `Ietf_token of string
   | `X_token of string ]
@@ -62,13 +62,13 @@ type version = int * int
 type field =
   [ `ContentType of content
   | `ContentEncoding of mechanism
-  | `ContentID of Rfc822.msg_id
+  | `ContentID of Rfc822.nonsense Rfc822.msg_id
   | `ContentDescription of Rfc5322.unstructured
   | `Content of string * Rfc5322.unstructured ]
 
 type unsafe = [`Unsafe of string * Rfc5322.unstructured]
 type skip = [`Skip of string list]
-type field_version = [`MimeVersion of version]
+type field_version = [`MIMEVersion of version]
 
 open Angstrom
 
@@ -305,7 +305,7 @@ let mechanism =
   | "7bit" -> return `Bit7
   | "8bit" -> return `Bit8
   | "binary" -> return `Binary
-  | "quoted-printable" -> return `QuotedPrintable
+  | "quoted-printable" -> return `Quoted_printable
   | "base64" -> return `Base64
   | _ -> (
     match of_string s extension_token with
@@ -321,8 +321,12 @@ let encoding = option () Rfc822.cfws *> mechanism <* option () Rfc822.cfws
 (* From RFC 2045
 
         id := "Content-ID" ":" msg-id
+
+   XXX(dinosaure): RFC 2045 appears before RFC 5321. By this way,
+   try to handle [IPv4]/[IPv6] or [Ext] (describe in RFC 5321) does
+   not make sense at this stage - we raise an ["Invalid domain"].
 *)
-let id = option () Rfc822.cfws *> Rfc5321.msg_id <* option () Rfc822.cfws
+let id = option () Rfc822.cfws *> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* option () Rfc822.cfws
 
 (* From RFC 5322
 
@@ -401,7 +405,7 @@ let message_field extend_mime extend field_name =
     (fun field_name ->
       (* XXX(dinosaure): lowercase_*ascii* is fine, not utf8 in this part. *)
       match String.lowercase_ascii field_name with
-      | "mime-version" -> version <* Rfc822.crlf >>| fun v -> `MimeVersion v
+      | "mime-version" -> version <* Rfc822.crlf >>| fun v -> `MIMEVersion v
       | _ -> extend field_name )
     field_name
 
@@ -433,7 +437,7 @@ let mime_message_headers extend_mime extend =
   entity_message_headers extend_mime (fun field_name ->
       (* XXX(dinosaure): lowercase_*ascii* is fine, not utf8 in this part. *)
       match String.lowercase_ascii field_name with
-      | "mime-version" -> version <* Rfc822.crlf >>| fun v -> `MimeVersion v
+      | "mime-version" -> version <* Rfc822.crlf >>| fun v -> `MIMEVersion v
       | _ -> extend field_name )
 
 (* From RFC 2045

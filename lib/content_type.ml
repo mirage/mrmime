@@ -255,6 +255,13 @@ end
 
 type t = Rfc2045.content
 
+let default =
+  { Rfc2045.ty = `Text
+  ; subty = `Iana_token "plain"
+  ; parameters = [ "charset", `Token "us-ascii" ] }
+
+let ty { Rfc2045.ty; _ } = ty
+
 let make ty subty parameters =
   {Rfc2045.ty; subty; parameters= Parameters.to_list parameters}
 
