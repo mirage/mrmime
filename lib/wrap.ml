@@ -1,3 +1,5 @@
+[@@@warning "-32"]
+
 type t =
   { encoder : Encoder.encoder
   ; mutable scan_stack : scan_atom list
@@ -8,7 +10,7 @@ type t =
   (* the pretty-printer formatting stack. each stack element describes a
      pretty-printer box. *)
   ; margin : int
-  ; newline : string
+  ; new_line : string
   (* value of the right margin *)
   ; mutable max_indent : int
   (* maximum value of indentation: no box can be opened further *)
@@ -31,7 +33,7 @@ and atom =
   ; token : token
   ; length : int }
 and token =
-  | Text of string
+  | Value of value
   | Break of int * int
   | Begin of int * box
   | End
@@ -40,6 +42,31 @@ and token =
 and box = H | V | HaV | HoV | Box | Fits
 and format_atom = Format of box * int
 and scan_atom = Scan of int * atom
+and value =
+  | String of string
+  | Bytes of bytes
+  | Bigstring of Bigstringaf.t
+  | Char of char
+  | Uint8 of int
+  | LE_uint16 of int
+  | BE_uint16 of int
+  | LE_uint32 of int32
+  | BE_uint32 of int32
+  | LE_uint64 of int64
+  | BE_uint64 of int64
+
+let size_of_value = function
+  | String x -> String.length x
+  | Bytes x -> Bytes.length x
+  | Bigstring x -> Bigstringaf.length x
+  | Char _ -> 1
+  | Uint8 _ -> 1
+  | LE_uint16 _ | BE_uint16 _ -> 2
+  | LE_uint32 _ | BE_uint32 _ -> 4
+  | LE_uint64 _ | BE_uint64 _ -> 8
+
+type 'r k0 = (t -> 'r Encoder.state) -> t -> 'r Encoder.state
+type ('a, 'r) k1 = 'a -> (t -> 'r Encoder.state) -> t -> 'r Encoder.state
 
 let enqueue t ({ length; _ } as token) =
   t.right_total <- t.right_total + length ;
@@ -50,17 +77,50 @@ let clear_queue t =
   t.right_total <- 1 ;
   Queue.clear t.queue
 
-let output_string s k ({ encoder; _} as t) =
-  Encoder.write_string s (fun encoder -> k { t with encoder }) encoder
+let lift
+  :
+     writer:('x -> (Encoder.encoder -> 'r Encoder.state) -> Encoder.encoder -> 'r Encoder.state)
+  -> 'x
+  -> (t -> 'r Encoder.state)
+  -> t
+  -> 'r Encoder.state
+  = fun ~writer x k t ->
+    writer x (fun encoder -> k { t with encoder }) t.encoder
 
-let output_newline k ({ encoder; newline; _ } as t) =
-  Encoder.write_string newline (fun encoder -> k { t with encoder }) encoder
+let output_bigstring x k t = lift ~writer:Encoder.write_bigstring x k t
+let output_bytes x k t = lift ~writer:Encoder.write_bytes x k t
+let output_string x k t = lift ~writer:Encoder.write_string x k t
+let output_char x k t = lift ~writer:Encoder.write_char x k t
+let output_uint8 x k t = lift ~writer:Encoder.write_uint8 x k t
+
+let output_be_uint16 x k t = lift ~writer:Encoder.BE.write_uint16 x k t
+let output_be_uint32 x k t = lift ~writer:Encoder.BE.write_uint32 x k t
+let output_be_uint64 x k t = lift ~writer:Encoder.BE.write_uint64 x k t
+let output_le_uint16 x k t = lift ~writer:Encoder.LE.write_uint16 x k t
+let output_le_uint32 x k t = lift ~writer:Encoder.LE.write_uint32 x k t
+let output_le_uint64 x k t = lift ~writer:Encoder.LE.write_uint64 x k t
+
+let output_value v k t = match v with
+  | String x -> output_string x k t
+  | Bytes x -> output_bytes x k t
+  | Bigstring x -> output_bigstring x k t
+  | Char x -> output_char x k t
+  | Uint8 x -> output_uint8 x k t
+  | LE_uint16 x -> output_le_uint16 x k t
+  | LE_uint32 x -> output_le_uint32 x k t
+  | LE_uint64 x -> output_le_uint64 x k t
+  | BE_uint16 x -> output_be_uint16 x k t
+  | BE_uint32 x -> output_be_uint32 x k t
+  | BE_uint64 x -> output_be_uint64 x k t
+
+let output_new_line k ({ encoder; new_line; _ } as t) =
+  Encoder.write_string new_line (fun encoder -> k { t with encoder }) encoder
 
 let output_spaces n k ({ encoder; _ } as t) =
   Encoder.write_string (String.make n ' ') (fun encoder -> k { t with encoder }) encoder
 
 let break_new_line offset width k =
-  output_newline
+  output_new_line
   @@ fun t ->
   t.is_new_line <- true ;
   let indent = t.margin - width + offset in
@@ -77,7 +137,7 @@ let break_same_line width k t =
 
 let force_break_line k t =
   match t.format_stack with
-  | [] -> output_newline k t
+  | [] -> output_new_line k t
   | Format (box, width) :: _ ->
     if width > t.space_left
     then match box with
@@ -96,9 +156,9 @@ let skip_token k t =
 
 let compute_token size token k t =
   match token with
-  | Text s ->
+  | Value v ->
     t.space_left <- t.space_left - size ;
-    output_string s (fun t -> t.is_new_line <- false ; k t) t
+    output_value v (fun t -> t.is_new_line <- false ; k t) t
   | Begin (off, box) ->
     let insertion_point = t.margin - t.space_left in
     let k t =
@@ -119,7 +179,7 @@ let compute_token size token k t =
   | New_line ->
     (match t.format_stack with
      | Format (_, width) :: _ -> break_line width k t
-     | [] -> output_newline k t)
+     | [] -> output_new_line k t)
   | If_new_line ->
     if t.current_indent <> (t.margin - t.space_left)
     then skip_token k t
@@ -174,15 +234,15 @@ let enqueue_and_advance token k t =
 let make_element size token length =
   { size; token; length; }
 
-let enqueue_string_as size s k t =
-  enqueue_and_advance (make_element size (Text s) size) k t
+let enqueue_value_as size x k t =
+  enqueue_and_advance (make_element size (Value x) size) k t
 
-let enqueue_string s k t =
-  let size = String.length s in
-  enqueue_string_as size s k t
+let enqueue_value v k t =
+  let size = size_of_value v in
+  enqueue_value_as size v k t
 
 let bottom =
-  let first = make_element (-1) (Text "") 0 in
+  let first = make_element (-1) (Value (String "")) 0 in
   [ Scan (-1, first) ]
 
 let clear_scan k t =
@@ -209,7 +269,7 @@ let set_size break_or_box k t =
           t.scan_stack <- scan_stack ;
           k t
         end else k t
-      | Text _ | End | New_line | If_new_line -> k t
+      | Value _ | End | New_line | If_new_line -> k t
 
 let push scan token k t =
   enqueue t token ;
@@ -252,7 +312,7 @@ let flush new_line k t =
 
   let k t =
     t.right_total <- infinity ;
-    advance_left (if new_line then output_newline (init k) else init k) t in
+    advance_left (if new_line then output_new_line (init k) else init k) t in
 
   close_all_box k t
 
@@ -265,11 +325,25 @@ let min_space n k t =
     init k t
   else k t
 
-let as_size size s k t =
-  enqueue_string_as size s k t
+let as_size size s k t = enqueue_value_as size s k t
 
-let string s k t =
-  as_size (String.length s) k t
+let write_bigstring x k t = as_size (Bigstringaf.length x) (Bigstring x) k t
+let write_string x k t = as_size (String.length x) (String x) k t
+let write_bytes x k t = as_size (Bytes.length x) (Bytes x) k t
+let write_char x k t = as_size 1 (Char x) k t
+let write_uint8 x k t = as_size 1 (Uint8 x) k t
+
+module LE = struct
+  let write_uint16 x k t = as_size 2 (LE_uint16 x) k t
+  let write_uint32 x k t = as_size 4 (LE_uint32 x) k t
+  let write_uint64 x k t = as_size 8 (LE_uint64 x) k t
+end
+
+module BE = struct
+  let write_uint16 x k t = as_size 2 (BE_uint16 x) k t
+  let write_uint32 x k t = as_size 4 (BE_uint32 x) k t
+  let write_uint64 x k t = as_size 8 (BE_uint64 x) k t
+end
 
 let hbox k t = open_box_generate 0 H k t
 let vbox indent k t = open_box_generate indent V k t
@@ -280,7 +354,7 @@ let box indent k t = open_box_generate indent Box k t
 let new_line k t = flush true k t
 let flush k t = flush false k t
 
-let force_newline k t = enqueue_and_advance (make_element 0 New_line 0) k t
+let force_new_line k t = enqueue_and_advance (make_element 0 New_line 0) k t
 let if_new_line k t = enqueue_and_advance (make_element 0 If_new_line 0) k t
 
 let break width offset k t =
@@ -289,4 +363,3 @@ let break width offset k t =
 
 let space k t = break 1 0 k t
 let cut k t = break 0 0 k t
-let char chr k t = string (String.make 1 chr) k t
