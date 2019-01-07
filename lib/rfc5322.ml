@@ -9,44 +9,6 @@ type domain =
 type mailbox =
   {name: phrase option; local: Rfc822.local; domain: domain * domain list}
 
-(* / *)
-
-let pp_word ppf = function
-  | `Atom x -> Fmt.string ppf x
-  | `String x -> Fmt.pf ppf "%S" x
-
-let pp_phrase : phrase Fmt.t =
-  let pp_elt ppf = function
-    | `Dot -> Fmt.string ppf "."
-    | `Word w -> pp_word ppf w
-    | `Encoded e -> Encoded_word.pp ppf e
-  in
-  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
-
-let pp_literal_domain ppf = function
-  | Rfc5321.IPv4 v -> Ipaddr.V4.pp ppf v
-  | Rfc5321.IPv6 v -> Ipaddr.V6.pp ppf v
-  | Rfc5321.Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
-
-let pp_domain ppf = function
-  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
-  | `Literal s -> Fmt.pf ppf "[%s]" s
-  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
-
-let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
-
-let pp_mailbox =
- fun ppf x ->
-  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
-    Fmt.(hvbox (Dump.option pp_phrase))
-    x.name
-    Fmt.(hvbox pp_local)
-    x.local
-    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
-    x.domain
-
-(* / *)
-
 type group = {name: phrase; mailboxes: mailbox list}
 type address = [`Group of group | `Mailbox of mailbox]
 
@@ -133,6 +95,72 @@ type field_header =
 
 type skip = [`Skip of string list]
 type field = [field_header | resent | trace | skip]
+
+(* / *)
+
+let pp_word ppf = function
+  | `Atom x -> Fmt.string ppf x
+  | `String x -> Fmt.pf ppf "%S" x
+
+let pp_phrase : phrase Fmt.t =
+  let pp_elt ppf = function
+    | `Dot -> Fmt.string ppf "."
+    | `Word w -> pp_word ppf w
+    | `Encoded e -> Encoded_word.pp ppf e
+  in
+  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
+
+let pp_literal_domain ppf = function
+  | Rfc5321.IPv4 v -> Ipaddr.V4.pp ppf v
+  | Rfc5321.IPv6 v -> Ipaddr.V6.pp ppf v
+  | Rfc5321.Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
+
+let pp_domain ppf = function
+  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
+  | `Literal s -> Fmt.pf ppf "[%s]" s
+  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
+
+let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
+
+let pp_mailbox : mailbox Fmt.t =
+ fun ppf x ->
+  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
+    Fmt.(hvbox (Dump.option pp_phrase))
+    x.name
+    Fmt.(hvbox pp_local)
+    x.local
+    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
+    x.domain
+
+let pp_charset ppf = function
+  | #Rfc2047.uutf_charset as encoding ->
+      Fmt.string ppf (Uutf.encoding_to_string encoding)
+  | #Rosetta.encoding as encoding ->
+      Fmt.string ppf (Rosetta.encoding_to_string encoding)
+  | `US_ASCII -> Fmt.string ppf "US-ASCII"
+  | `Charset encoding -> Fmt.string ppf encoding
+
+let pp_encoding ppf = function
+  | Rfc2047.Base64 -> Fmt.string ppf "base64"
+  | Rfc2047.Quoted_printable -> Fmt.string ppf "quoted-printable"
+
+let pp_encoded_word ppf t =
+  Fmt.pf ppf "{ @[<hov>charset = %a;@ encoding = %a;@ data = %a;@] }"
+    pp_charset t.Rfc2047.charset pp_encoding t.Rfc2047.encoding
+    Fmt.(Dump.result ~ok:Fmt.string ~error:Rresult.R.pp_msg)
+    t.Rfc2047.data
+
+let pp_atom ppf = function
+  | `Text x -> Fmt.quote Fmt.string ppf x
+  | `WSP -> Fmt.pf ppf "@ "
+  | `CR n -> Fmt.pf ppf "<CR:%d>" n
+  | `LF n -> Fmt.pf ppf "<LF:%d>" n
+  | `CRLF -> Fmt.pf ppf "<CRLF>@\n"
+  | `Encoded t -> pp_encoded_word ppf t
+
+let pp_unstructured : unstructured Fmt.t = Fmt.list ~sep:(Fmt.always "@,") pp_atom
+
+(* / *)
 
 open Angstrom
 
@@ -1594,12 +1622,10 @@ let field extend field_name =
 
 let skip_field =
   fix @@ fun m ->
-  lift2
-    (fun line -> function `Rest rest -> line :: rest | `CRLF -> [line])
-    (take_while (( <> ) '\r'))
-    ( Rfc822.fws *> m
-    >>= (fun rest -> return (`Rest rest))
-    <|> (Rfc822.crlf >>= fun () -> return `CRLF) )
+  take_while ((<>) '\r') >>= fun line -> peek_char >>= fun next -> match String.length line, next with
+  | 0, _ -> fail "nothing to do"
+  | _, Some _ -> (Rfc822.crlf *> return [ line ]) <|> (m >>| fun r -> line :: r)
+  | _, None -> return [ line ]
 
 let header extend =
   many

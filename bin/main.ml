@@ -1,6 +1,6 @@
 open Cmdliner
 
-let commands = [ Header.command ]
+let commands = [ Header.command; Describe.command ]
 
 let run = `Help (`Pager, None)
 

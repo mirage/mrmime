@@ -18,3 +18,20 @@ let pp ppf (local, domain) =
   Fmt.pf ppf "@[<hov>%a@%a@]"
     pp_local local
     pp_domain domain
+
+let equal_word a b = match a, b with
+  | `Atom x, `Atom y -> String.equal x y
+  | `String x, `String y -> String.equal x y
+  | _, _ -> false
+
+let equal_local a b =
+  try List.for_all2 equal_word a b with _ -> false
+
+let equal_domain a b = match a, b with
+  | `Literal a, `Literal b -> String.equal a b
+  | `Domain a, `Domain b -> (try List.for_all2 String.equal a b with _ -> false)
+  | _, _ -> false
+
+let equal a b =
+  equal_local (fst a) (fst b)
+  && equal_domain (snd a) (snd b)

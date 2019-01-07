@@ -75,7 +75,8 @@ let mail =
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, fields) -> match content.Content.ty.Rfc2045.ty with
+    >>= fun (content, header, fields) ->
+    match content.Content.ty.Rfc2045.ty with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
       octet parent content

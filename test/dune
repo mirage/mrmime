@@ -28,6 +28,11 @@
  (modules date)
  (libraries alcotest mrmime))
 
+(executable
+ (name msg_id)
+ (modules msg_id)
+ (libraries alcotest mrmime))
+
 (alias
  (name runtest)
  (deps (:rfc2045 rfc2045.exe))
@@ -57,3 +62,9 @@
  (name runtest)
  (deps (:date date.exe))
  (action (run %{date} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:msg_id msg_id.exe))
+ (action (run %{msg_id} --color=always)))
+

@@ -16,6 +16,7 @@ module Rfc6532 = Rfc6532
 module Content_encoding = Content_encoding
 module Msg_id = Msg_id
 module Content_type = Content_type
+module Content = Content
 module Encoded_word = Encoded_word
 module Mailbox = Mailbox
 module Option = Option

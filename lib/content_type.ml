@@ -261,6 +261,7 @@ let default =
   ; parameters = [ "charset", `Token "us-ascii" ] }
 
 let ty { Rfc2045.ty; _ } = ty
+let subty { Rfc2045.subty; _ } = subty
 
 let make ty subty parameters =
   {Rfc2045.ty; subty; parameters= Parameters.to_list parameters}

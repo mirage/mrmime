@@ -69,6 +69,9 @@ let default =
   ; unsafe = Map.empty
   ; lines = [] }
 
+let ty { ty; _ } = Content_type.ty ty
+let subty { ty; _ } = Content_type.subty ty
+
 let with_type t v = { t with ty = v }
 let with_encoding t v = { t with encoding = v }
 let with_version t v = { t with version = v }
