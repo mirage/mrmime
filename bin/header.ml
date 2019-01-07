@@ -54,7 +54,6 @@ let pp_field : type a. a field Fmt.t = fun ppf -> function
   | Traces -> Fmt.string ppf "traces"
   | Field field -> Fmt.using String.capitalize_ascii Fmt.string ppf field
 
-
 type t = V : 'a field -> t
 type binding = B : 'a field * 'a -> binding
 

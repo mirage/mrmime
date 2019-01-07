@@ -65,16 +65,73 @@ let mail_of_input ic =
       Error (`Msg err) in
   go (parse parser)
 
-let parse_and_print ic =
-  let open Rresult.R in
-  mail_of_input ic >>| fun (_, mail) -> Fmt.pr "%a" pp_mail mail
+module Opt = struct
+  type 'a t = 'a option
 
-let run input =
+  let to_int = function
+    | Some _ -> 1
+    | None -> 0
+
+  let bind_default ~default f = function
+    | Some x -> f x
+    | None -> default
+end
+
+type number =
+  | Zero
+  | At_least_one
+  | Number of int
+
+let capitalize x =
+  let capitalize res idx =
+    let map = function 'a' .. 'z' as chr  -> Char.unsafe_chr (Char.code chr - 32) | chr -> chr in
+    Bytes.set res idx (map (Bytes.get res idx)) in
+  let is_dash_or_space = function ' ' | '-' -> true | _ -> false in
+  let res = Bytes.of_string x in
+  for i = 0 to String.length x - 1 do
+    if i > 0 && is_dash_or_space x.[i - 1]
+    then capitalize res i
+  done ; Bytes.unsafe_to_string res
+
+let count header =
+  let open Mrmime in
+  [ "Date", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.date
+  ; "From", if List.length header.Header.from > 0 then At_least_one else Zero
+  ; "Sender", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.sender
+  ; "Reply-To", if List.length header.Header.reply_to > 0 then At_least_one else Zero
+  ; "To", if List.length header.Header.too > 0 then At_least_one else Zero
+  ; "Cc", if List.length header.Header.cc > 0 then At_least_one else Zero
+  ; "Bcc", if List.length header.Header.bcc > 0 then At_least_one else Zero
+  ; "Subject", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.subject
+  ; "Message-ID", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.msg_id
+  ; "In-Reply-To", if List.length header.Header.in_reply_to > 0 then At_least_one else Zero
+  ; "References", if List.length header.Header.references > 0 then At_least_one else Zero
+  ; "Comments", (let n = List.length header.Header.comments in if n = 0 then Zero else Number n)
+  ; "Keywords", (let n = List.length header.Header.keywords in if n = 0 then Zero else Number n) ]
+  @ Header.Map.fold (fun field v a -> let n = List.length v in if n = 0 then a else (capitalize field, Number n) :: a) header.Header.field []
+  @ Header.Map.fold (fun field v a -> let n = List.length v in if n = 0 then a else (capitalize field, Number n) :: a) header.Header.unsafe []
+
+let pp_header =
+  let pp_number ppf = function
+    | Zero -> Fmt.string ppf "0"
+    | At_least_one -> Fmt.string ppf "1+"
+    | Number n -> Fmt.int ppf n in
+  let pp_data ppf (field, value) =
+    Fmt.pf ppf "%s: %a" field pp_number value in
+  Fmt.(hvbox (list ~sep:(always "@\n") pp_data))
+
+let parse_and_print with_header ic =
+  let open Rresult.R in
+  mail_of_input ic >>| fun (header, mail) ->
+  if with_header then Fmt.pr "header: %a.\n%!" pp_header (count header) ;
+  Fmt.pr "%a" pp_mail mail
+
+let run with_header input =
   let close, ic =
     match input with
     | `Path x -> let ic = open_in (Fpath.to_string x) in (fun () -> close_in ic), ic
     | `Std -> (fun () -> ()), stdin in
-  let v = parse_and_print ic in
+  let v = parse_and_print with_header ic in
   close () ; v
 
 open Cmdliner
@@ -92,10 +149,14 @@ let source =
   let doc = "Input." in
   Arg.(value & opt filename `Std & info [ "i"; "input" ] ~docv:"<input>" ~doc)
 
+let header =
+  let doc = "Header." in
+  Arg.(value & flag & info [ "h"; "header" ] ~doc)
+
 let command =
   let doc = "Header extractor" in
   let exits = Term.default_exits in
   let man =
     [ `S Manpage.s_description
     ; `P "Extract fields from a mail" ] in
-  Term.(const run $ source), Term.info "describe" ~doc ~exits ~man
+  Term.(const run $ header $ source), Term.info "describe" ~doc ~exits ~man
