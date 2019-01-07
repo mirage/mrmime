@@ -1,5 +1,6 @@
 module Encoder = Encoder
 module Fe = Fe
+module Utils = Utils
 
 (* / *)
 
@@ -19,3 +20,10 @@ module Encoded_word = Encoded_word
 module Mailbox = Mailbox
 module Option = Option
 module Date = Date
+module Header = Header
+module Address = Address
+module Group = Group
+module Unstructured = Unstructured
+module Mail = Mail
+module Resent = Resent
+module Trace = Trace

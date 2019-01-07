@@ -18,6 +18,16 @@
  (modules fe)
  (libraries jsonm alcotest mrmime))
 
+(executable
+ (name obs_unstruct)
+ (modules obs_unstruct)
+ (libraries alcotest mrmime))
+
+(executable
+ (name date)
+ (modules date)
+ (libraries alcotest mrmime))
+
 (alias
  (name runtest)
  (deps (:rfc2045 rfc2045.exe))
@@ -37,3 +47,13 @@
  (name runtest)
  (deps (:fe fe.exe))
  (action (run %{fe} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:obs_unstruct obs_unstruct.exe))
+ (action (run %{obs_unstruct} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:date date.exe))
+ (action (run %{date} --color=always)))

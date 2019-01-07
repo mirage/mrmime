@@ -1,5 +1,8 @@
 module Day : sig
-  type t
+  type t = Rfc5322.day =
+    | Mon | Tue | Wed
+    | Thu | Fri | Sat
+    | Sun
 
   val mon : t
   val tue : t
@@ -9,10 +12,16 @@ module Day : sig
   val sat : t
   val sun : t
   val pp : t Fmt.t
+  val to_string : t -> string
+  val of_string : string -> t
+
+  val equal : t -> t -> bool
 end
 
 module Month : sig
-  type t
+  type t = Rfc5322.month =
+    | Jan | Feb | Mar | Apr | May | Jun
+    | Jul | Aug | Sep | Oct | Nov | Dec
 
   val jan : t
   val feb : t
@@ -29,10 +38,21 @@ module Month : sig
   val to_int : t -> int
   val of_int : int -> t option
   val pp : t Fmt.t
+  val to_string : t -> string
+  val of_string : string -> t
+
+  val equal : t -> t -> bool
 end
 
 module Zone : sig
-  type t
+  type t = Rfc5322.zone =
+    | UT  | GMT
+    | EST | EDT
+    | CST | CDT
+    | MST | MDT
+    | PST | PDT
+    | Military_zone of char
+    | TZ of int * int
 
   val ut : t
   val gmt : t
@@ -45,10 +65,19 @@ module Zone : sig
   val pst : t
   val pdt : t
   val military_zone : char -> t option
-  val tz : int -> t option
+  val tz : int -> int -> t option
   val pp : t Fmt.t
+  val to_string : t -> string
+  val of_string : string -> t
+
+  val equal : t -> t -> bool
 end
 
-type t = Rfc5322.date
+type t = Rfc5322.date =
+  { day  : Day.t option
+  ; date : int * Month.t * int
+  ; time : int * int * int option
+  ; zone : Zone.t }
 
 val pp : t Fmt.t
+val equal : t -> t -> bool

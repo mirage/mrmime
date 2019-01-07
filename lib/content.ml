@@ -3,7 +3,7 @@ module Field = struct
   type part = [ Rfc2045.field | Rfc2045.skip ]
 end
 
-module Map = Map.Make(String)
+module Map = Map.Make(struct type t = string let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) end)
 
 type t =
   { ty : Content_type.t

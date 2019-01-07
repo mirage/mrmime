@@ -48,7 +48,6 @@ let content_type_2 =
 let () =
   Alcotest.run "rfc2045"
     [ ( "content-type"
-      , [ make "text/plain; charset=us-ascii (Plain text)"
-            content_type_0
+      , [ make "text/plain; charset=us-ascii (Plain text)" content_type_0
         ; make "text/plain; charset=\"us-ascii\"" content_type_1
         ; make "text/plain; charset=ISO-8859-1" content_type_2 ] ) ]

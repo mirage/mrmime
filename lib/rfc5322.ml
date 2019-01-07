@@ -9,6 +9,44 @@ type domain =
 type mailbox =
   {name: phrase option; local: Rfc822.local; domain: domain * domain list}
 
+(* / *)
+
+let pp_word ppf = function
+  | `Atom x -> Fmt.string ppf x
+  | `String x -> Fmt.pf ppf "%S" x
+
+let pp_phrase : phrase Fmt.t =
+  let pp_elt ppf = function
+    | `Dot -> Fmt.string ppf "."
+    | `Word w -> pp_word ppf w
+    | `Encoded e -> Encoded_word.pp ppf e
+  in
+  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
+
+let pp_literal_domain ppf = function
+  | Rfc5321.IPv4 v -> Ipaddr.V4.pp ppf v
+  | Rfc5321.IPv6 v -> Ipaddr.V6.pp ppf v
+  | Rfc5321.Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
+
+let pp_domain ppf = function
+  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
+  | `Literal s -> Fmt.pf ppf "[%s]" s
+  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
+
+let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
+
+let pp_mailbox =
+ fun ppf x ->
+  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
+    Fmt.(hvbox (Dump.option pp_phrase))
+    x.name
+    Fmt.(hvbox pp_local)
+    x.local
+    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
+    x.domain
+
+(* / *)
+
 type group = {name: phrase; mailboxes: mailbox list}
 type address = [`Group of group | `Mailbox of mailbox]
 
@@ -40,7 +78,7 @@ type zone =
   | PST
   | PDT
   | Military_zone of char
-  | TZ of int
+  | TZ of int * int
 
 type date =
   { day: day option
@@ -914,7 +952,7 @@ let day_of_week =
 
      date            =   day month year
 *)
-let date = lift3 (fun day month year -> (day, month, year)) day month year
+let date = lift3 (fun day month year -> (day, month, year)) (day <?> "day") (month <?> "month") (year <?> "year")
 
 (* From RFC 822
 
@@ -929,12 +967,12 @@ let date = lift3 (fun day month year -> (day, month, year)) day month year
      time-of-day     =   hour ":" minute [ ":" second ]
 *)
 let time_of_day =
-  hour
+  hour <?> "hour"
   >>= fun hour ->
-  char ':' *> minute
+  char ':' *> minute <?> "minute"
   >>= fun minute ->
   option None
-    (option () Rfc822.cfws *> char ':' *> second >>| fun second -> Some second)
+    (option () Rfc822.cfws *> char ':' *> second <?> "second" >>| fun second -> Some second)
   >>| fun second -> (hour, minute, second)
 
 let is_military_zone = function
@@ -1123,13 +1161,21 @@ let obs_zone =
      contains no information about the local time zone.
 *)
 let zone =
-  Rfc822.fws *> satisfy (function '+' | '-' -> true | _ -> false)
-  >>= (fun sign ->
-        four_digit
-        >>| fun zone ->
-        if sign = '-' then TZ (-int_of_string zone)
-        else TZ (int_of_string zone) )
-  <|> option () Rfc822.cfws *> obs_zone
+  (* XXX(dinosaure): we clearly have a bug in this place. Indeed, ABNF expects
+     an explicit space between [zone] and [time_of_day]. However, if we see
+     [second] or [minute], they are surrounded by [CFWS]. That mean, they
+     consume trailing spaces. If we explicitly expect [FWS] here, we will fail -
+     mostly because this expected space is a part of [minute] or [second]. To
+     avoid an error, [FWS] is optional but a better way should to check if we
+     consumed at least one space before [zone]. *)
+  (option (false, false, false) Rfc822.fws *> satisfy (function '+' | '-' -> true | _ -> false) <?> "sign"
+   >>= (fun sign ->
+       four_digit <?> "four-digit"
+       >>| fun zone ->
+       let one = if sign = '-' then - int_of_string (String.sub zone 0 2) else int_of_string (String.sub zone 0 2) in
+       let two = int_of_string (String.sub zone 2 2) in
+       TZ (one, two)))
+  <|> (option () Rfc822.cfws *> obs_zone)
 
 (* From RFC 822
 
@@ -1143,7 +1189,7 @@ let zone =
 
      time            =   time-of-day zone
 *)
-let time = lift2 (fun time zone -> (time, zone)) time_of_day zone
+let time = lift2 (fun time zone -> (time, zone)) (time_of_day <?> "time-of-day") (zone <?> "zone")
 
 (* From RFC 822
 
@@ -1292,17 +1338,17 @@ let is_obs_utext = function
 *)
 let obs_unstruct : unstructured t =
   let many_cr =
-    fix
-    @@ fun m ->
-    Unsafe.peek 2 (fun buf ~off ~len ->
-        match Bigstringaf.substring buf ~off ~len with
-        | "\r\r" -> `CRCR
-        | x -> if x.[0] = '\r' then `CR else `Something )
+    fix @@ fun m ->
+    Unsafe.peek 2 (fun buf ~off ~len:_ ->
+        match Bigstringaf.get buf (off + 0), Bigstringaf.get buf (off + 1) with
+        | '\r', '\r' -> `CRCR
+        | '\r', _ -> `CR
+        | _, _ -> `Something)
     <|> ( peek_char
         >>| function
         | Some '\r' -> `CR | Some _ -> `Something | None -> `End_of_input )
     >>= function
-    | `CRCR -> advance 1 *> m >>| fun x -> x + 2
+    | `CRCR -> advance 1 *> m >>| fun x -> x + 1
     | `CR -> return 1
     | `Something -> return 0
     | `End_of_input -> return 0
@@ -1310,35 +1356,41 @@ let obs_unstruct : unstructured t =
   let word =
     Rfc2047.encoded_word
     >>| (fun e -> `Encoded e)
-    <|> (Rfc6532.with_uutf is_obs_utext >>| fun e -> `Text e)
+    <|> (Rfc6532.with_uutf1 is_obs_utext >>| fun e -> `Text e)
   in
   let safe_lfcr =
-    many (char '\n')
-    >>| List.length
+    many (char '\n') >>| List.length
     >>= fun lf ->
     many_cr
-    >>= fun cr ->
+    >>= fun cr -> (* At this stage, we have at least one [CR] in the input iff [cr > 0]. *)
     Unsafe.peek 2
     @@ fun buf ~off ~len ->
     let raw = Bigstringaf.substring buf ~off ~len in
-    match (lf, cr, raw.[1]) with
+    match (lf, cr, Bigstringaf.get buf (off + 1)) with
     | 0, 0, _ -> []
     | n, 0, _ -> [`LF n]
     | n, 1, '\n' ->
         assert (raw.[0] = '\r') ;
-        if n <> 0 then [`LF n] else []
+        if n <> 0 then [`LF n] else [ (* CRLF *) ]
     | n, m, '\n' ->
         assert (raw.[0] = '\r') ;
-        if n <> 0 then [`LF n; `CR (m - 1)] else [`CR (m - 1)]
+        if n <> 0 then [`LF n; `CR (m - 1); (* CRLF *) ] else [`CR (m - 1); (* CRLF *) ]
     | n, m, _ ->
-        assert (raw.[0] = '\r') ;
+        assert (raw.[0] = '\r') ; (* because [m > 0] *)
         [`LF n; `CR m]
   in
   many
     ( safe_lfcr
-    >>= (fun pre ->
-          many (word >>= fun word -> safe_lfcr >>| fun rst -> word :: rst)
-          >>| fun rst -> List.concat (pre :: rst) )
+      >>= (fun pre ->
+            many (word >>= fun word -> safe_lfcr >>| fun rst ->
+                  word :: rst)
+            >>= fun rst ->
+            (match List.concat (pre :: rst) with
+             | [] -> fail ""
+             (* XXX(dinosaure): if we have nothing, we have at leat [CRLF]. So
+                we fail to start the other branch with [fws] if we need to continue [many].
+                Otherwise, we have [CRLF] with something else. *)
+             | res -> return res) )
     <|> ( Rfc822.fws
         >>| function
         | true, true, true -> [`WSP; `CRLF; `WSP]
@@ -1473,12 +1525,12 @@ let received =
 let path =
   angle_addr
   >>| (fun v -> Some v)
-  <|> option () Rfc822.cfws
-      *> char '<'
-      *> option () Rfc822.cfws
-      *> char '>'
-      *> option () Rfc822.cfws
-      *> return None
+  <|> (option () Rfc822.cfws
+       *> char '<'
+       *> option () Rfc822.cfws
+       *> char '>'
+       *> option () Rfc822.cfws
+       *> return None)
   <|> (addr_spec >>| fun mailbox -> Some mailbox)
 
 let field_name = take_while1 is_ftext
@@ -1492,10 +1544,11 @@ let trace path =
     <* Rfc822.crlf
   in
   match path with
-  (* we recognize Return-Path *)
-  | Some path -> many1 r >>| fun traces -> (path, traces)
-  (* we recognize Received *)
-  | None ->
+  | `ReturnPath path -> many r >>| fun traces -> (path, traces)
+  (* XXX(dinosaure): in this case, RFC 5322 explicitly say we expect at least
+     one [Received] field. However, it seems than some mails did not respect
+     that. So we replace [many1] by [many] to do the best effort. *)
+  | `Received ->
       received
       <* Rfc822.crlf
       >>= fun pre -> many r >>| fun rst -> (None, pre :: rst)
@@ -1524,9 +1577,8 @@ let field extend field_name =
   | "resent-message-id" -> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf >>| fun v -> `ResentMessageID v
   | "resent-reply-to" ->
       address_list <* Rfc822.crlf >>| fun v -> `ResentReplyTo v
-  | "received" -> trace None >>| fun v -> `Trace v
-  | "return-path" ->
-      path <* Rfc822.crlf >>= fun v -> trace (Some v) >>| fun v -> `Trace v
+  | "received" -> trace `Received >>| fun v -> `Trace v
+  | "return-path" -> path <* Rfc822.crlf >>= fun v -> trace (`ReturnPath v) >>| fun v -> `Trace v
   | _ ->
       extend field_name
       <|> (unstructured <* Rfc822.crlf >>| fun v -> `Field (field_name, v))

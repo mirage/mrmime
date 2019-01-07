@@ -43,8 +43,7 @@ let () =
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "André ")
         ; make "=?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?="
             (`ISO_8859_1, Mrmime.Encoded_word.b, Ok "If you can read this yo")
-        ; make
-            "=?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?="
+        ; make "=?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?="
             (`ISO_8859_2, Mrmime.Encoded_word.b, Ok "u understand the example.")
         ; make "=?ISO-8859-1?Q?Olle_J=E4rnefors?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "Olle Järnefors")

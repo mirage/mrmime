@@ -3,7 +3,7 @@ type field = Rfc5322.field
 type phrase = Rfc5322.phrase
 type phrase_or_msg_id = Rfc5322.phrase_or_msg_id
 
-module Map = Map.Make(String)
+module Map = Map.Make(struct type t = string let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) end)
 
 type t =
   { date : Date.t option

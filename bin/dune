@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries fpath rresult cmdliner mrmime))
