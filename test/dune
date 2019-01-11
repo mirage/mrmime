@@ -29,8 +29,8 @@
  (libraries alcotest mrmime))
 
 (executable
- (name msg_id)
- (modules msg_id)
+ (name message_id)
+ (modules message_id)
  (libraries alcotest mrmime))
 
 (alias
@@ -65,6 +65,6 @@
 
 (alias
  (name runtest)
- (deps (:msg_id msg_id.exe))
- (action (run %{msg_id} --color=always)))
+ (deps (:message_id message_id.exe))
+ (action (run %{message_id} --color=always)))
 

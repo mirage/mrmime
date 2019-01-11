@@ -67,7 +67,7 @@ type field =
   | `Content of string * Rfc5322.unstructured ]
 
 type unsafe = [`Unsafe of string * Rfc5322.unstructured]
-type skip = [`Skip of string list]
+type lines = [`Lines of string list]
 type field_version = [`MIMEVersion of version]
 
 open Angstrom
@@ -380,7 +380,7 @@ let field extend_mime extend field_name =
             >>| fun v -> `Content (field_name, v) )
       else extend field_name
 
-let sp = Format.sprintf
+let sp = Fmt.strf
 
 (* From RFC 2045
 
@@ -415,7 +415,7 @@ let entity_part_headers extend_mime extend =
     <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     <* char ':'
     >>= (fun field_name -> part_field extend_mime extend field_name)
-    <|> (Rfc5322.skip_field >>| fun lines -> `Skip lines) )
+    <|> (Rfc5322.lines >>| fun lines -> `Lines lines) )
 
 let entity_message_headers extend_mime extend =
   many

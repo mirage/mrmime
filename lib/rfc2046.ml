@@ -89,9 +89,12 @@ let discard_all_to_delimiter boundary =
   | Some _ -> advance 1 *> m (* impossible case? *)
   | None -> return ()
 
+let nothing_to_do = Fmt.kstrf fail "nothing to do"
+
 let body_part body =
   Rfc2045.mime_part_headers
-    (Rfc5322.field (fun _ -> fail "Nothing to do"))
+    (Rfc5322.field (fun _ -> nothing_to_do))
+  >>| List.mapi (fun n field -> Number.of_int_exn n, field)
   >>| (fun fields -> Content.fold_as_part fields Content.default)
   >>= fun (content, fields) -> ((Rfc822.crlf *> return `CRLF) <|> (return `Nothing))
   >>= (function

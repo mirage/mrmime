@@ -77,47 +77,45 @@ module Opt = struct
     | None -> default
 end
 
-type number =
-  | Zero
-  | At_least_one
-  | Number of int
-
-let capitalize x =
-  let capitalize res idx =
-    let map = function 'a' .. 'z' as chr  -> Char.unsafe_chr (Char.code chr - 32) | chr -> chr in
-    Bytes.set res idx (map (Bytes.get res idx)) in
-  let is_dash_or_space = function ' ' | '-' -> true | _ -> false in
-  let res = Bytes.of_string x in
-  for i = 0 to String.length x - 1 do
-    if i > 0 && is_dash_or_space x.[i - 1]
-    then capitalize res i
-  done ; Bytes.unsafe_to_string res
-
 let count header =
+  let merge lst =
+    let tbl = Hashtbl.create 16 in
+    List.iter (fun field -> match Hashtbl.find tbl field with
+        | n -> Hashtbl.replace tbl field (succ n)
+        | exception Not_found -> Hashtbl.add tbl field 1)
+      lst ;
+    Hashtbl.fold (fun field v a -> (field, v) :: a) tbl [] in
   let open Mrmime in
-  [ "Date", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.date
-  ; "From", if List.length header.Header.from > 0 then At_least_one else Zero
-  ; "Sender", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.sender
-  ; "Reply-To", if List.length header.Header.reply_to > 0 then At_least_one else Zero
-  ; "To", if List.length header.Header.too > 0 then At_least_one else Zero
-  ; "Cc", if List.length header.Header.cc > 0 then At_least_one else Zero
-  ; "Bcc", if List.length header.Header.bcc > 0 then At_least_one else Zero
-  ; "Subject", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.subject
-  ; "Message-ID", Opt.bind_default (fun _ -> At_least_one) ~default:Zero header.Header.msg_id
-  ; "In-Reply-To", if List.length header.Header.in_reply_to > 0 then At_least_one else Zero
-  ; "References", if List.length header.Header.references > 0 then At_least_one else Zero
-  ; "Comments", (let n = List.length header.Header.comments in if n = 0 then Zero else Number n)
-  ; "Keywords", (let n = List.length header.Header.keywords in if n = 0 then Zero else Number n) ]
-  @ Header.Map.fold (fun field v a -> let n = List.length v in if n = 0 then a else (capitalize field, Number n) :: a) header.Header.field []
-  @ Header.Map.fold (fun field v a -> let n = List.length v in if n = 0 then a else (capitalize field, Number n) :: a) header.Header.unsafe []
+  let common = [ "Date", Header.Set.cardinal header.Header.date
+               ; "From", Header.Set.cardinal header.Header.from
+               ; "Sender", Header.Set.cardinal header.Header.sender
+               ; "Reply-To", Header.Set.cardinal header.Header.reply_to
+               ; "To", Header.Set.cardinal header.Header.too
+               ; "Cc", Header.Set.cardinal header.Header.cc
+               ; "Bcc", Header.Set.cardinal header.Header.bcc
+               ; "Subject", Header.Set.cardinal header.Header.subject
+               ; "Message-ID", Header.Set.cardinal header.Header.message_id
+               ; "In-Reply-To", Header.Set.cardinal header.Header.in_reply_to
+               ; "References", Header.Set.cardinal header.Header.references
+               ; "Comments", Header.Set.cardinal header.Header.comments
+               ; "Keywords", Header.Set.cardinal header.Header.keywords ] in
+  let fields =
+    Header.Set.fold
+      (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
+         | Header.B (Header.Field field, _) -> Header.Field.(capitalize (canonicalize field)) :: a
+         | _ -> a) header.Header.fields [] |>
+    merge in
+  let unsafes =
+    Header.Set.fold
+      (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
+         | Header.B (Header.Unsafe field, _) -> Header.Field.(capitalize (canonicalize field)) :: a
+         | _ -> a) header.Header.unsafes [] |>
+    merge in
+  List.concat [ common; fields; unsafes ]
 
 let pp_header =
-  let pp_number ppf = function
-    | Zero -> Fmt.string ppf "0"
-    | At_least_one -> Fmt.string ppf "1+"
-    | Number n -> Fmt.int ppf n in
   let pp_data ppf (field, value) =
-    Fmt.pf ppf "%s: %a" field pp_number value in
+    Fmt.pf ppf "%s: %d" field value in
   Fmt.(hvbox (list ~sep:(always "@\n") pp_data))
 
 let parse_and_print with_header ic =

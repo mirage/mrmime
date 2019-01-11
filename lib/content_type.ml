@@ -101,11 +101,11 @@ module Subtype = struct
 end
 
 module Parameters = struct
-  module X = Map.Make (String)
+  module Map = Map.Make (String)
 
   type key = string
   type value = Rfc2045.value
-  type t = value X.t
+  type t = value Map.t
 
   let key key =
     (* XXX(dinosaure): RFC 2045 says:
@@ -187,20 +187,20 @@ module Parameters = struct
          unicorn and so on, it should be the best to keep this order. *)
         Option.(utf8 v >>| escape_characters >>| fun x -> `String x)
 
-  let empty = X.empty
+  let empty = Map.empty
 
   let mem key t =
     (* XXX(dinosaure): [key] can only exist by [key] function which apply [String.lowercase_ascii]. *)
-    X.mem key t
+    Map.mem key t
 
-  let add key value t = X.add key value t
-  let singleton key value = X.singleton key value
-  let remove key t = X.remove key t
+  let add key value t = Map.add key value t
+  let singleton key value = Map.singleton key value
+  let remove key t = Map.remove key t
 
   let find key t =
-    match X.find key t with x -> Some x | exception Not_found -> None
+    match Map.find key t with x -> Some x | exception Not_found -> None
 
-  let iter f t = X.iter f t
+  let iter f t = Map.iter f t
   let pp_key : key Fmt.t = Fmt.string
 
   let pp_value ppf = function
@@ -209,7 +209,7 @@ module Parameters = struct
 
   let pp ppf t =
     let pp ppf (key, value) = Fmt.pf ppf "%a:%a" pp_key key pp_value value in
-    Fmt.Dump.list pp ppf (X.bindings t)
+    Fmt.Dump.list pp ppf (Map.bindings t)
 
   let value_unescape x =
     let len = String.length x in
@@ -244,13 +244,13 @@ module Parameters = struct
     | `String a, `String b ->
         String.equal (value_unescape a) (value_unescape b)
 
-  let compare = X.compare value_compare
-  let equal = X.equal value_equal
+  let compare = Map.compare value_compare
+  let equal = Map.equal value_equal
 
   let of_list lst =
-    List.fold_left (fun a (key, value) -> X.add key value a) X.empty lst
+    List.fold_left (fun a (key, value) -> Map.add key value a) Map.empty lst
 
-  let to_list t = X.bindings t
+  let to_list t = Map.bindings t
 end
 
 type t = Rfc2045.content
@@ -262,6 +262,7 @@ let default =
 
 let ty { Rfc2045.ty; _ } = ty
 let subty { Rfc2045.subty; _ } = subty
+let parameters { Rfc2045.parameters; _ } = parameters
 
 let make ty subty parameters =
   {Rfc2045.ty; subty; parameters= Parameters.to_list parameters}

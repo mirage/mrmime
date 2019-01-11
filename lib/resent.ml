@@ -1,54 +1,104 @@
-type field = Rfc5322.resent
+type 'a field =
+  | Date : Date.t field
+  | From : Mailbox.t list field
+  | Sender : Mailbox.t field
+  | To : Address.t list field
+  | Cc : Address.t list field
+  | Bcc : Address.t list field
+  | MessageID : MessageID.t field
+  | ReplyTo : Address.t list field
+
+type binding = B : 'a field * 'a -> binding
+
+module Set = Set.Make(Number)
 
 type t =
-  { date : Date.t option
-  ; from : Mailbox.t list
-  ; sender : Mailbox.t option
-  ; too : Address.t list
-  ; cc : Address.t list
-  ; bcc : Address.t list
-  ; msg_id : Msg_id.t option
-  ; reply_to : Address.t list }
+  { date : Number.t option
+  ; from : Number.t option
+  ; sender : Set.t
+  ; too : Set.t
+  ; cc : Set.t
+  ; bcc : Set.t
+  ; message_id : Set.t
+  ; reply_to : Set.t
+  ; ordered : binding Ptmap.t }
 
-let default =
-  { date = None
-  ; from = []
-  ; sender = None
-  ; too = []
-  ; cc = []
-  ; bcc = []
-  ; msg_id = None
-  ; reply_to = [] }
+let has_date t = Option.is_some t.date
+let has_from t = Option.is_some t.from
 
 let pp ppf _resent =
   Fmt.string ppf "#resent"
 
-let ( <$> ) f x y = f y x
+let with_date n t v =
+  if has_date t then Fmt.invalid_arg "Resent value can have only one Date." ;
+  { t with ordered = Ptmap.add (n :> int) (B (Date, v)) t.ordered
+         ; date = Some n }
 
-let with_date t v = { t with date = Some v }
-let with_from t v = { t with from = v }
-let with_sender t v = { t with sender = Some v }
-let with_to t v = { t with too = t.too @ v }
-let with_cc t v = { t with cc = t.cc @ v }
-let with_bcc t v = { t with bcc = t.bcc @ v }
-let with_msg_id t v = { t with msg_id = Some v }
-let with_reply_to t v = { t with reply_to = t.reply_to @ v }
+let with_from n t v =
+  if has_from t then Fmt.invalid_arg "Resent value can have only on From value." ;
+  { t with ordered = Ptmap.add (n :> int) (B (From, v)) t.ordered
+         ; from = Some n }
 
-let fold : ([> field ] as 'a) list -> t list -> (t list * 'a list) = fun fields resents ->
-  let head f = function x :: r -> (f x) :: r | [] -> [] in
+let with_sender n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Sender, v)) t.ordered
+         ; sender = Set.add n t.sender }
+
+let with_to n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (To, v)) t.ordered
+         ; too = Set.add n t.too }
+
+let with_cc n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Cc, v)) t.ordered
+         ; cc = Set.add n t.cc }
+
+let with_bcc n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Bcc, v)) t.ordered
+         ; bcc = Set.add n t.bcc }
+
+let with_message_id n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (MessageID, v)) t.ordered
+         ; message_id = Set.add n t.message_id }
+
+let with_reply_to n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (ReplyTo, v)) t.ordered
+         ; reply_to = Set.add n t.reply_to }
+
+let default =
+  { date = None
+  ; from = None
+  ; sender = Set.empty
+  ; too = Set.empty
+  ; cc = Set.empty
+  ; bcc = Set.empty
+  ; message_id = Set.empty
+  ; reply_to = Set.empty
+  ; ordered = Ptmap.empty }
+
+let fold : (Number.t * ([> Rfc5322.field ] as 'a)) list -> t list -> (t list * (Number.t * 'a) list) = fun fields resents ->
+  let w w index v = function
+    | [] -> [ w index default v ]
+    | resent :: resents -> w index resent v :: resents in
 
   List.fold_left
     (fun (resents, rest) field -> match field, resents with
-       | `ResentDate v, { date = None; _ } :: _ -> head (with_date <$> v) resents, rest
-       | `ResentDate v, resents -> with_date default v :: resents, rest
-       | `ResentFrom v, { from = []; _ } :: _ -> head (with_from <$> v) resents, rest
-       | `ResentFrom v, resents -> with_from default v :: resents, rest
-       | `ResentSender v, resents -> head (with_sender <$> v) resents, rest
-       | `ResentTo v, resents -> head (with_to <$> v) resents, rest
-       | `ResentCc v, resents -> head (with_cc <$> v) resents, rest
-       | `ResentBcc v, resents -> head (with_bcc <$> v) resents, rest
-       | `ResentMessageID v, resents -> head (with_msg_id <$> v) resents, rest
-       | `ResentReplyTo v, resents -> head (with_reply_to <$> v) resents, rest
-       | field, resents -> resents, field :: rest)
+       | (index, `ResentDate v), [] ->
+         [ with_date index default v ], rest
+       | (index, `ResentDate v), resent :: resents ->
+         (match resent.date with
+          | None -> with_date index resent v :: resents
+          | Some _ -> with_date index default v :: resent :: resents), rest
+       | (index, `ResentFrom v), [] ->
+         [ with_from index default v], rest
+       | (index, `ResentFrom v), resent :: resents ->
+         (match resent.from with
+          | None -> with_from index resent v :: resents
+          | Some _ -> with_from index default v :: resent :: resents), rest
+       | (index, `ResentSender v), resents -> w with_sender index v resents, rest
+       | (index, `ResentTo v), resents -> w with_to index v resents, rest
+       | (index, `ResentCc v), resents -> w with_cc index v resents, rest
+       | (index, `ResentBcc v), resents -> w with_bcc index v resents, rest
+       | (index, `ResentMessageID v), resents -> w with_message_id index v resents, rest
+       | (index, `ResentReplyTo v), resents -> w with_reply_to index v resents, rest
+       | (index, field), resents -> resents, (index, field) :: rest)
     (resents, []) fields
   |> fun (resents, fields) -> resents, List.rev fields

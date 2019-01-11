@@ -8,3 +8,4 @@ let value ~default = function
   | None -> default
 
 let some x = Some x
+let is_some = function Some _ -> true | None -> false

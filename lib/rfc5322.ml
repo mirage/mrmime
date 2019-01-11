@@ -53,11 +53,11 @@ type unstructured =
   | `CR of int
   | `LF of int
   | `CRLF
-  | `WSP
+  | `WSP of string
   | `Encoded of Rfc2047.encoded_word ]
   list
 
-type phrase_or_msg_id = [`Phrase of phrase | `MsgID of Rfc822.nonsense Rfc822.msg_id]
+type phrase_or_message_id = [`Phrase of phrase | `MessageID of Rfc822.nonsense Rfc822.msg_id]
 
 type resent =
   [ `ResentDate of date
@@ -85,16 +85,16 @@ type field_header =
   | `Cc of address list
   | `Bcc of address list
   | `MessageID of Rfc822.nonsense Rfc822.msg_id
-  | `InReplyTo of phrase_or_msg_id list
-  | `References of phrase_or_msg_id list
+  | `InReplyTo of phrase_or_message_id list
+  | `References of phrase_or_message_id list
   | `Subject of unstructured
   | `Comments of unstructured
   | `Keywords of phrase list
   | `Field of string * unstructured
   | `Unsafe of string * unstructured ]
 
-type skip = [`Skip of string list]
-type field = [field_header | resent | trace | skip]
+type lines = [`Lines of string list]
+type field = [field_header | resent | trace | lines]
 
 (* / *)
 
@@ -152,7 +152,7 @@ let pp_encoded_word ppf t =
 
 let pp_atom ppf = function
   | `Text x -> Fmt.quote Fmt.string ppf x
-  | `WSP -> Fmt.pf ppf "@ "
+  | `WSP wsp -> Fmt.string ppf wsp
   | `CR n -> Fmt.pf ppf "<CR:%d>" n
   | `LF n -> Fmt.pf ppf "<LF:%d>" n
   | `CRLF -> Fmt.pf ppf "<CRLF>@\n"
@@ -199,11 +199,11 @@ let domain_literal =
   option () Rfc822.cfws
   *> char '['
   *> ( many
-         ( option (false, false, false) Rfc822.fws
-         *> ( Rfc6532.with_uutf1 Rfc822.is_dtext
+         ( option () Rfc822.ignore_fws
+         *> ( Rfc6532.with_uutf1_without_raw Rfc822.is_dtext
             <|> (Rfc822.quoted_pair >>| String.make 1) ) )
      >>| String.concat "" )
-  <* option (false, false, false) Rfc822.fws
+  <* option () Rfc822.ignore_fws
   <* char ']'
   <* option () Rfc822.cfws
 
@@ -883,8 +883,8 @@ let obs_day =
 *)
 let day =
   obs_day
-  <|> ( option (false, false, false) Rfc822.fws *> one_or_two_digit
-      <* Rfc822.fws
+  <|> ( option () Rfc822.ignore_fws *> one_or_two_digit
+      <* Rfc822.ignore_fws
       >>| int_of_string )
 
 (* From RFC 822
@@ -965,7 +965,7 @@ let obs_day_of_week =
      day-of-week     =   ([FWS] day-name) / obs-day-of-week
 *)
 let day_of_week =
-  obs_day_of_week <|> option (false, false, false) Rfc822.fws *> day_name
+  obs_day_of_week <|> option () Rfc822.ignore_fws *> day_name
 
 (* From RFC 822
 
@@ -1196,7 +1196,7 @@ let zone =
      mostly because this expected space is a part of [minute] or [second]. To
      avoid an error, [FWS] is optional but a better way should to check if we
      consumed at least one space before [zone]. *)
-  (option (false, false, false) Rfc822.fws *> satisfy (function '+' | '-' -> true | _ -> false) <?> "sign"
+  (option () Rfc822.ignore_fws *> satisfy (function '+' | '-' -> true | _ -> false) <?> "sign"
    >>= (fun sign ->
        four_digit <?> "four-digit"
        >>| fun zone ->
@@ -1384,7 +1384,7 @@ let obs_unstruct : unstructured t =
   let word =
     Rfc2047.encoded_word
     >>| (fun e -> `Encoded e)
-    <|> (Rfc6532.with_uutf1 is_obs_utext >>| fun e -> `Text e)
+    <|> (Rfc6532.with_uutf1_without_raw is_obs_utext >>| fun e -> `Text e)
   in
   let safe_lfcr =
     many (char '\n') >>| List.length
@@ -1407,6 +1407,10 @@ let obs_unstruct : unstructured t =
         assert (raw.[0] = '\r') ; (* because [m > 0] *)
         [`LF n; `CR m]
   in
+  let fws_to_wsp lst =
+    let res = Buffer.create (List.length lst) in
+    List.iter (function Rfc822.SP -> Buffer.add_char res ' ' | Rfc822.HT -> Buffer.add_char res '\t') lst ;
+    Buffer.contents res in
   many
     ( safe_lfcr
       >>= (fun pre ->
@@ -1421,13 +1425,17 @@ let obs_unstruct : unstructured t =
              | res -> return res) )
     <|> ( Rfc822.fws
         >>| function
-        | true, true, true -> [`WSP; `CRLF; `WSP]
-        | false, true, true -> [`CRLF; `WSP]
-        | true, true, false -> [`WSP; `CRLF]
-        | false, true, false -> [`CRLF]
-        | true, false, true -> [`WSP; `WSP]
-        | true, false, false | false, false, true -> [`WSP]
-        | false, false, false -> [] ) )
+        | Rfc822.CRLF lst ->
+          List.map (function
+              | { Rfc822.l= []; r= [] } -> [ `CRLF ]
+              | { Rfc822.l= []; r; } -> [ `CRLF; `WSP (fws_to_wsp r) ]
+              | { Rfc822.l; r= []; } -> [ `WSP (fws_to_wsp l); `CRLF ]
+              | { Rfc822.l; r; } -> [ `WSP (fws_to_wsp l); `CRLF; `WSP (fws_to_wsp r) ])
+            lst
+          |> List.concat
+        | Rfc822.R [] | Rfc822.L [] -> []
+        | Rfc822.R wsp
+        | Rfc822.L wsp -> [ `WSP (fws_to_wsp wsp) ] ) )
   >>| List.concat
 
 let make n f =
@@ -1462,31 +1470,44 @@ let make n f =
      unstructured    =   ( *([FWS] VCHAR) *WSP ) / obs-unstruct
 *)
 let unstructured =
+  let fws_to_wsp lst =
+    let res = Buffer.create (List.length lst) in
+    List.iter (function Rfc822.SP -> Buffer.add_char res ' ' | HT -> Buffer.add_char res '\t') lst ;
+    Buffer.contents res in
+
   obs_unstruct
   <|> ( many
-          ( option (false, false, false) Rfc822.fws
-          >>= fun (has_wsp, has_crlf, has_wsp') ->
-          Rfc6532.with_uutf1 Rfc822.is_vchar
+          ( option None (Rfc822.fws >>| Option.some)
+          >>= fun lfws ->
+          Rfc6532.with_uutf1_without_raw Rfc822.is_vchar
           (* XXX(dinosaure): currently, we use [with_uutf1]. However, RFC explains [VCHAR].
              I suspect an infinite loop if we use [with_uutf]. *)
           >>| fun text ->
-          match (has_wsp, has_crlf, has_wsp') with
-          | true, true, true -> [`WSP; `CRLF; `WSP; `Text text]
-          | false, true, true -> [`CRLF; `WSP; `Text text]
-          | true, true, false -> [`WSP; `CRLF; `Text text]
-          | false, true, false -> [`CRLF; `Text text]
-          | true, false, true -> [`WSP; `WSP; `Text text]
-          | true, false, false | false, false, true -> [`WSP; `Text text]
-          | false, false, false -> [`Text text] )
-      >>= fun pre ->
-      many (char '\x09' <|> char '\x20')
-      >>| List.length
-      >>| fun n -> List.concat pre @ make n (fun _ -> `WSP) )
+          match lfws with
+          | None
+          | Some (Rfc822.L [])
+          | Some (Rfc822.R []) -> [ `Text text ]
+          | Some (Rfc822.L lst)
+          | Some (Rfc822.R lst) -> [ `WSP (fws_to_wsp lst); `Text text ]
+          | Some (Rfc822.CRLF lst) ->
+            List.map (function
+                | { Rfc822.l= []; r= []; } -> [ `CRLF ]
+                | { Rfc822.l= []; r; } -> [ `CRLF; `WSP (fws_to_wsp r) ]
+                | { Rfc822.l; r= []; } -> [ `WSP (fws_to_wsp l); `CRLF ]
+                | { Rfc822.l; r; } -> [ `WSP (fws_to_wsp l); `CRLF; `WSP (fws_to_wsp r) ])
+              lst
+            |> List.concat |> fun pre -> pre @ [ `Text text ] )
+      >>= fun pre -> many (char '\x09' <|> char '\x20')
+      >>| List.map (function '\x09' -> Rfc822.HT | '\x20' -> Rfc822.SP | _ -> assert false)
+      >>| fws_to_wsp
+      >>| function
+      | "" -> List.concat pre
+      | trailer -> (List.concat pre) @ [ `WSP trailer ])
 
-let phrase_or_msg_id =
+let phrase_or_message_id =
   many
     ((phrase >>| fun v -> `Phrase v)
-     <|> (Rfc822.msg_id ~address_literal:(fail "Invalid domain") >>| fun v -> `MsgID v))
+     <|> (Rfc822.msg_id ~address_literal:(fail "Invalid domain") >>| fun v -> `MessageID v))
 
 (* From RFC 2822
 
@@ -1591,8 +1612,8 @@ let field extend field_name =
   | "cc" -> address_list <* Rfc822.crlf >>| fun v -> `Cc v
   | "bcc" -> address_list <* Rfc822.crlf >>| fun v -> `Bcc v
   | "message-id" -> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf >>| fun v -> `MessageID v
-  | "in-reply-to" -> phrase_or_msg_id <* Rfc822.crlf >>| fun v -> `InReplyTo v
-  | "references" -> phrase_or_msg_id <* Rfc822.crlf >>| fun v -> `References v
+  | "in-reply-to" -> phrase_or_message_id <* Rfc822.crlf >>| fun v -> `InReplyTo v
+  | "references" -> phrase_or_message_id <* Rfc822.crlf >>| fun v -> `References v
   | "subject" -> unstructured <* Rfc822.crlf >>| fun v -> `Subject v
   | "comments" -> unstructured <* Rfc822.crlf >>| fun v -> `Comments v
   | "keywords" -> keywords <* Rfc822.crlf >>| fun v -> `Keywords v
@@ -1611,7 +1632,8 @@ let field extend field_name =
       extend field_name
       <|> (unstructured <* Rfc822.crlf >>| fun v -> `Field (field_name, v))
 
-let sp = Format.sprintf
+let sp = Fmt.strf
+let failf fmt = Fmt.kstrf fail fmt
 
 let field extend field_name =
   field extend field_name
@@ -1620,10 +1642,10 @@ let field extend field_name =
       >>| (fun v -> `Unsafe (field_name, v))
       <?> sp "Unsafe %s" field_name )
 
-let skip_field =
+let lines =
   fix @@ fun m ->
   take_while ((<>) '\r') >>= fun line -> peek_char >>= fun next -> match String.length line, next with
-  | 0, _ -> fail "nothing to do"
+  | 0, _ -> failf "end of header"
   | _, Some _ -> (Rfc822.crlf *> return [ line ]) <|> (m >>| fun r -> line :: r)
   | _, None -> return [ line ]
 
@@ -1633,7 +1655,7 @@ let header extend =
     <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     <* char ':'
     >>= (fun field_name -> field extend field_name)
-    <|> (skip_field >>| fun lines -> `Skip lines) )
+    <|> (lines >>| fun lines -> `Lines lines))
 
 let parser ~write_line end_of_body =
   let check_end_of_body =

@@ -417,22 +417,29 @@ let crlf = char '\r' *> char '\n' *> return ()
 
      obs-FWS         =   1*WSP *(CRLF 1*WSP)
 *)
+type wsp = HT | SP
+type surrounded = { l : wsp list; r : wsp list }
+type fws =
+  | CRLF of surrounded list
+  | L of wsp list
+  | R of wsp list
+
 let obs_fws =
-  let many' p =
-    fix
-    @@ fun m -> lift2 (fun _ _ -> (true, true)) p m <|> return (false, false)
-  in
-  many1 wsp *> many' (crlf *> many1 wsp)
-  >>| fun (has_crlf, has_wsp) -> (true, has_crlf, has_wsp)
+  let to_list = List.map (function '\x09'-> HT | '\x20' -> SP | _ -> assert false) in
+  many1 wsp >>| to_list >>= fun l -> many (crlf *> (many1 wsp >>| to_list))
+  >>| function
+  | [] -> L l
+  | rs ->
+    let res = List.mapi (fun i r -> if i = 0 then { l; r; } else { l= []; r }) rs in
+    CRLF res
 
 let fws =
-  let many' p =
-    fix @@ fun m -> lift2 (fun _ _ -> (true, true)) p m <|> return (false, true)
-  in
+  let to_list = List.map (function '\x09'-> HT | '\x20' -> SP | _ -> assert false) in
   obs_fws
-  <|> ( option (false, false) (many' wsp <* crlf)
-      >>= fun (has_wsp, has_crlf) ->
-      many1 wsp *> return (has_wsp, has_crlf, true) )
+  <|> ( option None (many wsp >>| to_list >>| Option.some <* crlf)
+        >>= fun ls -> many1 wsp >>| to_list >>= fun r -> match ls with
+        | None -> return (R r)
+        | Some l -> return (CRLF [ { l; r; } ]) )
 
 (* From RFC 822
 
@@ -448,9 +455,20 @@ let fws =
      ccontent        =   ctext / quoted-pair / comment
      comment         =   "(" *([FWS] ccontent) [FWS] ")"
 *)
+
+type comment_content =
+  | Text of Rfc6532.t
+  | Quoted_pair of char
+  | Comment of comment
+and comment_content_surrounded = fws option * comment_content
+and comment = comment_content_surrounded list * fws option
+
+let failf fmt = Fmt.kstrf fail fmt
+let ignore p = p *> return ()
+
 let comment =
-  let ignore_quoted_pair = quoted_pair *> return () in
-  let ignore_is_utf8_ctext = Rfc6532.with_uutf1 is_ctext *> return () in
+  let quoted_pair = quoted_pair >>| fun chr -> Quoted_pair chr in
+  let ctext = Rfc6532.with_uutf1 is_ctext in
   (* XXX(dinosaure): [with_uutf1] needs an explanation when ABNF does not say
      [1*ctext]. Indeed, if we use [with_uutf], [ccontent] will never fail
      (specifically about empty comment).
@@ -459,20 +477,24 @@ let comment =
      parenthesis. The only way to leave [many] is to fail and it's why we expect
      at least one character. In other case [many (option (false, false, false)
      fws) *> ccontent] fails and we expected a close parenthesis. *)
-  fix
-  @@ fun comment ->
-  let ccontent : unit t =
-    peek_char_fail
+  fix @@ fun comment ->
+  let ccontent =
+    peek_char
     >>= function
-    | '(' -> comment
-    | '\\' -> ignore_quoted_pair
-    | _ -> ignore_is_utf8_ctext
+    | Some '(' -> comment >>= fun comment -> return (Comment comment)
+    | Some '\\' -> quoted_pair
+    | Some _ -> ctext >>= fun text -> return (Text text)
+    | None -> failf "<comment> reaches end of input"
   in
   char '('
-  *> many (option (false, false, false) fws *> ccontent)
-  *> option (false, false, false) fws
-  *> char ')'
-  *> return ()
+  *> many (option None (fws >>| Option.some)
+           >>= fun lfws -> ccontent
+           >>| fun comment_content -> (lfws, comment_content))
+  >>= fun lst -> option None (fws >>| Option.some)
+  >>= fun rfws -> char ')'
+  *> return (lst, rfws)
+
+let ignore_fws = ignore fws
 
 (*
 let comment =
@@ -509,11 +531,19 @@ let comment =
      Update from RFC 2822:
      + Simplified CFWS syntax.
 *)
+
+type cfws =
+  | Comment of (fws option * comment) list * fws option
+  | FWS of fws
+
 let cfws =
-  ( many1 (option (false, false, false) fws *> comment)
-    *> option (false, false, false) fws
-  <|> fws )
-  *> return ()
+  ( many1 (option None (fws >>| Option.some) >>= fun lfws -> comment >>= fun comment -> return (lfws, comment))
+    >>= fun lst -> option None (fws >>| Option.some)
+    >>= fun rfws -> return (Comment (lst, rfws)) )
+  <|> (fws >>| fun fws -> FWS fws)
+
+(* XXX(dinosaure): ok, at this stage we LOST comments! *)
+let cfws = ignore cfws
 
 (* From RFC 822
 
@@ -533,7 +563,7 @@ let cfws =
 
      utf8-qcontent      = utf8-qtext / utf8-quoted-pair
 *)
-let qcontent = Rfc6532.with_uutf1 is_qtext <|> (quoted_pair >>| String.make 1)
+let qcontent = Rfc6532.with_uutf1_without_raw is_qtext <|> (quoted_pair >>| String.make 1)
 
 (* From RFC 822
 
@@ -580,19 +610,27 @@ let qcontent = Rfc6532.with_uutf1 is_qtext <|> (quoted_pair >>| String.make 1)
    we skip.
 *)
 let quoted_string =
+  let fws_to_wsp fws =
+    let res = Buffer.create 16 in
+    let add_wsp =
+      List.iter (function SP -> Buffer.add_char res ' '
+                        | HT -> Buffer.add_char res '\t') in
+    let () = match fws with
+      | R lst
+      | L lst -> add_wsp lst
+      (* XXX(dinosaure): CRLF in any FWS/CFWS that appears within the
+         quoted-string are semantically "invisible". *)
+      | CRLF lst -> List.iter (fun { l; r; } -> add_wsp l ; add_wsp r) lst in
+    Buffer.contents res in
+
   option () cfws
   *> char '"'
   *> ( many
-         ( option (false, false, false) fws
-         >>= fun (has_wsp, _, has_wsp') ->
-         qcontent
-         >>= fun s ->
-         return (if has_wsp || has_wsp' then String.concat "" [" "; s] else s)
-         )
-     >>= fun pre ->
-     option (false, false, false) fws
-     >>= fun (has_wsp, _, has_wsp') ->
-     return (if has_wsp || has_wsp' then " " :: pre else pre) )
+         (option "" (fws >>| fws_to_wsp)
+         >>= fun lfws -> qcontent
+         >>= fun s -> return (lfws ^ s))
+     >>= fun pre -> option "" (fws >>| fws_to_wsp)
+     >>= fun rfws -> return (rfws :: pre))
   <* char '"'
   >>| String.concat ""
   <* option () cfws
@@ -616,7 +654,7 @@ let quoted_string =
 
      utf8-atom     = [CFWS] 1*utf8-atext [CFWS]
 *)
-let atom = option () cfws *> Rfc6532.with_uutf1 is_atext <* option () cfws
+let atom = option () cfws *> Rfc6532.with_uutf1_without_raw is_atext <* option () cfws
 
 (* From RFC 822
 
@@ -641,7 +679,7 @@ let word =
 
      dot-atom-text   =   1*atext *("." 1*atext)
 *)
-let dot_atom_text = sep_by1 (char '.') (Rfc6532.with_uutf1 is_atext)
+let dot_atom_text = sep_by1 (char '.') (Rfc6532.with_uutf1_without_raw is_atext)
 
 (* From RFC 2822
 
@@ -753,11 +791,11 @@ let domain_literal =
   option () cfws
   *> char '['
   *> ( many
-         ( option (false, false, false) fws
-         *> (Rfc6532.with_uutf1 is_dtext <|> (quoted_pair >>| String.make 1))
+         ( option () ignore_fws
+         *> (Rfc6532.with_uutf1_without_raw is_dtext <|> (quoted_pair >>| String.make 1))
          )
      >>| String.concat "" )
-  <* option (false, false, false) fws
+  <* option () ignore_fws
   <* char ']'
   <* option () cfws
 
@@ -935,7 +973,7 @@ let domain ~address_literal =
   let of_string ~error p s =
     match parse_string p s with Ok v -> return v | Error _ -> fail error
   in
-  let literal s = fail (Fmt.strf "literal domain: %s" s) in
+  let literal domain = failf "invalid literal domain: %s" domain in
   (* XXX(dinosaure): according to RFC 5322 and RFC 822 (including RFC 2822), a
      [`Literal] is a correct domain. However, according RFC 5321, we abort this
      kind of domain.
@@ -976,7 +1014,7 @@ let id_left = local_part <|> (dot_atom_text >>| List.map (fun x -> `Atom x))
 
      no-fold-literal =   "[" *dtext "]"
 *)
-let no_fold_literal = char '[' *> Rfc6532.with_uutf is_dtext <* char ']'
+let no_fold_literal = char '[' *> Rfc6532.with_uutf_without_raw is_dtext <* char ']'
 
 (* From RFC 2822
 

@@ -1,5 +1,5 @@
 module Type : sig
-  type t
+  type t = Rfc2045.ty
 
   val text : t
   val image : t
@@ -19,7 +19,7 @@ module Type : sig
 end
 
 module Subtype : sig
-  type t
+  type t = Rfc2045.subty
 
   val ietf : string -> t option
   val iana : Type.t -> string -> t option
@@ -33,9 +33,11 @@ module Subtype : sig
 end
 
 module Parameters : sig
-  type t
-  type key
-  type value
+  module Map : module type of Map.Make(String)
+
+  type key = string
+  type value = Rfc2045.value
+  type t = value Map.t
 
   val key : string -> key option
   val value : string -> value option
@@ -68,6 +70,7 @@ val default : t
 val make : Type.t -> Subtype.t -> Parameters.t -> t
 val ty : t -> Type.t
 val subty : t -> Subtype.t
+val parameters : t -> (Parameters.key * Parameters.value) list
 
 (* / *)
 
