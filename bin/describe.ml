@@ -1,52 +1,53 @@
 open Mrmime
 
-let pp_last ppf = function
-  | true -> Fmt.string ppf "`"
-  | false -> Fmt.string ppf "|"
-
-let pp_level ~last ppf n =
-  let rec go = function
-    | 0 -> ()
-    | n -> if last then Fmt.string ppf "  " else Fmt.string ppf "| " ; go (pred n) in
-  assert (n >= 0) ; go n
-
-let pp_list pp_data ppf lst =
-  let rec go = function
-    | [] -> ()
-    | [ x ] -> pp_data ~last:true ppf x
-    | x :: r -> pp_data ~last:false ppf x ; go r in
-  go lst
-
-let rec pp_atom ~last ~level ppf { Mail.content; part; _ } =
+let rec print_atom ?(pad : string * string = "", "") { Mail.content; part; _ } =
   let ty = Content.ty content in
   let subty = Content.subty content in
-  Fmt.pf ppf "%a%a-<%a:%a>\n" (pp_level ~last) level pp_last last Content_type.Type.pp ty Content_type.Subtype.pp subty ;
-  Fmt.option ~none:Fmt.nop (pp_part ~level:(succ level) ~last:true) ppf part
+  let pd, pc = pad in
+  Fmt.pr "%s<%a:%a>\n" pd Content_type.Type.pp ty Content_type.Subtype.pp subty ;
+  match part with
+  | Some part ->
+    print_part ~pad:(pc ^ "`-", "  ") part
+  | None -> ()
 
-and pp_part ~last ~level ppf = function
+and print_part ?(pad : string * string = "", "") = function
   | Mail.Part_discrete _ ->
-    Fmt.pf ppf "%a%a-<#discrete>\n" (pp_level ~last) level pp_last last
+    Fmt.pr "%s<#discrete>\n" (fst pad)
   | Mail.Part_extension _ ->
-    Fmt.pf ppf "%a%a-<#extension>\n" (pp_level ~last) level pp_last last
+    Fmt.pr "%s<#extension>\n" (fst pad)
   | Mail.Part_multipart parts ->
-    Fmt.pf ppf "%a%a-<#multipart>\n" (pp_level ~last) level pp_last last ;
-    pp_list (pp_atom ~level:(succ level)) ppf parts
+    let _, pc = pad in
+    let n = List.length parts in
+    List.iteri
+      (fun i atom ->
+         let pad = (pc ^(if i = n then "`-" else "|-"),
+                    pc ^(if i = n then "  " else "| ")) in
+         print_atom ~pad atom)
+      parts
   | _ -> assert false
 
-and pp_mail ppf = function
+and print_mail ?(pad : string * string = "", "") mail =
+  let pd, pc = pad in
+  match mail with
   | Mail.Discrete { content; _ } ->
     let ty = Content.ty content in
     let subty = Content.subty content in
-    Fmt.pf ppf "+-<%a:%a>\n" Content_type.Type.pp ty Content_type.Subtype.pp subty
+    Fmt.pr "%s<%a:%a>\n" pd Content_type.Type.pp ty Content_type.Subtype.pp subty
   | Mail.Extension { content; _ } ->
     let ty = Content.ty content in
     let subty = Content.subty content in
-    Fmt.pf ppf "+-<extension:%a:%a>\n" Content_type.Type.pp ty Content_type.Subtype.pp subty
+    Fmt.pr "%s<extension:%a:%a>\n" pd Content_type.Type.pp ty Content_type.Subtype.pp subty
   | Mail.Multipart { content; parts; _ } ->
     let ty = Content.ty content in
     let subty = Content.subty content in
-    Fmt.pf ppf "+-<%a:%a[%d]>\n" Content_type.Type.pp ty Content_type.Subtype.pp subty (List.length parts);
-    pp_list (pp_atom ~level:(succ 0)) ppf parts
+    Fmt.pr "%s<%a:%a[%d]>\n" pd Content_type.Type.pp ty Content_type.Subtype.pp subty (List.length parts);
+    let n = List.length parts - 1 in
+    List.iteri
+      (fun i atom ->
+         let pad = (pc ^ (if i = n then "`-" else "|-"),
+                    pc ^ (if i = n then "  " else "| ")) in
+         print_atom ~pad atom)
+      parts
   | _ -> assert false
 
 let parser = Mrmime.Mail.mail
@@ -122,7 +123,7 @@ let parse_and_print with_header ic =
   let open Rresult.R in
   mail_of_input ic >>| fun (header, mail) ->
   if with_header then Fmt.pr "header: %a.\n%!" pp_header (count header) ;
-  Fmt.pr "%a" pp_mail mail
+  print_mail mail
 
 let run with_header input =
   let close, ic =
