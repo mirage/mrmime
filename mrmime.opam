@@ -13,9 +13,23 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
 ]
 
+pin-depends: [
+ [ "base64.dev" "git+https://github.com/mirage/ocaml-base64.git"]
+ [ "pecu.dev" "git+https://github.com/dinosaure/pecu.git"]
+]
+
 depends: [
   "ocaml"    {>= "4.03.0"}
   "dune"     {build}
+  "ptmap"
   "uutf"
+  "ke"
+  "ptime"
+  "ipaddr"
+  "uutf"
+  "rosetta"
+  "pecu"
+  "rresult"
+  "fmt"
   "angstrom"
 ]
