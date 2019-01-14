@@ -61,13 +61,16 @@ type vec = {off: int option; len: int option}
 val std : writer
 
 module Make (Encoder : ENCODER) : sig
-  type t
-
+  type t = { writer : writer
+           ; encoder : Encoder.encoder }
   val make : writer -> Encoder.encoder -> t
   val with_writer : Encoder.encoder -> writer -> t
 
   type 'a encoding = t -> 'a -> t Encoder.state
   type 'a sub = t -> ?off:int -> ?len:int -> 'a -> t Encoder.state
+
+  val continue : t -> Encoder.encoder -> t Encoder.state
+  val force_flush : writer -> Encoder.encoder -> t Encoder.state
 
   val char : char encoding
   val int8 : int encoding

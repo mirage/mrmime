@@ -1,8 +1,7 @@
 type encoder
 type 'r k0 = (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
 
-type ('a, 'r) k1 =
-  'a -> (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
+type ('a, 'r) k1 = 'a -> (encoder -> 'r Encoder.state) -> encoder -> 'r Encoder.state
 
 val write_char : (char, 'r) k1
 val write_bytes : (bytes, 'r) k1

@@ -76,6 +76,8 @@ module Make (Encoder : ENCODER) = struct
     in
     go (Encoder.flush (fun e -> End e) e)
 
+  let force_flush = flush
+
   let make writer encoder = {writer; encoder}
   let with_writer encoder writer = make writer encoder
 

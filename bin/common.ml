@@ -10,7 +10,7 @@ let newline =
     | str -> Rresult.R.error_msgf "Invalid newline: %s" str in
   let pp ppf = function
     | CRLF -> Fmt.string ppf "<CRLF>"
-    | LF -> Fmt.string ppf "<LF" in
+    | LF -> Fmt.string ppf "<LF>" in
   Arg.conv ~docv:"<newline>" (parser, pp)
 
 let newline =
@@ -19,8 +19,8 @@ let newline =
 
 let sub_string_and_replace_newline chunk len =
   let count = ref 0 in
-  Bytes.iteri (fun idx -> function '\n' -> if idx < len then incr count | _ -> ()) chunk ;
-  let plus = !count * 2 in
+  String.iter (function '\n' -> incr count | _ -> ()) (Bytes.sub_string chunk 0 len) ;
+  let plus = !count in
   let pos = ref 0 in
   let res = Bytes.create (len + plus) in
   for i = 0 to len - 1

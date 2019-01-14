@@ -71,6 +71,7 @@ let pp_of_binding ppf (Header.B (field, v, loc)) =
   Fmt.pf ppf "%a[%a]: @[<hov>%a@]" pp_field field Location.pp loc pp_value v
 
 let extract_raw ic (Header.B (_, _, loc)) =
+  (* TODO: lie when input use LF as line-breaker. *)
   let old = pos_in ic in
   seek_in ic (Location.left_exn loc) ;
   let res = really_input_string ic (Location.length_exn loc) in
