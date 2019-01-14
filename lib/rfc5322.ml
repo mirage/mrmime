@@ -1692,3 +1692,15 @@ let with_buffer ?(end_of_line = "\n") end_of_body =
     Buffer.add_string buf end_of_line in
 
   parser ~write_line end_of_body >>| fun () -> Buffer.contents buf
+
+let to_end_of_input ~write_data =
+  fix @@ fun m ->
+  peek_char >>= function
+  | None -> commit
+  | Some _ ->
+    available >>= fun n -> Unsafe.take n
+      (fun ba ~off ~len ->
+         let chunk = Bytes.create len in
+         Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len ;
+         write_data (Bytes.unsafe_to_string chunk))
+    >>= fun () -> m

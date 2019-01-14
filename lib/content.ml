@@ -139,16 +139,22 @@ let default =
   ; ordered = Ptmap.empty }
 
 let ty t =
-  let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
-  match field with ContentType -> Content_type.ty ty | _ -> assert false
+  try
+    let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
+    match field with ContentType -> Content_type.ty ty | _ -> assert false
+  with Not_found -> Content_type.Type.default
 
 let subty t =
-  let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
-  match field with ContentType -> Content_type.subty ty | _ -> assert false
+  try
+    let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
+    match field with ContentType -> Content_type.subty ty | _ -> assert false
+  with Not_found -> Content_type.Subtype.default
 
 let encoding t : Rfc2045.mechanism =
-  let B (field, encoding) = Ptmap.find (Set.choose t.encoding :> int) t.ordered in
-  match field with ContentEncoding -> encoding | _ -> assert false
+  try
+    let B (field, encoding) = Ptmap.find (Set.choose t.encoding :> int) t.ordered in
+    match field with ContentEncoding -> encoding | _ -> assert false
+  with Not_found -> Content_encoding.default
 
 let parameters t =
   let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in

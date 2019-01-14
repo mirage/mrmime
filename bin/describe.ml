@@ -20,11 +20,15 @@ and print_part ?(pad : string * string = "", "") = function
     let n = List.length parts in
     List.iteri
       (fun i atom ->
-         let pad = (pc ^(if i = n then "`-" else "|-"),
-                    pc ^(if i = n then "  " else "| ")) in
+         let pad = (pc ^ (if i = n then "`-" else "|-"),
+                    pc ^ (if i = n then "  " else "| ")) in
          print_atom ~pad atom)
       parts
-  | _ -> assert false
+  | Mail.Part_message { message; _ }->
+    let pd, pc = pad in
+    let pad = (pc ^ "`-", pc ^ "  ") in
+    Fmt.pr "%s<#message>\n" pd ;
+    print_mail ~pad message
 
 and print_mail ?(pad : string * string = "", "") mail =
   let pd, pc = pad in
@@ -48,7 +52,11 @@ and print_mail ?(pad : string * string = "", "") mail =
                     pc ^ (if i = n then "  " else "| ")) in
          print_atom ~pad atom)
       parts
-  | _ -> assert false
+  | Mail.Message { message; _ } ->
+    let pd, pc = pad in
+    let pad = (pc ^ "`-", pc ^ "  ") in
+    Fmt.pr "%s<#message>\n" pd ;
+    print_mail ~pad message
 
 let parser = Mrmime.Mail.mail
 

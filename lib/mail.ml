@@ -43,7 +43,17 @@ let header : (Content.t * Header.t * (Number.t * Field.mail) list) Angstrom.t =
 
 let octet boundary content =
   match boundary with
-  | None -> assert false
+  | None ->
+    let buf = Buffer.create 0x800 in
+    let write_line line =
+      Buffer.add_string buf line ;
+      Buffer.add_string buf "\n" in
+    let write_data = Buffer.add_string buf in
+    (match Content.encoding content with
+     | `Quoted_printable -> Quoted_printable.to_end_of_input ~write_data ~write_line
+     | `Base64 -> Base64.to_end_of_input ~write_data
+     | `Bit7 | `Bit8 | `Binary -> Rfc5322.to_end_of_input ~write_data
+     | `Ietf_token _x | `X_token _x -> assert false) >>| fun () -> Buffer.contents buf
   | Some boundary ->
     let end_of_body = Rfc2046.make_delimiter boundary in
     match Content.encoding content with

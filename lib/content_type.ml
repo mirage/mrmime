@@ -55,6 +55,7 @@ module Type = struct
       compare (lowercase_ascii (to_string a)) (lowercase_ascii (to_string b)))
 
   let equal a b = compare a b = 0
+  let default = `Text
 end
 
 module Subtype = struct
@@ -98,6 +99,7 @@ module Subtype = struct
     -> String.(compare (lowercase_ascii a) (lowercase_ascii b))
 
   let equal a b = compare a b = 0
+  let default = `Iana_token "plain"
 end
 
 module Parameters = struct
@@ -251,14 +253,16 @@ module Parameters = struct
     List.fold_left (fun a (key, value) -> Map.add key value a) Map.empty lst
 
   let to_list t = Map.bindings t
+
+  let default = Map.add "charset" (`Token "us-ascii") Map.empty
 end
 
 type t = Rfc2045.content
 
 let default =
-  { Rfc2045.ty = `Text
-  ; subty = `Iana_token "plain"
-  ; parameters = [ "charset", `Token "us-ascii" ] }
+  { Rfc2045.ty = Type.default
+  ; subty = Subtype.default
+  ; parameters = Parameters.(to_list default) }
 
 let ty { Rfc2045.ty; _ } = ty
 let subty { Rfc2045.subty; _ } = subty

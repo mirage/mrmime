@@ -86,3 +86,21 @@ let with_buffer ?(end_of_line = "\n") end_of_body =
     Buffer.add_string buf end_of_line in
 
   parser ~write_data ~write_line end_of_body >>| fun () -> Buffer.contents buf
+
+let to_end_of_input ~write_data ~write_line =
+  let dec = Pecu.decoder `Manual in
+
+  fix @@ fun m -> match Pecu.decode dec with
+  | `End -> commit
+  | `Await ->
+    (peek_char >>= function
+      | None -> Pecu.src dec Bytes.empty 0 0 ; return ()
+      | Some _ -> available >>= fun n -> Unsafe.take n
+          (fun ba ~off ~len ->
+             let chunk = Bytes.create len in
+             Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len ;
+             Pecu.src dec chunk 0 len)
+        >>= fun () -> m)
+  | `Data data -> write_data data ; m
+  | `Line line -> write_line line ; m
+  | `Malformed err -> fail err

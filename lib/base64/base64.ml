@@ -57,3 +57,21 @@ let with_buffer end_of_body =
   let write_data x = Buffer.add_string buf x in
 
   parser ~write_data end_of_body >>| fun () -> Buffer.contents buf
+
+let to_end_of_input ~write_data =
+  let dec = Rfc2045.decoder `Manual in
+
+  fix @@ fun m -> match Rfc2045.decode dec with
+  | `End -> commit
+  | `Await ->
+    (peek_char >>= function
+      | None -> Rfc2045.src dec Bytes.empty 0 0 ; return ()
+      | Some _ -> available >>= fun n -> Unsafe.take n
+          (fun ba ~off ~len ->
+             let chunk = Bytes.create len in
+             Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len ;
+             Rfc2045.src dec chunk 0 len)
+        >>= fun () -> m)
+  | `Flush data -> write_data data ; m
+  | `Malformed err -> fail err
+  | `Wrong_padding -> fail "wrong padding"

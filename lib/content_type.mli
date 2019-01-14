@@ -16,6 +16,7 @@ module Type : sig
   val pp : t Fmt.t
   val compare : t -> t -> int
   val equal : t -> t -> bool
+  val default : t
 end
 
 module Subtype : sig
@@ -30,6 +31,7 @@ module Subtype : sig
   val pp : t Fmt.t
   val compare : t -> t -> int
   val equal : t -> t -> bool
+  val default : t
 end
 
 module Parameters : sig
@@ -62,6 +64,7 @@ module Parameters : sig
 
   val compare : t -> t -> int
   val equal : t -> t -> bool
+  val default : t
 end
 
 type t = Rfc2045.content
