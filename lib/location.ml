@@ -5,6 +5,7 @@ type t = zone option
 
 let make a b =
   if a < 0 || b < 0 then Fmt.invalid_arg "A point must be positive" ;
+  if a > b then Fmt.invalid_arg "[a] must be lower or equal to [b]" ;
   Some { a; b; }
 
 let some zone = Some zone
@@ -13,3 +14,27 @@ let none = None
 let pp ppf = function
   | Some { a; b; } -> Fmt.pf ppf "%d:%d" a b
   | None -> Fmt.string ppf "<none>"
+
+let left = function
+  | Some { a; _ } -> Some a
+  | None -> None
+
+let left_exn t = match left t with
+  | Some left -> left
+  | None -> Fmt.invalid_arg "<dummy location>"
+
+let right = function
+  | Some { b; _ } -> Some b
+  | None -> None
+
+let right_exn t = match right t with
+  | Some right -> right
+  | None -> Fmt.invalid_arg "<dummy location>"
+
+let length = function
+  | Some { a; b; } -> Some (b - a)
+  | None -> None
+
+let length_exn t = match length t with
+  | Some length -> length
+  | None -> Fmt.invalid_arg "<dummy location>"

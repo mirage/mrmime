@@ -70,19 +70,26 @@ let pp_of_binding ppf (Header.B (field, v, loc)) =
   let pp_value = pp_of_field field in
   Fmt.pf ppf "%a[%a]: @[<hov>%a@]" pp_field field Location.pp loc pp_value v
 
-let extract ~newline ic fields =
-  let print binding =
-    Fmt.pr "%a@\n" pp_of_binding binding in
+let extract_raw ic (Header.B (_, _, loc)) =
+  let old = pos_in ic in
+  seek_in ic (Location.left_exn loc) ;
+  let res = really_input_string ic (Location.length_exn loc) in
+  seek_in ic old ; res
+
+let extract ~newline ~with_raw ic fields =
+  let print ~with_raw binding =
+    Fmt.pr "%a@\n@\n" pp_of_binding binding ;
+    if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic binding) in
   let open Rresult.R in
   header_of_input ~newline ic >>= fun (_, header, _) ->
-  get_fields fields header >>| List.iter print
+  get_fields fields header >>| List.rev >>| List.iter (print ~with_raw)
 
-let run newline input fields =
+let run newline with_raw input fields =
   let close, ic =
     match input with
     | `Path x -> let ic = open_in (Fpath.to_string x) in (fun () -> close_in ic), ic
     | `Std -> (fun () -> ()), stdin in
-  let v = extract ~newline ic fields in
+  let v = extract ~newline ~with_raw ic fields in
   close () ; v
 
 open Cmdliner
@@ -125,10 +132,14 @@ let source =
   let doc = "Input." in
   Arg.(value & opt filename `Std & info [ "i"; "input" ] ~docv:"<input>" ~doc)
 
+let with_raw =
+  let doc = "Print raw slice of field." in
+  Arg.(value & flag & info [ "r"; "raw" ] ~doc)
+
 let command =
   let doc = "Header extractor" in
   let exits = Term.default_exits in
   let man =
     [ `S Manpage.s_description
     ; `P "Extract fields from a mail" ] in
-  Term.(const run $ Common.newline $ source $ fields), Term.info "header" ~doc ~exits ~man
+  Term.(const run $ Common.newline $ with_raw $ source $ fields), Term.info "header" ~doc ~exits ~man
