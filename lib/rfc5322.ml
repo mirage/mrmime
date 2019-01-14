@@ -1602,6 +1602,9 @@ let trace path =
       <* Rfc822.crlf
       >>= fun pre -> many r >>| fun rst -> (None, pre :: rst)
 
+let with_location p =
+  pos >>= fun a -> p >>= fun r -> pos >>= fun b -> return (r, Location.make a b)
+
 let field extend field_name =
   match String.lowercase_ascii field_name with
   | "date" -> date_time <* Rfc822.crlf >>| fun v -> `Date v
@@ -1650,12 +1653,13 @@ let lines =
   | _, None -> return [ line ]
 
 let header extend =
-  many
-    ( field_name
+  let p =
+    field_name
     <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     <* char ':'
     >>= (fun field_name -> field extend field_name)
-    <|> (lines >>| fun lines -> `Lines lines))
+        <|> (lines >>| fun lines -> `Lines lines) in
+  many (with_location p)
 
 let parser ~write_line end_of_body =
   let check_end_of_body =

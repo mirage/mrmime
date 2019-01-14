@@ -43,7 +43,7 @@ type binding = Header.binding
 
 type error = [ `Not_found | Rresult.R.msg ]
 
-let get_field : type a. a Header.field -> Header.t -> (a list, error) result = fun field header ->
+let get_field : type a. a Header.field -> Header.t -> ((a * Location.t) list, error) result = fun field header ->
   match Header.get field header with
   | [] -> Error `Not_found
   | lst -> Ok lst
@@ -51,12 +51,12 @@ let get_field : type a. a Header.field -> Header.t -> (a list, error) result = f
 let get_fields fields header =
   List.fold_left
     (fun a (Header.V field) -> match a, get_field field header with
-       | Ok a, Ok l -> Ok (List.map (fun v -> Header.B (field, v)) l @ a)
+       | Ok a, Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
        | Error _, _ -> a
        | Ok a, Error _ ->
          let field = Header.Unsafe (Fmt.to_to_string pp_field field) in
          match get_field field header with
-         | Ok l -> Ok (List.map (fun v -> Header.B (field, v)) l @ a)
+         | Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
          | Error e -> Error e)
     (Ok []) fields
 
@@ -64,9 +64,9 @@ let pp_of_field = Header.pp_value_of_field
 
 let ( <.> ) f g = fun x -> f (g x)
 
-let pp_of_binding ppf (Header.B (field, v)) =
+let pp_of_binding ppf (Header.B (field, v, loc)) =
   let pp_value = pp_of_field field in
-  Fmt.pf ppf "%a: @[<hov>%a@]" pp_field field pp_value v
+  Fmt.pf ppf "%a[%a]: @[<hov>%a@]" pp_field field Location.pp loc pp_value v
 
 let extract ic fields =
   let print binding =

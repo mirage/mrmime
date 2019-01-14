@@ -36,7 +36,9 @@ let header : (Content.t * Header.t * (Number.t * Field.mail) list) Angstrom.t =
        (fun _ -> fail "Nothing to do")
        (fun _ -> fail "Nothing to do"))
   >>= fun fields -> return (Header.fold Number.zero fields Header.default)
-  >>= fun (header, fields) -> return (Content.fold_as_mail fields Content.default)
+  >>= fun (header, fields) ->
+  let fields = List.map (fun (idx, field, _) -> (idx, field)) fields in
+  return (Content.fold_as_mail fields Content.default)
   >>= fun (content, fields) -> return (content, header, fields)
 
 let octet boundary content =

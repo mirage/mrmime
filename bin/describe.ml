@@ -103,13 +103,13 @@ let count header =
   let fields =
     Header.Set.fold
       (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
-         | Header.B (Header.Field field, _) -> Header.Field.(capitalize (canonicalize field)) :: a
+         | Header.B (Header.Field field, _, _) -> Header.Field.(capitalize (canonicalize field)) :: a
          | _ -> a) header.Header.fields [] |>
     merge in
   let unsafes =
     Header.Set.fold
       (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
-         | Header.B (Header.Unsafe field, _) -> Header.Field.(capitalize (canonicalize field)) :: a
+         | Header.B (Header.Unsafe field, _, _) -> Header.Field.(capitalize (canonicalize field)) :: a
          | _ -> a) header.Header.unsafes [] |>
     merge in
   List.concat [ common; fields; unsafes ]

@@ -19,11 +19,14 @@ type mailbox = Rfc5322.mailbox =
 type t =
   { index : Number.t
   ; trace : mailbox option
-  ; received : (received list * Date.t option) list }
+  ; received : (received list * Date.t option) list
+  ; location : Location.t }
 and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
+
+let location { location; _ } = location
 
 let pp_trace ppf (local, (x, r)) = match r with
   | [] ->
@@ -59,10 +62,10 @@ let pp ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(vbox (list ~sep:(always "@\n&@ ") pp_received)) received
 
-let fold : (Number.t * ([> field ] as 'a)) list -> t list -> (t list * (Number.t * 'a) list) = fun fields t ->
+let fold : (Number.t * ([> field ] as 'a) * Location.t) list -> t list -> (t list * (Number.t * 'a * Location.t) list) = fun fields t ->
   List.fold_left
     (fun (t, rest) -> function
-       | index, `Trace (trace, received) -> { index; trace; received; } :: t, rest
-       | index, field -> t, (index, field) :: rest)
+       | index, `Trace (trace, received), loc -> { index; trace; received; location= loc; } :: t, rest
+       | index, field, loc -> t, (index, field, loc) :: rest)
     (t, []) fields
   |> fun (t, fields) -> t, List.rev fields

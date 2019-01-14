@@ -13,6 +13,7 @@ module Rfc6532 = Rfc6532
 
 (* / *)
 
+module Location = Location
 module Content_encoding = Content_encoding
 module MessageID = MessageID
 module Content_type = Content_type

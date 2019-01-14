@@ -141,7 +141,7 @@ module Value = struct
 end
 
 type value = V : 'a field -> value
-type binding = B : 'a field * 'a -> binding
+type binding = B : 'a field * 'a * Location.t -> binding
 
 type t =
   { date : Set.t
@@ -191,7 +191,7 @@ let pp ppf t =
       (fun pp set ->
          List.iter
            (fun (x : Number.t) ->
-              let B (field, value) = Ptmap.find (x :> int) t.ordered in
+              let B (field, value, _) = Ptmap.find (x :> int) t.ordered in
               pp (V field) (Value.of_field field value))
            (Set.elements set))
       field Fmt.nop Value.pp in
@@ -232,121 +232,209 @@ let pp ppf t =
     Fmt.(pp (always "unsafes")) t.unsafes
     Fmt.(pp (always "lines")) t.lines
 
-let get : type a. a field -> t -> a list = fun field t -> match field with
-  | Date -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Date, v) -> (v : Date.t) :: a | _ -> a) t.date []
-  | From -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (From, v) -> (v : Mailbox.t list) :: a | _ -> a) t.from []
-  | Sender -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Sender, v) -> (v : Mailbox.t) :: a | _ -> a) t.sender []
-  | ReplyTo -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (ReplyTo, v) -> (v : Address.t list) :: a | _ -> a) t.reply_to []
-  | To -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (To, v) -> (v : Address.t list) :: a | _ -> a) t.too []
-  | Cc -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Cc, v) -> (v : Address.t list) :: a | _ -> a) t.cc []
-  | Bcc -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Bcc, v) -> (v : Address.t list) :: a | _ -> a) t.bcc []
-  | Subject -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Subject, v) -> (v : Unstructured.t) :: a | _ -> a) t.subject []
-  | MessageID -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (MessageID, v) -> (v : MessageID.t) :: a | _ -> a) t.message_id []
-  | InReplyTo -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (InReplyTo, v) -> (v : phrase_or_message_id list) :: a | _ -> a) t.in_reply_to []
-  | References -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (References, v) -> (v : phrase_or_message_id list) :: a | _ -> a) t.references []
-  | Comments -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Comments, v) -> (v : Unstructured.t) :: a | _ -> a) t.comments []
-  | Keywords -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Keywords, v) -> (v : phrase list) :: a | _ -> a) t.keywords []
-  | Resent -> t.resents
-  | Trace -> t.traces
+let get : type a. a field -> t -> (a * Location.t) list = fun field t -> match field with
+  | Date ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Date, v, loc) -> ((v : Date.t), loc) :: a
+         | _ -> a)
+      t.date []
+  | From ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (From, v, loc) -> ((v : Mailbox.t list), loc) :: a
+         | _ -> a)
+      t.from []
+  | Sender ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Sender, v, loc) -> ((v : Mailbox.t), loc) :: a
+         | _ -> a)
+      t.sender []
+  | ReplyTo ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (ReplyTo, v, loc) -> ((v : Address.t list), loc) :: a
+         | _ -> a)
+      t.reply_to []
+  | To ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (To, v, loc) -> ((v : Address.t list), loc) :: a
+         | _ -> a)
+      t.too []
+  | Cc ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Cc, v, loc) -> ((v : Address.t list), loc) :: a
+         | _ -> a)
+      t.cc []
+  | Bcc ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Bcc, v, loc) -> ((v : Address.t list), loc) :: a
+         | _ -> a)
+      t.bcc []
+  | Subject ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Subject, v, loc) -> ((v : Unstructured.t), loc) :: a
+         | _ -> a)
+      t.subject []
+  | MessageID ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (MessageID, v, loc) -> ((v : MessageID.t), loc) :: a
+         | _ -> a)
+      t.message_id []
+  | InReplyTo ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (InReplyTo, v, loc) -> ((v : phrase_or_message_id list), loc) :: a
+         | _ -> a)
+      t.in_reply_to []
+  | References ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (References, v, loc) -> ((v : phrase_or_message_id list), loc) :: a
+         | _ -> a)
+      t.references []
+  | Comments ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Comments, v, loc) -> ((v : Unstructured.t), loc) :: a
+         | _ -> a)
+      t.comments []
+  | Keywords ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Keywords, v, loc) -> ((v : phrase list), loc) :: a
+         | _ -> a)
+      t.keywords []
+  | Resent -> List.map (fun resent -> resent, Location.none) t.resents
+  | Trace -> List.map (fun trace -> trace, Trace.location trace) t.traces
   | Field field ->
-    Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with
-        | B (Field field', v) ->
-          if Field.equal field field'
-          then (v : Unstructured.t) :: a
-          else a
-        | _ -> a) t.fields []
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Field field', v, loc) ->
+           if Field.equal field field'
+           then ((v : Unstructured.t), loc) :: a
+           else a
+         | _ -> a) t.fields []
   | Unsafe field ->
-    Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with
-        | B (Unsafe field', v) ->
-          if Field.equal field field'
-          then (v : Unstructured.t) :: a
-          else a
-        | _ -> a) t.unsafes []
-  | Line -> Set.fold (fun i a -> match Ptmap.find (i :> int) t.ordered with B (Line, v) -> (v : string) :: a | _ -> a) t.lines []
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Unsafe field', v, loc) ->
+           if Field.equal field field'
+           then ((v : Unstructured.t), loc) :: a
+           else a
+         | _ -> a) t.unsafes []
+  | Line ->
+    Set.fold
+      (fun i a -> match Ptmap.find (i :> int) t.ordered with
+         | B (Line, v, loc) -> ((v : string), loc) :: a
+         | _ -> a)
+      t.lines []
 
-let with_date n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Date, v)) t.ordered
+let with_date ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Date, v, location)) t.ordered
          ; date = Set.add n t.date }
 
-let with_from n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (From, v)) t.ordered
+let with_from ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (From, v, location)) t.ordered
          ; from = Set.add n t.from }
 
-let with_sender n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Sender, v)) t.ordered
+let with_sender ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Sender, v, location)) t.ordered
          ; sender = Set.add n t.sender }
 
-let with_reply_to n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (ReplyTo, v)) t.ordered
+let with_reply_to ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (ReplyTo, v, location)) t.ordered
          ; reply_to = Set.add n t.reply_to }
 
-let with_to n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (To, v)) t.ordered
+let with_to ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (To, v, location)) t.ordered
          ; too = Set.add n t.too }
 
-let with_cc n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Cc, v)) t.ordered
+let with_cc ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Cc, v, location)) t.ordered
          ; cc = Set.add n t.cc }
 
-let with_bcc n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Bcc, v)) t.ordered
+let with_bcc ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Bcc, v, location)) t.ordered
          ; bcc = Set.add n t.bcc }
 
-let with_subject n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Subject, v)) t.ordered
+let with_subject ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Subject, v, location)) t.ordered
          ; subject = Set.add n t.subject }
 
-let with_message_id n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (MessageID, v)) t.ordered
+let with_message_id ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (MessageID, v, location)) t.ordered
          ; message_id = Set.add n t.message_id }
 
-let with_in_reply_to n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (InReplyTo, v)) t.ordered
+let with_in_reply_to ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (InReplyTo, v, location)) t.ordered
          ; in_reply_to = Set.add n t.in_reply_to }
 
-let with_references n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (References, v)) t.ordered
+let with_references ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (References, v, location)) t.ordered
          ; references = Set.add n t.references }
 
-let with_comments n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Comments, v)) t.ordered
+let with_comments ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Comments, v, location)) t.ordered
          ; comments = Set.add n t.comments }
 
-let with_keywords n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Keywords, v)) t.ordered
+let with_keywords ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Keywords, v, location)) t.ordered
          ; keywords = Set.add n t.keywords }
 
-let with_line n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Line, v)) t.ordered
+let with_line ?(location = Location.none) n t v =
+  { t with ordered = Ptmap.add (n :> int) (B (Line, v, location)) t.ordered
          ; lines = Set.add n t.lines }
 
-let with_field n t field v =
-  { t with ordered = Ptmap.add (n :> int) (B (Field field, v)) t.ordered
+let with_field ?(location = Location.none) n t field v =
+  { t with ordered = Ptmap.add (n :> int) (B (Field field, v, location)) t.ordered
          ; fields = Set.add n t.fields }
 
-let with_unsafe n t field v =
-  { t with ordered = Ptmap.add (n :> int) (B (Unsafe field, v)) t.ordered
+let with_unsafe ?(location = Location.none) n t field v =
+  { t with ordered = Ptmap.add (n :> int) (B (Unsafe field, v, location)) t.ordered
          ; unsafes = Set.add n t.unsafes }
 
-let fold : Number.t -> ([> Rfc5322.field ] as 'a) list -> t -> (t * (Number.t * 'a) list) = fun n fields t ->
+let fold : Number.t -> (([> Rfc5322.field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list) = fun n fields t ->
   List.fold_left
     (fun (n, t, rest) -> function
-       | `Date v -> Number.succ n, with_date n t v, rest
-       | `From v -> Number.succ n, with_from n t v, rest
-       | `Sender v -> Number.succ n, with_sender n t v, rest
-       | `ReplyTo v -> Number.succ n, with_reply_to n t v, rest
-       | `To v -> Number.succ n, with_to n t v, rest
-       | `Cc v -> Number.succ n, with_cc n t v, rest
-       | `Bcc v -> Number.succ n, with_bcc n t v, rest
-       | `Subject v -> Number.succ n, with_subject n t v, rest
-       | `MessageID v -> Number.succ n, with_message_id n t v, rest
-       | `InReplyTo v -> Number.succ n, with_in_reply_to n t v, rest
-       | `References v -> Number.succ n, with_references n t v, rest
-       | `Comments v -> Number.succ n, with_comments n t v, rest
-       | `Keywords v -> Number.succ n, with_keywords n t v, rest
-       | `Field (k, v) -> Number.succ n, with_field n t k v, rest
-       | `Unsafe (k, v) -> Number.succ n, with_unsafe n t k v, rest
-       | field -> Number.succ n, t, (n, field) :: rest)
+       | `Date v, loc ->
+         Number.succ n, with_date ~location:loc n t v, rest
+       | `From v, loc ->
+         Number.succ n, with_from ~location:loc n t v, rest
+       | `Sender v, loc ->
+         Number.succ n, with_sender ~location:loc n t v, rest
+       | `ReplyTo v, loc ->
+         Number.succ n, with_reply_to ~location:loc n t v, rest
+       | `To v, loc ->
+         Number.succ n, with_to ~location:loc n t v, rest
+       | `Cc v, loc ->
+         Number.succ n, with_cc ~location:loc n t v, rest
+       | `Bcc v, loc ->
+         Number.succ n, with_bcc ~location:loc n t v, rest
+       | `Subject v, loc ->
+         Number.succ n, with_subject ~location:loc n t v, rest
+       | `MessageID v, loc ->
+         Number.succ n, with_message_id ~location:loc n t v, rest
+       | `InReplyTo v, loc ->
+         Number.succ n, with_in_reply_to ~location:loc n t v, rest
+       | `References v, loc ->
+         Number.succ n, with_references ~location:loc n t v, rest
+       | `Comments v, loc ->
+         Number.succ n, with_comments ~location:loc n t v, rest
+       | `Keywords v, loc ->
+         Number.succ n, with_keywords ~location:loc n t v, rest
+       | `Field (k, v), loc ->
+         Number.succ n, with_field ~location:loc n t k v, rest
+       | `Unsafe (k, v), loc ->
+         Number.succ n, with_unsafe ~location:loc n t k v, rest
+       | field, loc ->
+         Number.succ n, t, (n, field, loc) :: rest)
     (n, t, []) fields
   |> fun (n, t, fields) -> (n, t, List.rev fields)
   |> fun (_, t, fields) -> Trace.fold fields []
