@@ -1,3 +1,4 @@
+open Common
 open Mrmime
 
 let rec print_atom ?(pad : string * string = "", "") { Mail.content; part; _ } =
@@ -60,13 +61,14 @@ and print_mail ?(pad : string * string = "", "") mail =
 
 let parser = Mrmime.Mail.mail
 
-let mail_of_input ic =
+let mail_of_input ~newline ic =
   let open Angstrom.Buffered in
   let raw = Bytes.create 4096 in
   let rec go = function
     | Partial continue ->
       let len = input ic raw 0 (Bytes.length raw) in
-      let res = if len = 0 then continue `Eof else continue (`String (Bytes.sub_string raw 0 len)) in
+      let raw = sanitize_input newline raw len in
+      let res = if len = 0 then continue `Eof else continue (`String raw) in
       go res
     | Done (_, mail) -> Ok mail
     | Fail (_, _, err) ->
@@ -127,18 +129,18 @@ let pp_header =
     Fmt.pf ppf "%s: %d" field value in
   Fmt.(hvbox (list ~sep:(always "@\n") pp_data))
 
-let parse_and_print with_header ic =
+let parse_and_print ~newline with_header ic =
   let open Rresult.R in
-  mail_of_input ic >>| fun (header, mail) ->
+  mail_of_input ~newline ic >>| fun (header, mail) ->
   if with_header then Fmt.pr "header: %a.\n%!" pp_header (count header) ;
   print_mail mail
 
-let run with_header input =
+let run newline with_header input =
   let close, ic =
     match input with
     | `Path x -> let ic = open_in (Fpath.to_string x) in (fun () -> close_in ic), ic
     | `Std -> (fun () -> ()), stdin in
-  let v = parse_and_print with_header ic in
+  let v = parse_and_print ~newline with_header ic in
   close () ; v
 
 open Cmdliner
@@ -166,4 +168,4 @@ let command =
   let man =
     [ `S Manpage.s_description
     ; `P "Extract fields from a mail" ] in
-  Term.(const run $ header $ source), Term.info "describe" ~doc ~exits ~man
+  Term.(const run $ Common.newline $ header $ source), Term.info "describe" ~doc ~exits ~man

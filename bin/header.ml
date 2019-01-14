@@ -1,16 +1,18 @@
 module Option = Opt
+open Common
 
 let parser = Mrmime.Mail.header
 
 let header_of_string = Angstrom.parse_string parser
 
-let header_of_input ic =
+let header_of_input ~newline ic =
   let open Angstrom.Buffered in
   let raw = Bytes.create 4096 in
   let rec go = function
     | Partial continue ->
       let len = input ic raw 0 (Bytes.length raw) in
-      let res = if len = 0 then continue `Eof else continue (`String (Bytes.sub_string raw 0 len)) in
+      let raw = sanitize_input newline raw len in
+      let res = if len = 0 then continue `Eof else continue (`String raw) in
       go res
     | Done (_, header) -> Ok header
     | Fail (_, _, err) -> Error (`Msg err) in
@@ -68,19 +70,19 @@ let pp_of_binding ppf (Header.B (field, v, loc)) =
   let pp_value = pp_of_field field in
   Fmt.pf ppf "%a[%a]: @[<hov>%a@]" pp_field field Location.pp loc pp_value v
 
-let extract ic fields =
+let extract ~newline ic fields =
   let print binding =
     Fmt.pr "%a@\n" pp_of_binding binding in
   let open Rresult.R in
-  header_of_input ic >>= fun (_, header, _) ->
+  header_of_input ~newline ic >>= fun (_, header, _) ->
   get_fields fields header >>| List.iter print
 
-let run input fields =
+let run newline input fields =
   let close, ic =
     match input with
     | `Path x -> let ic = open_in (Fpath.to_string x) in (fun () -> close_in ic), ic
     | `Std -> (fun () -> ()), stdin in
-  let v = extract ic fields in
+  let v = extract ~newline ic fields in
   close () ; v
 
 open Cmdliner
@@ -129,4 +131,4 @@ let command =
   let man =
     [ `S Manpage.s_description
     ; `P "Extract fields from a mail" ] in
-  Term.(const run $ source $ fields), Term.info "header" ~doc ~exits ~man
+  Term.(const run $ Common.newline $ source $ fields), Term.info "header" ~doc ~exits ~man
