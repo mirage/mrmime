@@ -151,49 +151,55 @@ let normalize_quoted_printable_with_uutf ?(chunk = 512) ~charset raw =
 
 let normalize_base64_with_rosetta ?(chunk = 512) ~charset raw =
   let res = Buffer.create chunk in
-  let decoded = B64.decode raw in
-  let decoder = Rosetta.decoder charset (`String decoded) in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
-  let rec go_encode v =
-    match (v, Uutf.encode encoder v) with
-    | `End, `Ok -> `Ok
-    | _, `Ok -> go_decode ()
-    | _, `Partial -> assert false
-  (* XXX(dinosaure): [Uutf.encoder_dst encoder <> `Manual] *)
-  and go_decode () =
-    match Rosetta.decode decoder with
-    | `Await ->
+  match B64.decode_result raw with
+  | Error (`Malformed | `Wrong_padding) ->
+    Rresult.R.error_msgf "Malformed input: %S" raw
+  | Ok decoded ->
+    let decoder = Rosetta.decoder charset (`String decoded) in
+    let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
+    let rec go_encode v =
+      match (v, Uutf.encode encoder v) with
+      | `End, `Ok -> `Ok
+      | _, `Ok -> go_decode ()
+      | _, `Partial -> assert false
+    (* XXX(dinosaure): [Uutf.encoder_dst encoder <> `Manual] *)
+    and go_decode () =
+      match Rosetta.decode decoder with
+      | `Await ->
         assert false
-        (* XXX(dinosaure): [Rosetta.decoder_src decoder <> `Manual] *)
-    | #share as v -> go_encode v
-    | `Malformed _ as v -> v
-  in
-  match go_decode () with
-  | `Ok -> Ok (Buffer.contents res)
-  | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
+      (* XXX(dinosaure): [Rosetta.decoder_src decoder <> `Manual] *)
+      | #share as v -> go_encode v
+      | `Malformed _ as v -> v
+    in
+    match go_decode () with
+    | `Ok -> Ok (Buffer.contents res)
+    | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
 
 let normalize_base64_with_uutf ?(chunk = 512) ~charset raw =
   let res = Buffer.create chunk in
-  let decoded = B64.decode raw in
-  let decoder = Uutf.decoder ~encoding:charset (`String decoded) in
-  let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
-  let rec go_encode v =
-    match (v, Uutf.encode encoder v) with
-    | `End, `Ok -> `Ok
-    | _, `Ok -> go_decode ()
-    | _, `Partial -> assert false
-  (* XXX(dinosaure): [Uutf.encoder_dst encoder <> `Manual] *)
-  and go_decode () =
-    match Uutf.decode decoder with
-    | `Await ->
+  match B64.decode_result raw with
+  | Error (`Malformed | `Wrong_padding) ->
+    Rresult.R.error_msgf "Malformed input: %S" raw
+  | Ok decoded ->
+    let decoder = Uutf.decoder ~encoding:charset (`String decoded) in
+    let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
+    let rec go_encode v =
+      match (v, Uutf.encode encoder v) with
+      | `End, `Ok -> `Ok
+      | _, `Ok -> go_decode ()
+      | _, `Partial -> assert false
+    (* XXX(dinosaure): [Uutf.encoder_dst encoder <> `Manual] *)
+    and go_decode () =
+      match Uutf.decode decoder with
+      | `Await ->
         assert false
-        (* XXX(dinosaure): [Rosetta.decoder_src decoder <> `Manual] *)
-    | #share as v -> go_encode v
-    | `Malformed _ as v -> v
-  in
-  match go_decode () with
-  | `Ok -> Ok (Buffer.contents res)
-  | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
+      (* XXX(dinosaure): [Rosetta.decoder_src decoder <> `Manual] *)
+      | #share as v -> go_encode v
+      | `Malformed _ as v -> v
+    in
+    match go_decode () with
+    | `Ok -> Ok (Buffer.contents res)
+    | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
 
 let normalize_quoted_printable ?(chunk = 512) ~charset raw =
   match charset with
