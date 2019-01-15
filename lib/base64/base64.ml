@@ -10,7 +10,7 @@ let parser ~write_data end_of_body =
          let raw = Bigstringaf.substring ba ~off ~len in
          String.equal raw end_of_body) in
 
-  let trailer =
+  let trailer () =
     let rec finish () = match Rfc2045.decode dec with
       | `Await -> assert false
       | `Flush data -> write_data data ; finish ()
@@ -32,7 +32,7 @@ let parser ~write_data end_of_body =
   let choose chunk = function
     | true ->
       let chunk = Bytes.sub chunk 0 (Bytes.length chunk - 1) in
-      Rfc2045.src dec chunk 0 (Bytes.length chunk) ; trailer
+      Rfc2045.src dec chunk 0 (Bytes.length chunk) ; trailer ()
     | false ->
       Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0] ;
       Rfc2045.src dec chunk 0 (Bytes.length chunk) ;

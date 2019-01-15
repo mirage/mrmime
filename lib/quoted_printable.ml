@@ -10,7 +10,7 @@ let parser ~write_data ~write_line end_of_body =
          let raw = Bigstringaf.substring ba ~off ~len in
          String.equal raw end_of_body) in
 
-  let trailer =
+  let trailer () =
     let rec finish () = match Pecu.decode dec with
       | `Await -> assert false
       (* on [pecu], because [finish] was called just before [Pecu.src dec
@@ -42,7 +42,7 @@ let parser ~write_data ~write_line end_of_body =
          so it's safe to notice to [pecu] the last [chunk]. [trailer] will
          unroll all outputs availables on [pecu]. *)
       let chunk = Bytes.sub chunk 0 (Bytes.length chunk - 1) in
-      Pecu.src dec chunk 0 (Bytes.length chunk) ; trailer
+      Pecu.src dec chunk 0 (Bytes.length chunk) ; trailer ()
     | false ->
       (* at this stage, byte after [chunk] is NOT a part of [end_of_body]. We
          can notice to [pecu] [chunk + end_of_body.[0]], advance on the
