@@ -51,14 +51,14 @@ let octet boundary content =
     let write_data = Buffer.add_string buf in
     (match Content.encoding content with
      | `Quoted_printable -> Quoted_printable.to_end_of_input ~write_data ~write_line
-     | `Base64 -> Base64.to_end_of_input ~write_data
+     | `Base64 -> B64.to_end_of_input ~write_data
      | `Bit7 | `Bit8 | `Binary -> Rfc5322.to_end_of_input ~write_data
      | `Ietf_token _x | `X_token _x -> assert false) >>| fun () -> Buffer.contents buf
   | Some boundary ->
     let end_of_body = Rfc2046.make_delimiter boundary in
     match Content.encoding content with
     | `Quoted_printable -> Quoted_printable.with_buffer end_of_body
-    | `Base64 -> Base64.with_buffer end_of_body
+    | `Base64 -> B64.with_buffer end_of_body
     | `Bit7 | `Bit8 | `Binary -> Rfc5322.with_buffer end_of_body
     | `Ietf_token _x | `X_token _x -> assert false
 

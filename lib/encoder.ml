@@ -365,16 +365,21 @@ let write_uint8 =
   in
   fun a k t -> write k ~length ~blit ~off:0 ~len:1 a t
 
-module type EndianBigstringSig = EndianBigstring.EndianBigstringSig
-module type EndianBytesSig = EndianBytes.EndianBytesSig
-
-module type SE = sig
+module type S = sig
   val write_uint16 : int -> (encoder -> 'v state) -> encoder -> 'v state
   val write_uint32 : int32 -> (encoder -> 'v state) -> encoder -> 'v state
   val write_uint64 : int64 -> (encoder -> 'v state) -> encoder -> 'v state
 end
 
-module Make (EBigstring : EndianBigstringSig) : SE = struct
+module type ENDIAN = sig
+  type t = Bigstringaf.t
+
+  val set_int16 : t -> int -> int -> unit
+  val set_int32 : t -> int -> int32 -> unit
+  val set_int64 : t -> int -> int64 -> unit
+end
+
+module Make (X : ENDIAN) : S = struct
   let _length _ = assert false
 
   let write_uint16 =
@@ -382,7 +387,7 @@ module Make (EBigstring : EndianBigstringSig) : SE = struct
     let blit src src_off dst dst_off len =
       assert (src_off = 0) ;
       assert (len = 2) ;
-      EBigstring.set_int16 dst dst_off src
+      X.set_int16 dst dst_off src
     in
     fun a k t -> write k ~length ~blit ~off:0 ~len:2 a t
 
@@ -391,7 +396,7 @@ module Make (EBigstring : EndianBigstringSig) : SE = struct
     let blit src src_off dst dst_off len =
       assert (src_off = 0) ;
       assert (len = 4) ;
-      EBigstring.set_int32 dst dst_off src
+      X.set_int32 dst dst_off src
     in
     fun a k t -> write k ~length ~blit ~off:0 ~len:4 a t
 
@@ -400,11 +405,26 @@ module Make (EBigstring : EndianBigstringSig) : SE = struct
     let blit src src_off dst dst_off len =
       assert (src_off = 0) ;
       assert (len = 8) ;
-      EBigstring.set_int64 dst dst_off src
+      X.set_int64 dst dst_off src
     in
     fun a k t -> write k ~length ~blit ~off:0 ~len:8 a t
 end
 
-module LE = Make (EndianBigstring.LittleEndian_unsafe)
-module BE = Make (EndianBigstring.BigEndian_unsafe)
+module LE' = struct
+  type t = Bigstringaf.t
 
+  let set_int16 = Bigstringaf.set_int16_le
+  let set_int32 = Bigstringaf.set_int32_le
+  let set_int64 = Bigstringaf.set_int64_le
+end
+
+module BE' = struct
+  type t = Bigstringaf.t
+
+  let set_int16 = Bigstringaf.set_int16_be
+  let set_int32 = Bigstringaf.set_int32_be
+  let set_int64 = Bigstringaf.set_int64_be
+end
+
+module LE = Make(LE')
+module BE = Make(BE')

@@ -151,9 +151,8 @@ let normalize_quoted_printable_with_uutf ?(chunk = 512) ~charset raw =
 
 let normalize_base64_with_rosetta ?(chunk = 512) ~charset raw =
   let res = Buffer.create chunk in
-  match B64.decode_result raw with
-  | Error (`Malformed | `Wrong_padding) ->
-    Rresult.R.error_msgf "Malformed input: %S" raw
+  match Base64.decode raw with
+  | Error _ as err -> err
   | Ok decoded ->
     let decoder = Rosetta.decoder charset (`String decoded) in
     let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
@@ -177,9 +176,8 @@ let normalize_base64_with_rosetta ?(chunk = 512) ~charset raw =
 
 let normalize_base64_with_uutf ?(chunk = 512) ~charset raw =
   let res = Buffer.create chunk in
-  match B64.decode_result raw with
-  | Error (`Malformed | `Wrong_padding) ->
-    Rresult.R.error_msgf "Malformed input: %S" raw
+  match Base64.decode raw with
+  | Error _ as err -> err
   | Ok decoded ->
     let decoder = Uutf.decoder ~encoding:charset (`String decoded) in
     let encoder = Uutf.encoder `UTF_8 (`Buffer res) in
@@ -246,11 +244,11 @@ let normalize_base64 ?chunk ~charset raw =
       (* XXX(dinosaure): UTF-8 is a superset of ASCII. Then, we probably need to
        check if characters are between '\000' and '\127' but it's probably ok.
        paranoid mode or not? TODO! *)
-      Ok (B64.decode raw)
+      Base64.decode raw
   | #uutf_charset as charset -> normalize_base64_with_uutf ?chunk ~charset raw
   | #Rosetta.encoding as charset ->
       normalize_base64_with_rosetta ?chunk ~charset raw
-  | `Charset _ -> Ok (B64.decode raw)
+  | `Charset _ -> Base64.decode raw
 
 let normalize ?chunk ~charset ~encoding raw =
   match encoding with

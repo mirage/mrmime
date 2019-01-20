@@ -1,7 +1,7 @@
 open Angstrom
 
 let parser ~write_data end_of_body =
-  let dec = Rfc2045.decoder `Manual in
+  let dec = Base64_rfc2045.decoder `Manual in
 
   let check_end_of_body =
     let expected_len = String.length end_of_body in
@@ -11,16 +11,16 @@ let parser ~write_data end_of_body =
          String.equal raw end_of_body) in
 
   let trailer () =
-    let rec finish () = match Rfc2045.decode dec with
+    let rec finish () = match Base64_rfc2045.decode dec with
       | `Await -> assert false
       | `Flush data -> write_data data ; finish ()
       | `Malformed err -> fail err
       | `Wrong_padding -> fail "wrong padding"
       | `End -> commit
 
-    and go () = match Rfc2045.decode dec with
+    and go () = match Base64_rfc2045.decode dec with
       | `Await ->
-        Rfc2045.src dec Bytes.empty 0 0 ; finish ()
+        Base64_rfc2045.src dec Bytes.empty 0 0 ; finish ()
       | `Flush data -> write_data data ; go ()
       | `Malformed err -> fail err
       | `Wrong_padding -> fail "wrong padding"
@@ -32,15 +32,15 @@ let parser ~write_data end_of_body =
   let choose chunk = function
     | true ->
       let chunk = Bytes.sub chunk 0 (Bytes.length chunk - 1) in
-      Rfc2045.src dec chunk 0 (Bytes.length chunk) ; trailer ()
+      Base64_rfc2045.src dec chunk 0 (Bytes.length chunk) ; trailer ()
     | false ->
       Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0] ;
-      Rfc2045.src dec chunk 0 (Bytes.length chunk) ;
+      Base64_rfc2045.src dec chunk 0 (Bytes.length chunk) ;
       advance 1 *> m in
 
   Unsafe.take_while ((<>) end_of_body.[0]) Bigstringaf.substring
   >>= fun chunk ->
-  let rec go () = match Rfc2045.decode dec with
+  let rec go () = match Base64_rfc2045.decode dec with
     | `End -> commit
     | `Await ->
       let chunk' = Bytes.create (String.length chunk + 1) in
@@ -59,18 +59,18 @@ let with_buffer end_of_body =
   parser ~write_data end_of_body >>| fun () -> Buffer.contents buf
 
 let to_end_of_input ~write_data =
-  let dec = Rfc2045.decoder `Manual in
+  let dec = Base64_rfc2045.decoder `Manual in
 
-  fix @@ fun m -> match Rfc2045.decode dec with
+  fix @@ fun m -> match Base64_rfc2045.decode dec with
   | `End -> commit
   | `Await ->
     (peek_char >>= function
-      | None -> Rfc2045.src dec Bytes.empty 0 0 ; return ()
+      | None -> Base64_rfc2045.src dec Bytes.empty 0 0 ; return ()
       | Some _ -> available >>= fun n -> Unsafe.take n
           (fun ba ~off ~len ->
              let chunk = Bytes.create len in
              Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len ;
-             Rfc2045.src dec chunk 0 len)
+             Base64_rfc2045.src dec chunk 0 len)
         >>= fun () -> m)
   | `Flush data -> write_data data ; m
   | `Malformed err -> fail err
