@@ -79,18 +79,24 @@ module Make (Encoder : ENCODER) = struct
 
   let rec keval : type ty v l.
     Fe.t -> (Fe.t Encoder.state -> v) -> (ty, v, l) tree -> ty =
-    fun t k -> function
+    fun t k x ->
+      let rec k' tree = function
+        | Encoder.End t -> keval t k tree
+        | Encoder.Continue {continue; encoder} -> k' tree (continue encoder)
+        | Encoder.Flush {continue; iovecs} ->
+          let n = t.writer iovecs in
+          k' tree (continue n)
+      in match x with
       | Leaf fmt -> keval_fmt t k fmt
       | Node (Box n, tree) ->
-        let rec k' = function
-          | Encoder.End t -> keval t k tree
-          | Encoder.Continue {continue; encoder} -> k' (continue encoder)
-          | Encoder.Flush {continue; iovecs} ->
-            let n = t.writer iovecs in
-            k' (continue n)
-        in
-        k' (Encoder.box n (Fe.continue t) t.Fe.encoder)
-      | _ -> assert false
-
+        k' tree (Encoder.box n (Fe.continue t) t.Fe.encoder)
+      | Node (HoV n, tree) ->
+        k' tree (Encoder.hovbox n (Fe.continue t) t.Fe.encoder)
+      | Node (HaV n, tree) ->
+        k' tree (Encoder.hvbox n (Fe.continue t) t.Fe.encoder)
+      | Node (H, tree) ->
+        k' tree (Encoder.hbox (Fe.continue t) t.Fe.encoder)
+      | Node (V n, tree) ->
+        k' tree (Encoder.vbox n (Fe.continue t) t.Fe.encoder)
 end
 
