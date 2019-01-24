@@ -98,5 +98,19 @@ module Make (Encoder : ENCODER) = struct
         k' tree (Encoder.hbox (Fe.continue t) t.Fe.encoder)
       | Node (V n, tree) ->
         k' tree (Encoder.vbox n (Fe.continue t) t.Fe.encoder)
+
+  let eval : Fe.t -> ('ty, 'v, 'l) tree -> 'ty =
+    fun t tree ->
+      let rec finish = function
+        | Encoder.Continue {continue; encoder} -> finish (continue encoder)
+        | Encoder.Flush {continue; iovecs} ->
+          let n = t.Fe.writer iovecs in
+          finish (continue n)
+        | Encoder.End { Fe.encoder; _ } -> encoder in
+      keval t finish tree
+
+
+  let o fmt = Leaf fmt
+  let node k t = Node (k, t)
 end
 

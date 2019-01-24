@@ -19,6 +19,11 @@
  (libraries jsonm alcotest mrmime))
 
 (executable
+ (name box)
+ (modules box)
+ (libraries jsonm alcotest mrmime))
+
+(executable
  (name obs_unstruct)
  (modules obs_unstruct)
  (libraries alcotest mrmime))
@@ -52,6 +57,11 @@
  (name runtest)
  (deps (:fe fe.exe))
  (action (run %{fe} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:box box.exe))
+ (action (run %{box} --color=always)))
 
 (alias
  (name runtest)

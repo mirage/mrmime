@@ -1,7 +1,13 @@
 type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
 
-external is_a_sub : ('a, 'b) bigarray -> int -> ('a, 'b) bigarray -> int -> bool = "caml_bigarray_is_a_sub" [@@noalloc]
-external bigarray_physically_equal : ('a, 'b) bigarray -> ('a, 'b) bigarray -> bool = "caml_bigarray_physically_equal" [@@noalloc]
+external is_a_sub :
+  ('a, 'b) bigarray -> int ->
+  ('a, 'b) bigarray -> int -> bool = "caml_bigarray_is_a_sub" [@@noalloc]
+external bigarray_physically_equal :
+  ('a, 'b) bigarray ->
+  ('a, 'b) bigarray -> bool = "caml_bigarray_physically_equal" [@@noalloc]
+
+[@@@warning "-32"]
 
 module type V = sig
   type t
@@ -17,7 +23,6 @@ module RBQ (V : V) = struct
   module Queue = Ke.Fke.Weighted
 
   type t = {a: V.t array; c: int; m: int; q: (int, Bigarray.int_elt) Queue.t}
-  and value = V.t
 
   let make capacity =
     let q, capacity = Queue.create ~capacity Bigarray.Int in
@@ -74,8 +79,6 @@ module RBQ (V : V) = struct
     Queue.rev_iter (fun i -> res := t.a.(i) :: !res) t.q ;
     !res
 end
-
-type 'a blitter = 'a -> int -> Bigstringaf.t -> int -> int -> unit
 
 module RBA = Ke.Fke.Weighted
 
@@ -157,6 +160,9 @@ type 'v state =
   | Flush of {continue : int -> 'v state; iovecs : IOVec.t list}
   | Continue of {continue : encoder -> 'v state; encoder: encoder}
   | End of 'v
+
+type 'r k0 = (encoder -> 'r state) -> encoder -> 'r state
+type ('a, 'r) k1 = 'a -> (encoder -> 'r state) -> encoder -> 'r state
 
 let create len =
   let write, _ = RBA.create ~capacity:len Bigarray.Char in

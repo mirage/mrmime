@@ -1,6 +1,7 @@
 module Encoder = Encoder
 module Fe = Fe
 module Box = Box
+module Wrap = Wrap
 module Utils = Utils
 
 (* / *)

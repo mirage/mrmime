@@ -268,6 +268,10 @@ let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox option =
 let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
  fun name mailbox -> {mailbox with Rfc5322.name= Some name}
 
+module Encoder = struct
+  module Box = Box.Make(Wrap)
+end
+
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
   | `String x -> Fmt.pf ppf "%S" x
