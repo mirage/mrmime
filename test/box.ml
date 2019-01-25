@@ -22,8 +22,8 @@ let rec value t x =
   | `Null -> Box.Fe.string t "null"
   | `Float f -> Box.Fe.string t (Fmt.strf "%.16g" f)
   | `String s -> Box.keval t identity Box.(o [ fmt Fe.[char $ '"'; !!string; char $ '"'] ]) s
-  | `A a -> Box.keval t identity Box.(node (hov 1) (o [ fmt Fe.[char $ '['; !!arr; char $ ']'] ])) a
-  | `O o -> Box.keval t identity Box.(node (hov 1) (o [ fmt Fe.[char $ '{'; !!obj; char $ '}'] ])) o
+  | `A a -> Box.keval t identity Box.(node (hov 5) (o [ fmt Fe.[char $ '['; !!arr; char $ ']'] ])) a
+  | `O o -> Box.keval t identity Box.(node (hov 5) (o [ fmt Fe.[char $ '{'; !!obj; char $ '}'] ])) o
 
 type await = [`Await]
 type error = [`Error of Jsonm.error]
@@ -136,7 +136,7 @@ let json = Alcotest.testable (Fmt.using json_to_string Fmt.string) ( = )
 let make v =
   Alcotest.test_case (json_to_string v) `Quick
   @@ fun () ->
-  let encoder = Mrmime.Wrap.create ~margin:5 ~new_line:"\n" 0x100 in
+  let encoder = Mrmime.Wrap.create ~new_line:"\n" 0x100 in
   let buffer = Buffer.create 0x100 in
   let t = Box.Fe.with_writer encoder (writer_of_buf buffer) in
   let _ = Box.eval t Box.(o [ fmt Fe.[!!value; yield] ]) v in

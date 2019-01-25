@@ -1,4 +1,5 @@
 module Fe = Mrmime.Fe.Make(Mrmime.Encoder)
+module Box = Mrmime.Box.Make(Mrmime.Wrap)
 
 let comma =
   Fe.using (fun () -> ',') Fe.char, ()
@@ -202,3 +203,38 @@ let () =
   let res = json_of_string res in
 
   Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res
+
+let comma = (Box.Fe.using (fun () -> ',') Box.Fe.char, ())
+
+let rec value t x =
+  let binding t (k, v) =
+    Box.keval t identity
+      Box.(o [ fmt Fe.[char $ '"'; !!string; char $ '"'; char $ ':']
+             ; space
+             ; fmt Fe.[!!value] ])
+      k v
+  in
+  let arr = Box.Fe.list ~sep:comma value in
+  let obj = Box.Fe.list ~sep:comma binding in
+  match x with
+  | `Bool true -> Box.Fe.string t "true"
+  | `Bool false -> Box.Fe.string t "false"
+  | `Null -> Box.Fe.string t "null"
+  | `Float f -> Box.Fe.string t (Fmt.strf "%.16g" f)
+  | `String s -> Box.keval t identity Box.(o [ fmt Fe.[char $ '"'; !!string; char $ '"'] ]) s
+  | `A a -> Box.keval t identity Box.(node (hov 5) (o [ fmt Fe.[char $ '['; !!arr; char $ ']'] ])) a
+  | `O o -> Box.keval t identity Box.(node (hov 5) (o [ fmt Fe.[char $ '{'; !!obj; char $ '}'] ])) o
+
+let () =
+  Crowbar.add_test ~name:"encoder with box" [ json ] @@ fun json ->
+  let encoder = Mrmime.Wrap.create ~new_line:"\n" 0x100 in
+  let buffer = Buffer.create 0x100 in
+  let t = Box.Fe.with_writer encoder (writer_of_buffer buffer) in
+
+  let _ = Box.eval t Box.(o [ fmt Fe.[ !!value ; yield ] ]) json in
+  let res = Buffer.contents buffer in
+
+  let res = json_of_string res in
+
+  Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res
+
