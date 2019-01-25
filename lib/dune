@@ -1,5 +1,6 @@
 (library
  (name mrmime)
  (public_name mrmime)
- (libraries butils
-            ptmap ke ptime ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))
+ (flags (:standard -w -32-27))
+ (libraries encoder
+            ptmap ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))

@@ -1,14 +1,14 @@
-type 'v state = 'v Encoder.state =
+type 'v state = 'v Level0.state =
   | Flush of
       { continue : int -> 'v state
-      ; iovecs : Encoder.IOVec.t list}
+      ; iovecs : Level0.IOVec.t list}
   | Continue of
-      { continue : Encoder.encoder -> 'v state
-      ; encoder: Encoder.encoder}
+      { continue : Level0.encoder -> 'v state
+      ; encoder: Level0.encoder}
   | End of 'v
 
 type encoder =
-  { encoder : Encoder.encoder
+  { encoder : Level0.encoder
   ; scan_stack : scan_atom Stack.t
   (* the pretty-printer formatting stack. each element is (left_total, element)
      where left_total is the value of left_total when the element has been
@@ -100,7 +100,7 @@ let enqueue t ({ length; _ } as token) =
 
 let lift
   :
-     writer:('x -> (Encoder.encoder -> 'r state) -> Encoder.encoder -> 'r state)
+     writer:('x -> (Level0.encoder -> 'r state) -> Level0.encoder -> 'r state)
   -> 'x
   -> (encoder -> 'r state)
   -> encoder
@@ -108,20 +108,20 @@ let lift
   = fun ~writer x k t ->
     writer x (fun encoder -> k { t with encoder }) t.encoder
 
-let output_bigstring ~off ~len x k t = lift ~writer:(Encoder.write_bigstring ~off ~len) x k t
-let output_bytes ~off ~len x k t = lift ~writer:(Encoder.write_bytes ~off ~len) x k t
-let output_string ~off ~len x k t = lift ~writer:(Encoder.write_string ~off ~len) x k t
-let output_char x k t = lift ~writer:Encoder.write_char x k t
-let output_uint8 x k t = lift ~writer:Encoder.write_uint8 x k t
+let output_bigstring ~off ~len x k t = lift ~writer:(Level0.write_bigstring ~off ~len) x k t
+let output_bytes ~off ~len x k t = lift ~writer:(Level0.write_bytes ~off ~len) x k t
+let output_string ~off ~len x k t = lift ~writer:(Level0.write_string ~off ~len) x k t
+let output_char x k t = lift ~writer:Level0.write_char x k t
+let output_uint8 x k t = lift ~writer:Level0.write_uint8 x k t
 
-let output_be_uint16 x k t = lift ~writer:Encoder.BE.write_uint16 x k t
-let output_be_uint32 x k t = lift ~writer:Encoder.BE.write_uint32 x k t
-let output_be_uint64 x k t = lift ~writer:Encoder.BE.write_uint64 x k t
-let output_le_uint16 x k t = lift ~writer:Encoder.LE.write_uint16 x k t
-let output_le_uint32 x k t = lift ~writer:Encoder.LE.write_uint32 x k t
-let output_le_uint64 x k t = lift ~writer:Encoder.LE.write_uint64 x k t
+let output_be_uint16 x k t = lift ~writer:Level0.BE.write_uint16 x k t
+let output_be_uint32 x k t = lift ~writer:Level0.BE.write_uint32 x k t
+let output_be_uint64 x k t = lift ~writer:Level0.BE.write_uint64 x k t
+let output_le_uint16 x k t = lift ~writer:Level0.LE.write_uint16 x k t
+let output_le_uint32 x k t = lift ~writer:Level0.LE.write_uint32 x k t
+let output_le_uint64 x k t = lift ~writer:Level0.LE.write_uint64 x k t
 
-let continue k t = Encoder.continue (fun encoder -> k { t with encoder }) t.encoder
+let continue k t = Level0.continue (fun encoder -> k { t with encoder }) t.encoder
 
 let output_value v k t =
   match v with
@@ -138,11 +138,11 @@ let output_value v k t =
   | BE_uint64 x -> output_be_uint64 x k t
 
 let output_new_line k ({ encoder; new_line; _ } as t) =
-  Encoder.write_string new_line (fun encoder -> k { t with encoder }) encoder
+  Level0.write_string new_line (fun encoder -> k { t with encoder }) encoder
 
 let output_spaces n k ({ encoder; _ } as t) =
   if n >= 0
-  then Encoder.write_string (String.make n ' ') (fun encoder -> k { t with encoder }) encoder
+  then Level0.write_string (String.make n ' ') (fun encoder -> k { t with encoder }) encoder
   else k t
 
 let break_new_line offset width k =
@@ -315,20 +315,12 @@ let close_box k t =
   end else k t
 
 let schedule_flush f t =
-  { t with encoder = Encoder.schedule_flush (fun n encoder -> f n { t with encoder }) t.encoder }
+  { t with encoder = Level0.schedule_flush (fun n encoder -> f n { t with encoder }) t.encoder }
 
 let flush new_line k t =
-  let rec close_all_box k t =
-    if t.curr_depth > 1
-    then close_box (close_all_box k) t
-    else k t in
-
-  let k t =
-    t.right_total <- infinity ;
-    let k t = Encoder.flush (fun encoder -> k { t with encoder }) t.encoder in
-    advance_left (if new_line then output_new_line k else k) t in
-
-  close_all_box k t
+  t.right_total <- infinity ; (* XXX(dinosaure): I'm not sure. *)
+  let k t = Level0.flush (fun encoder -> k { t with encoder }) t.encoder in
+  advance_left (if new_line then output_new_line k else k) t
 
 let as_size size s k t = enqueue_value_as size s k t
 
@@ -388,7 +380,7 @@ let space k t = break 1 0 k t
 let cut k t = break 0 0 k t
 
 let create ?(margin = 998) ?(new_line = "\r\n") len =
-  let encoder = Encoder.create len in
+  let encoder = Level0.create len in
   let sys_token = make_element (-1) (Begin (0, HoV)) 0 in
   let queue = Queue.create () in
   Queue.add sys_token queue ;

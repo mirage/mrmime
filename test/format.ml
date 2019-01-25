@@ -1,25 +1,26 @@
-module Fe = Mrmime.Fe.Make (Mrmime.Encoder)
+module Format = Encoder.MakeFormat(Encoder.Level0)
 
-let comma = (Fe.using (fun () -> ',') Fe.char, ())
+let comma =
+  (Format.using (fun () -> ',') Format.char, ())
 
 external identity : 'a -> 'a = "%identity"
 
 let rec value t x =
   let binding t (k, v) =
-    Fe.keval t identity
-      Fe.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
+    Format.keval t identity
+      Format.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
       k v
   in
-  let arr = Fe.list ~sep:comma value in
-  let obj = Fe.list ~sep:comma binding in
+  let arr = Format.list ~sep:comma value in
+  let obj = Format.list ~sep:comma binding in
   match x with
-  | `Bool true -> Fe.string t "true"
-  | `Bool false -> Fe.string t "false"
-  | `Null -> Fe.string t "null"
-  | `Float f -> Fe.string t (Fmt.strf "%.16g" f)
-  | `String s -> Fe.keval t identity Fe.[char $ '"'; !!string; char $ '"'] s
-  | `A a -> Fe.keval t identity Fe.[char $ '['; !!arr; char $ ']'] a
-  | `O o -> Fe.keval t identity Fe.[char $ '{'; !!obj; char $ '}'] o
+  | `Bool true -> Format.string t "true"
+  | `Bool false -> Format.string t "false"
+  | `Null -> Format.string t "null"
+  | `Float f -> Format.string t (Fmt.strf "%.16g" f)
+  | `String s -> Format.keval t identity Format.[char $ '"'; !!string; char $ '"'] s
+  | `A a -> Format.keval t identity Format.[char $ '['; !!arr; char $ ']'] a
+  | `O o -> Format.keval t identity Format.[char $ '{'; !!obj; char $ '}'] o
 
 type await = [`Await]
 type error = [`Error of Jsonm.error]
@@ -113,15 +114,16 @@ let tests =
   ; `A [`O [("a", `Bool true); ("b", `Bool false)]] ]
 
 let writer_of_buf buf =
-  let open Mrmime in
+  let open Encoder in
+
   let write a = function
-    | {Encoder.IOVec.buffer= Encoder.Buffer.String x; off; len} ->
+    | {Level0.IOVec.buffer= Level0.Buffer.String x; off; len} ->
         Buffer.add_substring buf x off len ;
         a + len
-    | {Encoder.IOVec.buffer= Encoder.Buffer.Bytes x; off; len} ->
+    | {Level0.IOVec.buffer= Level0.Buffer.Bytes x; off; len} ->
         Buffer.add_subbytes buf x off len ;
         a + len
-    | {Encoder.IOVec.buffer= Encoder.Buffer.Bigstring x; off; len} ->
+    | {Level0.IOVec.buffer= Level0.Buffer.Bigstring x; off; len} ->
         Buffer.add_string buf (Bigstringaf.substring x ~off ~len) ;
         a + len
   in
@@ -132,10 +134,10 @@ let json = Alcotest.testable (Fmt.using json_to_string Fmt.string) ( = )
 let make v =
   Alcotest.test_case (json_to_string v) `Quick
   @@ fun () ->
-  let encoder = Mrmime.Encoder.create 0x100 in
+  let encoder = Encoder.Level0.create 0x100 in
   let buffer = Buffer.create 0x100 in
-  let t = Fe.with_writer encoder (writer_of_buf buffer) in
-  let _ = Fe.eval t Fe.[!!value; yield] v in
+  let t = Format.with_writer encoder (writer_of_buf buffer) in
+  let _ = Format.eval t Format.[!!value; yield] v in
   let res = Buffer.contents buffer in
   Fmt.epr "> %s.\n%!" res ;
   let res = json_of_string res in

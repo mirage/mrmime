@@ -269,7 +269,42 @@ let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
  fun name mailbox -> {mailbox with Rfc5322.name= Some name}
 
 module Encoder = struct
-  module Box = Box.Make(Wrap)
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let atom = node (hov 0) (o [ fmt Format.[ !!string ] ])
+  let str = node (hov 0) (o [ fmt Format.[ char $ '"'; !!string; char $ '"' ] ])
+
+  let word ppf = function
+    | `Atom x -> keval ppf id atom x
+    | `String x -> keval ppf id str x
+
+  let dot = Format.using (fun () -> '.') Format.char, ()
+
+  let local ppf lst =
+    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot word) ] ])) lst
+
+  let ipaddr_v4 = Format.using Ipaddr.V4.to_string Format.string
+  let ipaddr_v6 = Format.using Ipaddr.V6.to_string Format.string
+
+  let domain ppf = function
+    | `Domain domain ->
+      let x ppf x = keval ppf id (node (hov 0) (o [ fmt Format.[ !!string ] ])) x in
+      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot x) ] ])) domain
+    | `Literal literal ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ']' ] ])) literal
+    | `Addr (IPv4 ip) ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!ipaddr_v4; char $ ']' ] ])) ip
+    | `Addr (IPv6 ip) ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']' ] ])) ip
+    | `Addr (Ext (ldh, v)) ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ':'; !!string; char $ ']' ] ])) ldh v
+
+  let phrase ppf = function
+    | `Dot -> Format.char ppf '.'
+    | `Word w -> word ppf w
+    | `Encoded e -> assert false
 end
 
 let pp_word ppf = function

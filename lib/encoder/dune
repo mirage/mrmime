@@ -1,0 +1,4 @@
+(library
+ (name encoder)
+ (public_name mrmime.encoder)
+ (libraries butils fmt ke bigstringaf))

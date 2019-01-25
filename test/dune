@@ -14,14 +14,14 @@
  (libraries alcotest mrmime))
 
 (executable
- (name fe)
- (modules fe)
- (libraries jsonm alcotest mrmime))
+ (name format)
+ (modules format)
+ (libraries fmt jsonm alcotest mrmime.encoder))
 
 (executable
  (name box)
  (modules box)
- (libraries jsonm alcotest mrmime))
+ (libraries jsonm alcotest mrmime.encoder))
 
 (executable
  (name obs_unstruct)
@@ -55,8 +55,8 @@
  
 (alias
  (name runtest)
- (deps (:fe fe.exe))
- (action (run %{fe} --color=always)))
+ (deps (:format format.exe))
+ (action (run %{format} --color=always)))
 
 (alias
  (name runtest)

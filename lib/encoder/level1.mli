@@ -1,8 +1,8 @@
-type 'v state = 'v Encoder.state =
+type 'v state = 'v Level0.state =
   | Flush of { continue : int -> 'v state
-             ; iovecs : Encoder.IOVec.t list}
-  | Continue of { continue : Encoder.encoder -> 'v state
-                ; encoder : Encoder.encoder}
+             ; iovecs : Level0.IOVec.t list}
+  | Continue of { continue : Level0.encoder -> 'v state
+                ; encoder : Level0.encoder}
   | End of 'v
 
 type encoder
@@ -18,17 +18,21 @@ val write_bytes : ?off:int -> ?len:int -> (bytes, 'r) k1
 val write_string : ?off:int -> ?len:int -> (string, 'r) k1
 val write_bigstring : ?off:int -> ?len:int -> (Bigstringaf.t, 'r) k1
 val write_uint8 : (int, 'r) k1
-val new_line : 'r k0
+
 val flush : 'r k0
+
+val new_line : 'r k0
 val force_new_line : 'r k0
 val if_new_line : 'r k0
 val space : 'r k0
 val cut : 'r k0
+
 val hbox : 'r k0
 val vbox : (int, 'r) k1
 val hvbox : (int, 'r) k1
 val hovbox : (int, 'r) k1
 val box : (int, 'r) k1
+val close_box : 'r k0
 
 module LE : sig
   val write_uint16 : (int, 'r) k1

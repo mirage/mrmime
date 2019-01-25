@@ -31,6 +31,7 @@ let encoding {Rfc2047.encoding; _} = encoding
 let charset {Rfc2047.charset; _} = charset
 let data {Rfc2047.data; _} = data
 
+(* XXX(dinosaure): used by encoder, no fancy box or whatever. *)
 let pp_charset ppf = function
   | #Rfc2047.uutf_charset as encoding ->
       Fmt.string ppf (Uutf.encoding_to_string encoding)
@@ -58,3 +59,45 @@ let equal a b =
   && Rresult.R.equal ~ok:String.equal
        ~error:(fun (`Msg _) (`Msg _) -> true)
        a.Rfc2047.data b.Rfc2047.data
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let encoding ppf = function
+    | Base64 -> Format.char ppf 'B'
+    | Quoted_printable -> Format.char ppf 'Q'
+
+  let charset = Format.using (Fmt.to_to_string pp_charset) Format.string
+
+  let to_quoted_printable input =
+    let buffer = Buffer.create (String.length input) in
+    let encoder = Pecu.Inline.encoder (`Buffer buffer) in
+    String.iter (fun chr -> ignore @@ Pecu.Inline.encode encoder (`Char chr)) input ;
+    ignore @@ Pecu.Inline.encode encoder `End ;
+    Buffer.contents buffer
+
+  let quoted_printable = Format.using to_quoted_printable Format.string
+  let base64 = Format.using (fun x -> Base64.encode_exn ~pad:true x) Format.string
+
+  let is_base64 = function
+    | Base64 -> true | _ -> false
+
+  let encoded_word ppf t =
+    match t.Rfc2047.data with
+    | Ok data ->
+      keval ppf id
+        (node
+           (hov 0)
+           (o [ fmt Format.[ string $ "=?"
+                           ; !!charset
+                           ; char $ '?'
+                           ; !!encoding
+                           ; char $ '?'
+                           ; a
+                           ; string $ "?=" ] ]))
+        t.Rfc2047.charset t.Rfc2047.encoding
+        (if is_base64 t.Rfc2047.encoding then base64 else quoted_printable) data
+    | Error (`Msg err) -> Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
+end

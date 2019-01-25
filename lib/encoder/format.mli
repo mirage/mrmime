@@ -1,15 +1,23 @@
-module IOVec = Encoder.IOVec
+(** [Fe] is Fancy Level0.
+
+    Goal of this module is to provide a Format-like module to be able to write
+   description of how to encode OCaml value on top of {!Level0}. [Fe] wants a
+   writer at this stage to call it when it retrieves {!Level0.Flush} case.
+   User, at this stage did not manage {i syscall} to emit bytes. User provides a
+   function ({!writer}) to emit bytes and [Fe] will call it when it's needed. *)
+
+module IOVec = Level0.IOVec
 
 module type ENCODER = sig
   type encoder
 
-  type 'v state = 'v Encoder.state =
+  type 'v state = 'v Level0.state =
     | Flush of
         { continue: int -> 'v state
         ; iovecs: IOVec.t list }
     | Continue of
-        { continue: Encoder.encoder -> 'v state
-        ; encoder: Encoder.encoder }
+        { continue: Level0.encoder -> 'v state
+        ; encoder: Level0.encoder }
     | End of 'v
 
   val flush : (encoder -> 'v state) -> encoder -> 'v state
@@ -57,22 +65,23 @@ module type ENCODER = sig
   end
 end
 
-type writer = Encoder.IOVec.t list -> int
+type writer = Level0.IOVec.t list -> int
 type vec = {off: int option; len: int option}
 
 val std : writer
+(** Use [Pervasives.output_*] functions to emit bytes. *)
 
-module Make (Encoder : ENCODER) : sig
+module Make (Level0 : ENCODER) : sig
   type t = { writer : writer
-           ; encoder : Encoder.encoder }
-  val make : writer -> Encoder.encoder -> t
-  val with_writer : Encoder.encoder -> writer -> t
+           ; encoder : Level0.encoder }
+  val make : writer -> Level0.encoder -> t
+  val with_writer : Level0.encoder -> writer -> t
 
-  type 'a encoding = t -> 'a -> t Encoder.state
-  type 'a sub = t -> ?off:int -> ?len:int -> 'a -> t Encoder.state
+  type 'a encoding = t -> 'a -> t Level0.state
+  type 'a sub = t -> ?off:int -> ?len:int -> 'a -> t Level0.state
 
-  val continue : t -> Encoder.encoder -> t Encoder.state
-  val force_flush : writer -> Encoder.encoder -> t Encoder.state
+  val continue : t -> Level0.encoder -> t Level0.state
+  val flush : writer -> Level0.encoder -> t Level0.state
 
   val char : char encoding
   val int8 : int encoding
@@ -109,9 +118,9 @@ module Make (Encoder : ENCODER) : sig
   val ( !^ ) : 'a sub -> (vec -> 'a -> 'v, 'v) order
   val ( ^^ ) : ('x, 'v) fmt -> ('v, 'r) fmt -> ('x, 'r) fmt
   val yield : ('v, 'v) order
-  val flush : (int -> Encoder.encoder -> unit) -> ('v, 'v) order
-  val keval : t -> (t Encoder.state -> 'v) -> ('ty, 'v) fmt -> 'ty
-  val eval : t -> ('ty, Encoder.encoder) fmt -> 'ty
+  val register : (int -> Level0.encoder -> unit) -> ('v, 'v) order
+  val keval : t -> (t Level0.state -> 'v) -> ('ty, 'v) fmt -> 'ty
+  val eval : t -> ('ty, Level0.encoder) fmt -> 'ty
   val const : 'a encoding -> 'a -> ('v, 'v) order
   val ( $ ) : 'a encoding -> 'a -> ('v, 'v) order
 

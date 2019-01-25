@@ -1,4 +1,4 @@
-module IOVec = Encoder.IOVec
+module IOVec = Level0.IOVec
 
 type vec = {off: int option; len: int option}
 type writer = IOVec.t list -> int
@@ -6,9 +6,9 @@ type writer = IOVec.t list -> int
 module type ENCODER = sig
   type encoder
 
-  type 'v state = 'v Encoder.state =
+  type 'v state = 'v Level0.state =
     | Flush of {continue : int -> 'v state; iovecs : IOVec.t list}
-    | Continue of {continue : Encoder.encoder -> 'v state; encoder: Encoder.encoder}
+    | Continue of {continue : Level0.encoder -> 'v state; encoder: Level0.encoder}
     | End of 'v
 
   val flush : (encoder -> 'v state) -> encoder -> 'v state
@@ -35,91 +35,89 @@ end
 
 let std =
   let write = function
-    | {IOVec.buffer= Encoder.Buffer.String x; off; len} ->
+    | {IOVec.buffer= Level0.Buffer.String x; off; len} ->
         output_substring stdout x off len ;
         flush stdout ;
         len
-    | {IOVec.buffer= Encoder.Buffer.Bytes x; off; len} ->
+    | {IOVec.buffer= Level0.Buffer.Bytes x; off; len} ->
         output_string stdout (Bytes.sub_string x off len) ;
         flush stdout ;
         len
-    | {IOVec.buffer= Encoder.Buffer.Bigstring x; off; len} ->
+    | {IOVec.buffer= Level0.Buffer.Bigstring x; off; len} ->
         output_string stdout (Bigstringaf.substring x ~off ~len) ;
         flush stdout ;
         len
   in
   List.fold_left (fun a x -> write x + a) 0
 
-module Make (Encoder : ENCODER) = struct
-  type t = {writer: writer; encoder: Encoder.encoder}
+module Make (Level0 : ENCODER) = struct
+  type t = {writer: writer; encoder: Level0.encoder}
 
-  let continue : t -> Encoder.encoder -> t Encoder.state =
+  let continue : t -> Level0.encoder -> t Level0.state =
    fun t e ->
     let rec go = function
-      | Encoder.Continue {continue; encoder} -> go (continue encoder)
-      | Encoder.Flush {continue; iovecs} ->
+      | Level0.Continue {continue; encoder} -> go (continue encoder)
+      | Level0.Flush {continue; iovecs} ->
           let n = t.writer iovecs in
           go (continue n)
-      | Encoder.End encoder -> Encoder.End {t with encoder}
+      | Level0.End encoder -> Level0.End {t with encoder}
     in
-    go (Encoder.continue (fun e -> End e) e)
+    go (Level0.continue (fun e -> End e) e)
 
   let flush :
-      (IOVec.t list -> int) -> Encoder.encoder -> t Encoder.state =
+      (IOVec.t list -> int) -> Level0.encoder -> t Level0.state =
    fun w e ->
     let rec go = function
-      | Encoder.Continue {continue; encoder} -> go (continue encoder)
-      | Encoder.Flush {continue; iovecs} ->
+      | Level0.Continue {continue; encoder} -> go (continue encoder)
+      | Level0.Flush {continue; iovecs} ->
           let n = w iovecs in
           go (continue n)
-      | Encoder.End encoder -> Encoder.End {writer= w; encoder}
+      | Level0.End encoder -> Level0.End {writer= w; encoder}
     in
-    go (Encoder.flush (fun e -> End e) e)
-
-  let force_flush = flush
+    go (Level0.flush (fun e -> End e) e)
 
   let make writer encoder = {writer; encoder}
   let with_writer encoder writer = make writer encoder
 
-  type 'a encoding = t -> 'a -> t Encoder.state
-  type 'a sub = t -> ?off:int -> ?len:int -> 'a -> t Encoder.state
+  type 'a encoding = t -> 'a -> t Level0.state
+  type 'a sub = t -> ?off:int -> ?len:int -> 'a -> t Level0.state
 
   let char : char encoding =
-   fun t chr -> Encoder.write_char chr (continue t) t.encoder
+   fun t chr -> Level0.write_char chr (continue t) t.encoder
 
   let int8 : int encoding =
-   fun t x -> Encoder.write_uint8 x (continue t) t.encoder
+   fun t x -> Level0.write_uint8 x (continue t) t.encoder
 
   let beint16 : int encoding =
-   fun t x -> Encoder.BE.write_uint16 x (continue t) t.encoder
+   fun t x -> Level0.BE.write_uint16 x (continue t) t.encoder
 
   let leint16 : int encoding =
-   fun t x -> Encoder.LE.write_uint16 x (continue t) t.encoder
+   fun t x -> Level0.LE.write_uint16 x (continue t) t.encoder
 
   let beint32 : int32 encoding =
-   fun t x -> Encoder.BE.write_uint32 x (continue t) t.encoder
+   fun t x -> Level0.BE.write_uint32 x (continue t) t.encoder
 
   let leint32 : int32 encoding =
-   fun t x -> Encoder.LE.write_uint32 x (continue t) t.encoder
+   fun t x -> Level0.LE.write_uint32 x (continue t) t.encoder
 
   let beint64 : int64 encoding =
-   fun t x -> Encoder.BE.write_uint64 x (continue t) t.encoder
+   fun t x -> Level0.BE.write_uint64 x (continue t) t.encoder
 
   let leint64 : int64 encoding =
-   fun t x -> Encoder.LE.write_uint64 x (continue t) t.encoder
+   fun t x -> Level0.LE.write_uint64 x (continue t) t.encoder
 
   let using : ('f -> 't) -> 't encoding -> 'f encoding =
    fun cast encoding t x -> encoding t (cast x)
 
   let substring : string sub =
-   fun t ?off ?len x -> Encoder.write_string ?off ?len x (continue t) t.encoder
+   fun t ?off ?len x -> Level0.write_string ?off ?len x (continue t) t.encoder
 
   let subbytes : bytes sub =
-   fun t ?off ?len x -> Encoder.write_bytes ?off ?len x (continue t) t.encoder
+   fun t ?off ?len x -> Level0.write_bytes ?off ?len x (continue t) t.encoder
 
   let subbigstring : Bigstringaf.t sub =
    fun t ?off ?len x ->
-    Encoder.write_bigstring ?off ?len x (continue t) t.encoder
+    Level0.write_bigstring ?off ?len x (continue t) t.encoder
 
   let whole : 'a sub -> 'a encoding = fun a -> a ?off:None ?len:None
 
@@ -135,11 +133,11 @@ module Make (Encoder : ENCODER) = struct
     | Atom : 'a encoding -> ('a -> 'v, 'v) order
     | SubAtom : 'a sub -> (vec -> 'a -> 'v, 'v) order
     | Yield : ('v, 'v) order
-    | Flush : (int -> Encoder.encoder -> unit) -> ('v, 'v) order
+    | Flush : (int -> Level0.encoder -> unit) -> ('v, 'v) order
     | Param : ('a encoding -> 'a -> 'v, 'v) order
 
   let keval_order : type ty v.
-      t -> (ty, v) order -> (t Encoder.state -> v) -> ty =
+      t -> (ty, v) order -> (t Level0.state -> v) -> ty =
    fun t order k ->
     match order with
     | Const (encoding, v) -> k (encoding t v)
@@ -147,7 +145,7 @@ module Make (Encoder : ENCODER) = struct
     | SubAtom encoding -> fun v x -> k (sub encoding t (v, x))
     | Param -> fun encoding v -> k (encoding t v)
     | Flush f ->
-        let encoder = Encoder.schedule_flush f t.encoder in
+        let encoder = Level0.schedule_flush f t.encoder in
         k (continue t encoder)
     | Yield -> k (flush t.writer t.encoder)
 
@@ -157,15 +155,15 @@ module Make (Encoder : ENCODER) = struct
   let atom f = Atom f
   let subatom f = SubAtom f
   let yield = Yield
-  let flush f = Flush f
+  let register f = Flush f
 
   let seq f g ({writer= w; _} as t) (x, y) =
     let rec go = function
-      | Encoder.Continue {continue; encoder} -> go (continue encoder)
-      | Encoder.Flush {continue; iovecs} ->
+      | Level0.Continue {continue; encoder} -> go (continue encoder)
+      | Level0.Flush {continue; iovecs} ->
           let n = w iovecs in
           go (continue n)
-      | Encoder.End t -> g t y
+      | Level0.End t -> g t y
     in
     go (f t x)
 
@@ -181,11 +179,11 @@ module Make (Encoder : ENCODER) = struct
       | [x] -> encoding t x
       | x :: r ->
           let rec go' = function
-            | Encoder.Continue {continue; encoder} -> go' (continue encoder)
-            | Encoder.Flush {continue; iovecs} ->
+            | Level0.Continue {continue; encoder} -> go' (continue encoder)
+            | Level0.Flush {continue; iovecs} ->
                 let n = t.writer iovecs in
                 go' (continue n)
-            | Encoder.End t -> go t
+            | Level0.End t -> go t
           in
           go' (seq encoding sep t (x, ())) r
     in
@@ -212,17 +210,17 @@ module Make (Encoder : ENCODER) = struct
 
   let ( ^^ ) = concat
 
-  let rec keval : type ty v. t -> (t Encoder.state -> v) -> (ty, v) fmt -> ty =
+  let rec keval : type ty v. t -> (t Level0.state -> v) -> (ty, v) fmt -> ty =
    fun t k fmt ->
     match fmt with
     | [] ->
-        k (Encoder.End t)
+        k (Level0.End t)
     | x :: r ->
         let k' state =
           let rec go = function
-            | Encoder.End t -> keval t k r
-            | Encoder.Continue {continue; encoder} -> go (continue encoder)
-            | Encoder.Flush {continue; iovecs} ->
+            | Level0.End t -> keval t k r
+            | Level0.Continue {continue; encoder} -> go (continue encoder)
+            | Level0.Flush {continue; iovecs} ->
                 let n = t.writer iovecs in
                 go (continue n)
           in
@@ -233,11 +231,11 @@ module Make (Encoder : ENCODER) = struct
   let eval : t -> ('ty, 'v) fmt -> 'ty =
    fun t fmt ->
     let rec finish = function
-      | Encoder.Continue {continue; encoder} -> finish (continue encoder)
-      | Encoder.Flush {continue; iovecs} ->
+      | Level0.Continue {continue; encoder} -> finish (continue encoder)
+      | Level0.Flush {continue; iovecs} ->
           let n = t.writer iovecs in
           finish (continue n)
-      | Encoder.End {encoder; _} -> encoder
+      | Level0.End {encoder; _} -> encoder
     in
     keval t finish fmt
 end

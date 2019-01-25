@@ -1,4 +1,4 @@
 (executable
- (name encoder)
- (modules encoder)
- (libraries mrmime crowbar jsonm))
+ (name fuzz_encoder)
+ (modules fuzz_encoder)
+ (libraries mrmime.encoder crowbar jsonm))
