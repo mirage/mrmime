@@ -14,6 +14,56 @@ type local = word list
 type t = Rfc5322.mailbox =
   {name: phrase option; local: local; domain: domain * domain list}
 
+let equal_word ?(sensitive = false) a b = match a, b with
+  | (`Atom a | `String a), (`Atom b | `String b) ->
+    if sensitive
+    then String.equal a b
+    else String.(equal (lowercase_ascii a) (lowercase_ascii b))
+
+let equal_phrase a b =
+  let elt a b = match a, b with
+    | `Dot, `Dot -> true
+    | `Word a, `Word b -> equal_word ~sensitive:true a b
+    | `Encoded a, `Encoded b -> Encoded_word.equal a b
+    | _, _ -> false (* TODO: [`Encoded a] & [`Word b] or [`Word a] & [`Encoded b]. *) in
+  try List.for_all2 elt a b with _ -> false
+
+let equal_literal_domain a b = match a, b with
+  | IPv4 a, IPv4 b -> Ipaddr.V4.compare a b = 0
+  | IPv6 a, IPv6 b -> Ipaddr.V6.compare a b = 0
+  | IPv4 a, IPv6 b -> Ipaddr.(compare (V4 a) (V6 b)) = 0
+  | IPv6 a, IPv4 b -> Ipaddr.(compare (V6 a) (V4 b)) = 0
+  | Ext (ldh0, value0), Ext (ldh1, value1) ->
+    String.equal ldh0 ldh1 && String.equal value0 value1
+  | _, _ -> false
+
+let equal_domain a b = match a, b with
+  | `Domain a, `Domain b ->
+    let a = List.map String.lowercase_ascii a in
+    let b = List.map String.lowercase_ascii b in
+    (try List.for_all2 String.equal a b with _ -> false)
+  | `Literal a, `Literal b ->
+    let a = String.lowercase_ascii a in
+    let b = String.lowercase_ascii b in
+    String.equal a b
+  | `Addr a, `Addr b -> equal_literal_domain a b
+  | _, _ -> false (* TODO: resolution? *)
+
+let equal_domains a b = try List.for_all2 equal_domain a b with _ -> false
+
+let equal_local a b =
+  try List.for_all2 (equal_word ~sensitive:false) a b
+  with _ -> false
+
+let equal a b = match a, b with
+  | { name= Some name0; local= local0; domain= head0, tail0 },
+    { name= Some name1; local= local1; domain= head1, tail1 } ->
+    equal_phrase name0 name1 && equal_local local0 local1 && equal_domains (head0 :: tail0) (head1 :: tail1)
+  | { name= None; local= local0; domain= head0, tail0 },
+    { name= None; local= local1; domain= head1, tail1 } ->
+    equal_local local0 local1 && equal_domains (head0 :: tail0) (head1 :: tail1)
+  | _, _ -> false
+
 exception Invalid_utf8
 exception Invalid_char
 
@@ -42,26 +92,35 @@ let is_atext_valid_string = is_utf8_valid_string_with Rfc822.is_atext
 let is_dtext_valid_string = is_utf8_valid_string_with Rfc822.is_dtext
 let is_qtext_valid_string = is_utf8_valid_string_with Rfc822.is_qtext
 
+let need_to_escape, escape_char =
+  (* See [Rfc822.of_escaped_character] but totally arbitrary. *)
+  let bindings = [('\000', '\000')
+                  ;('\\', '\\')
+                  ;('\x07', 'a')
+                  ;('\b', 'b')
+                  ;('\t', 't')
+                  ;('\n', 'n')
+                  ;('\x0b', 'v')
+                  ;('\x0c', 'f')
+                  ;('\r', 'r')
+                  ;('"', '"')] in
+  ( (fun chr -> List.mem_assoc chr bindings)
+  , fun chr -> List.assoc chr bindings )
+
+let escape_string x =
+  let len = String.length x in
+  let res = Buffer.create (len * 2) in
+  let pos = ref 0 in
+  while !pos < len do
+    if need_to_escape x.[!pos] then (
+      Buffer.add_char res '\\' ;
+      Buffer.add_char res (escape_char x.[!pos]) )
+    else Buffer.add_char res x.[!pos] ;
+    incr pos
+  done ;
+  Buffer.contents res
+
 let make_word raw =
-  let need_to_escape, escape_char =
-    (* TODO *)
-    let bindings = [('\000', '\000')] in
-    ( (fun chr -> List.mem_assoc chr bindings)
-    , fun chr -> List.assoc chr bindings )
-  in
-  let escape_string x =
-    let len = String.length x in
-    let res = Buffer.create (len * 2) in
-    let pos = ref 0 in
-    while !pos < len do
-      if need_to_escape x.[!pos] then (
-        Buffer.add_char res '\\' ;
-        Buffer.add_char res (escape_char x.[!pos]) )
-      else Buffer.add_char res x.[!pos] ;
-      incr pos
-    done ;
-    Buffer.contents res
-  in
   if is_atext_valid_string raw then Some (`Atom raw)
   else if is_qtext_valid_string raw then Some (`String raw)
   else if is_utf8_valid_string raw then Some (`String (escape_string raw))
@@ -278,7 +337,8 @@ module Encoder = struct
 
   let word ppf = function
     | `Atom x -> keval ppf id atom x
-    | `String x -> keval ppf id str x
+    | `String x ->
+      keval ppf id str (escape_string x)
 
   let dot = Format.using (fun () -> '.') Format.char, ()
 
@@ -317,19 +377,28 @@ module Encoder = struct
         name t.Rfc5322.local x
     | None, (x, []) ->
       keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!local; char $ '@'; !!domain; ] ]))
+        (node (hov 1) (o [ fmt Format.[ !!local ]; cut; fmt Format.[ char $ '@' ]; cut; fmt Format.[ !!domain ]; ]))
         t.Rfc5322.local x
     | name, (x, r) ->
       let domains ppf lst =
-        let domain ppf x = keval ppf id (o [ fmt Format.[ char $ '@'; !!domain ] ]) x in
-        let comma = Format.using (fun () -> ',') Format.char, () in
-        keval ppf id (o [ fmt Format.[ !!(list ~sep:comma domain) ] ]) lst in
+        let domain ppf x = keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '@'; !!domain ] ])) x in
+        let comma = (fun ppf () -> keval ppf id (o [ fmt Format.[ char $ ',' ]; cut ])), () in
+        keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:comma domain) ] ])) lst in
       let phrase ppf x = keval ppf id (node (hov 1) (o [ fmt Format.[ !!phrase ]; space ])) x in
 
       keval ppf id
         (node (hov 1) (o [ fmt Format.[ !!(option phrase) ]
                          ; cut
-                         ; fmt Format.[ char $ '<'; !!domains; char $ ':'; !!local; char $ '@'; !!domain; char $ '>' ] ]))
+                         ; fmt Format.[ char $ '<' ]
+                         ; cut
+                         ; fmt Format.[ !!domains; char $ ':' ]
+                         ; cut
+                         ; fmt Format.[ !!local ]
+                         ; cut
+                         ; fmt Format.[ char $ '@' ]
+                         ; cut
+                         ; fmt Format.[ !!domain ]
+                         ; fmt Format.[ char $ '>' ] ]))
         name r t.Rfc5322.local x
 end
 

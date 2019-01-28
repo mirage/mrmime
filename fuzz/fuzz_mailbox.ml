@@ -39,10 +39,6 @@ let let_dig = alphabet_from_predicate (function 'a' .. 'z' | 'A'.. 'Z' | '0' .. 
 (* XXX(dinosaure): see [Rfc5321.ldh_str] and [Rfc5321.let_dig]. *)
 let dcontent = alphabet_from_predicate Mrmime.Rfc5321.is_dcontent
 
-let () = Fmt.epr "let_dig alphabet: %s.\n%!" let_dig
-let () = Fmt.epr "ldh_str alphabet: %s.\n%!" ldh_str
-let () = Fmt.epr "dcontent alphabet: %s.\n%!" dcontent
-
 let local_word =
   map [ dynamic_bind (range ~min:1 78) (string_from_alphabet atext) ]
     (fun str -> match Mrmime.Mailbox.Local.word str with
@@ -52,7 +48,7 @@ let local_word =
 let local = list1 local_word
 
 let phrase_word =
-  map [ bytes ]
+  map [ dynamic_bind (range ~min:1 78) bytes_fixed ]
     (fun str -> match Mrmime.Mailbox.Phrase.word str with
        | Some elt -> elt
        | None -> bad_test ())
@@ -119,16 +115,14 @@ let () =
   let open Mrmime in
 
   Crowbar.add_test ~name:"mailbox" [ mailbox ] @@ fun mailbox ->
-  Fmt.epr "> try with %a.\n%!" Mailbox.pp mailbox ;
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.Level1.create ~new_line:"\r\n" 0x100 in
+  let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
   let encoder = Encoder.Format.with_writer encoder (writer_of_buffer buffer) in
   let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!Mailbox.Encoder.mailbox ]; new_line; new_line ]) mailbox in
   let result = Buffer.contents buffer in
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with
-  | Ok mailbox ->
-    Fmt.pr "Good for: %a\n%!." Mrmime.Mailbox.pp mailbox
+  | Ok mailbox' ->
+    check_eq ~pp:Mrmime.Mailbox.pp ~eq:Mrmime.Mailbox.equal mailbox mailbox'
   | Error err ->
-    Fmt.epr "%a.\n%!" Mrmime.Utils.pp_string result ;
     failf "%a can not be parsed: %s" Mailbox.pp mailbox err

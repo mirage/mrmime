@@ -7,6 +7,13 @@ type local = Rfc822.local
 type t = Rfc5322.mailbox =
   {name: phrase option; local: local; domain: domain * domain list}
 
+val equal_word : ?sensitive:bool -> word -> word -> bool
+val equal_phrase : phrase -> phrase -> bool
+val equal_local : local -> local -> bool
+val equal_domain : domain -> domain -> bool
+val equal_literal_domain : literal_domain -> literal_domain -> bool
+val equal : t -> t -> bool
+
 module Peano : sig
   type z = Z
  and 'a s = S

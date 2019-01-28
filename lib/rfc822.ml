@@ -981,7 +981,6 @@ let domain ~address_literal =
      [Mrmime] will be use with a SMTP/IMAP/POP protocol, we decide to fail on
      [`Literal]. This is an arbitrary choice. *)
   let addr s =
-    Fmt.epr "try extensible addr parsing with: %s.\n%!" s ;
     of_string ~error:"address-literal" address_literal s
     >>| (fun addr -> `Addr addr)
     <|> literal s
