@@ -78,17 +78,21 @@ let ipv6_address_literal = string "IPv6:" *> ipv6_addr
 let let_dig =
   satisfy (function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> true | _ -> false)
 
+let failf fmt = Fmt.kstrf fail fmt
+
 let ldh_str =
-  take_while (function
-    | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' -> true
-    | _ -> false )
+  take_while1 (function
+      | 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' | '-' -> true
+      | _ -> false )
   >>= fun ldh ->
-  let_dig >>| String.make 1 >>| fun dig -> String.concat "" [ldh; dig]
+  if String.unsafe_get ldh (String.length ldh - 1) = '-'
+  then failf "ldh_str: %s is invalid" ldh
+  else return ldh
 
 let general_address_literal =
-  ldh_str
-  <* char ':'
-  >>= fun ldh -> take_while1 is_dcontent >>| fun value -> Ext (ldh, value)
+  ldh_str <* char ':'
+  >>= fun ldh -> take_while1 is_dcontent
+  >>| fun value -> Ext (ldh, value)
 
 (* From RFC 5321
 
@@ -152,8 +156,7 @@ let general_address_literal =
                   ; "::" and IPv4-address-literal may be present.
 *)
 let address_literal =
-  ipv4_address_literal
-  >>| (fun v -> IPv4 v)
+  (ipv4_address_literal >>| (fun v -> IPv4 v))
   <|> (ipv6_address_literal >>| fun v -> IPv6 v)
   <|> general_address_literal
 

@@ -8,8 +8,68 @@ type t =
   { normalized : string
   ; raw : string }
 
+let pp ppf t =
+  Fmt.pf ppf "{ @[<hov>normalized = %s;@ raw = @[<hov>%a@]@] }"
+    t.normalized
+    Utils.pp_string t.raw
+
 let failf = Fmt.kstrf fail
 
+let with_uutf is =
+  let res = Buffer.create 16 in
+  let tmp = Bytes.create 1 in
+  let dec = Uutf.decoder ~encoding:`UTF_8 `Manual in
+  let not_satisfy = ref false in
+  scan (Uutf.decode dec) (fun state chr ->
+      let res = match state with
+        | `Await -> Some state
+        | `End -> None
+        | `Uchar uchar ->
+          Uutf.Buffer.add_utf_8 res uchar ; Some state
+        | `Malformed _ ->
+          Uutf.Buffer.add_utf_8 res Uutf.u_rep ; Some state in
+      let res = match res with
+        | Some state ->
+
+          if (is_ascii chr && is chr) || not (is_ascii chr)
+          then ( Bytes.unsafe_set tmp 0 chr
+               ; Uutf.Manual.src dec tmp 0 1
+               ; Some (Uutf.decode dec))
+          else ( not_satisfy := true
+               ; None )
+        | None -> None in
+      res)
+  >>= fun (consumed, state) -> match !not_satisfy with
+  | false ->
+    assert (state = `End) ;
+    let normalized = Buffer.contents res in
+    Buffer.clear res ;
+    return { normalized; raw= consumed; }
+  | true ->
+    (* XXX(dinosaure): if we retrieve [not_satisfy = true], [state] was already
+       computed by [scan]. We need to signal to [dec] end of input and compute
+       returned and last state. *)
+    Uutf.Manual.src dec Bytes.empty 0 0 ; (* `End *)
+    match Uutf.decode dec with
+    | `Await -> assert false
+    | `End ->
+      let normalized = Buffer.contents res in
+      Buffer.clear res ;
+      return { normalized; raw= consumed; }
+    | `Uchar uchar ->
+      assert (Uutf.decode dec = `End) ;
+      Uutf.Buffer.add_utf_8 res uchar ;
+      let normalized = Buffer.contents res in
+      Buffer.clear res ;
+      return { normalized; raw= consumed; }
+    | `Malformed _ ->
+      assert (Uutf.decode dec = `End) ;
+      Uutf.Buffer.add_utf_8 res Uutf.u_rep ;
+      let normalized = Buffer.contents res in
+      Buffer.clear res ;
+      return { normalized; raw= consumed; }
+
+(*
 let with_uutf is =
   let res = Buffer.create 16 in
   let raw = Buffer.create 16 in
@@ -67,6 +127,7 @@ let with_uutf is =
   | `End -> return { normalized= Buffer.contents res
                    ; raw= Buffer.contents raw } )
   >>= fun r -> Buffer.clear res ; Buffer.clear raw ; return r
+*)
 
 let with_uutf_without_raw is =
   with_uutf is >>| fun { normalized; _ } -> normalized
@@ -76,7 +137,7 @@ let with_uutf1 is =
   >>= fun r ->
   if String.length r.raw > 0
   then return r
-  else failf "with_uutf1: string is empty"
+  else failf "with_uutf1: string is empty @[<hov>%a@]" pp r
 
 let with_uutf1_without_raw is =
   with_uutf1 is >>| fun { normalized; _ } -> normalized

@@ -143,4 +143,4 @@ let make v =
   let res = json_of_string res in
   Alcotest.(check json) "encode:decode:compare" v res
 
-let () = Alcotest.run "fe" [("json", List.map make tests)]
+let () = Alcotest.run "format" [("json", List.map make tests)]

@@ -35,3 +35,7 @@ val pp : t Fmt.t
 val equal_charset : charset -> charset -> bool
 val equal_encoding : encoding -> encoding -> bool
 val equal : t -> t -> bool
+
+module Encoder : sig
+  val encoded_word : t Encoder.t
+end

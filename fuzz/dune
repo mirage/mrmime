@@ -2,3 +2,8 @@
  (name fuzz_encoder)
  (modules fuzz_encoder)
  (libraries mrmime.encoder crowbar jsonm))
+
+(executable
+ (name fuzz_mailbox)
+ (modules fuzz_mailbox)
+ (libraries mrmime crowbar))

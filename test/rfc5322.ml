@@ -123,14 +123,7 @@ let invalid_addresses =
   ; "\"first\"last\"@iana.org"; "\"\"\"@iana.org"; "\"\\\"@iana.org"
   ; "\"\"@iana.org"; "first\\@last@iana.org"; "first.last@"
   ; "first.last@[.12.34.56.78]"; "first.last@[12.34.56.789]"
-  ; "first.last@[::12.34.56.78]"; "first.last@[IPv5:::12.34.56.78]"
-  ; "first.last@[IPv6:1111:2222:3333:4444:5555:12.34.56.78]"
-  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777:12.34.56.78]"
-  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777]"
-  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777:8888:9999]"
-  ; "first.last@[IPv6:1111:2222::3333::4444:5555:6666]"
-  ; "first.last@[IPv6:1111:2222:333x::4444:5555]"
-  ; "first.last@[IPv6:1111:2222:33333::4444:5555]"; "abc\\@def@iana.org"
+  ; "first.last@[::12.34.56.78]"; "abc\\@def@iana.org"
   ; "abc\\@iana.org"; "@iana.org"; "doug@"; "\"qu@iana.org"; "ote\"@iana.org"
   ; ".dot@iana.org"; "dot.@iana.org"; "two..dot@iana.org"
   ; "\"Doug \"Ace\" L.\"@iana.org"; "Doug\\ \\\"Ace\\\"\\ L\\.@iana.org"
@@ -144,14 +137,29 @@ let invalid_addresses =
   ; "pootietang.@iana.org"; ".@iana.org"; "Ima Fool@iana.org"
   ; "phil.h\\@\\@ck@haacked.com"; "first\\last@iana.org"; "Abc\\@def@iana.org"
   ; "Fred\\ Bloggs@iana.org"; "Joe.\\Blow@iana.org"
-  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:12.34.567.89]"
   ; "{^c\\@**Dog^}@cartoon.com"; "cal(foo(bar)@iamcal.com"
   ; "cal(foo\\)@iamcal.com"; "cal(foo)bar)@iamcal.com"
   ; "first(middle)last@iana.org"; "a(a(b(c)d(e(f))g)(h(i)j)@iana.org"; ".@"
   ; "@bar.com"; "@@bar.com"; "aaa.com"; "aaa@.com"; "aaa@.com"; "aaa@.123"
   ; "aaa@[123.123.123.123]a"; "aaa@[123.123.123.333]"; "a@bar.com."; "-@..com"
   ; "-@a..com"; "test@...........com"; "\"\000 \"@char.com"; "\000@char.com"
-  ; "first.last@[IPv6::]"; "first.last@[IPv6::::]"; "first.last@[IPv6::b4]"
+  ; "=?us-ascii?Q?Chri's_Smith?= =?us-ascii?Q?Henry?= \
+     <.@gmail.com,@hotmail.fr:henry.chris+porno@(Chris's \
+     host.)public.example> (je suis un ******* en puissance)"
+  ; "jdoe@[RFC-5322-\\a-domain-literal]"; "jdoe@[RFC-5322-\\t-domain-literal]"
+  ; "jdoe@[RFC-5322-\\]-domain-literal]"
+  ; "jdoe@[RFC-5322-domain-literal] (comment)" ]
+
+(* XXX(dinosaure): below, addr are valid according RFC 5322 and RFC 5321 __ONLY
+   IF__ returned result is a [general-address-literal]. However, domain values
+   expect to be an IPv6 value. So [Ipaddr.V6.of_string] should fail here.
+
+   So, if we parse these addresses and get a [general-address-literal] (see
+   [Rfc5321.Ext]), they are invalid. *)
+
+let invalid_addresses_according_rfc5321_without_general_address_literal =
+  [ "first.last@[IPv6::]"; "first.last@[IPv6::::]"; "first.last@[IPv6::b4]"
+  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:12.34.567.89]"
   ; "first.last@[IPv6::::b4]"; "first.last@[IPv6::b3:b4]"
   ; "first.last@[IPv6::::b3:b4]"; "first.last@[IPv6:a1:::b4]"
   ; "first.last@[IPv6:a1:]"; "first.last@[IPv6:a1:::]"
@@ -170,12 +178,14 @@ let invalid_addresses =
   ; "first.last@[IPv6::a2::b4]"; "first.last@[IPv6:a1:a2:a3:a4:b1:b2:b3:]"
   ; "first.last@[IPv6::a2:a3:a4:b1:b2:b3:b4]"
   ; "first.last@[IPv6:a1:a2:a3:a4::b1:b2:b3:b4]"
-  ; "=?us-ascii?Q?Chri's_Smith?= =?us-ascii?Q?Henry?= \
-     <.@gmail.com,@hotmail.fr:henry.chris+porno@(Chris's \
-     host.)public.example> (je suis un connard en puissance)"
-  ; "jdoe@[RFC-5322-\\a-domain-literal]"; "jdoe@[RFC-5322-\\t-domain-literal]"
-  ; "jdoe@[RFC-5322-\\]-domain-literal]"
-  ; "jdoe@[RFC-5322-domain-literal] (comment)" ]
+  ; "first.last@[IPv5:::12.34.56.78]"
+  ; "first.last@[IPv6:1111:2222:3333:4444:5555:12.34.56.78]"
+  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777:12.34.56.78]"
+  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777]"
+  ; "first.last@[IPv6:1111:2222:3333:4444:5555:6666:7777:8888:9999]"
+  ; "first.last@[IPv6:1111:2222::3333::4444:5555:6666]"
+  ; "first.last@[IPv6:1111:2222:333x::4444:5555]"
+  ; "first.last@[IPv6:1111:2222:33333::4444:5555]"; ]
 
 exception Invalid_address
 
@@ -203,5 +213,34 @@ let invalid_tests =
           parse_address input ) )
     invalid_addresses
 
+let failf fmt = Fmt.kstrf Alcotest.fail fmt
+
+let domain_is_extension address =
+  let domain_is_extension = function
+    | `Addr (Mrmime.Rfc5321.Ext _) -> true
+    | _ -> false in
+  match address with
+  | `Mailbox { Mrmime.Rfc5322.domain = head, tail; _ } ->
+    List.for_all domain_is_extension (head :: tail)
+  | `Group { Mrmime.Rfc5322.mailboxes; _ } ->
+    let domains =
+      List.fold_left
+        (fun acc { Mrmime.Rfc5322.domain = head, tail; _ } -> (head :: tail) @ acc)
+        [] mailboxes in
+    List.for_all domain_is_extension domains
+
+let invalid_tests' =
+  List.map
+    (fun input ->
+      Alcotest.test_case input `Quick
+      @@ fun () -> match Angstrom.(parse_string Mrmime.(Rfc5322.address_list <* Rfc822.crlf)) (input ^ "\r\n") with
+      | Ok addresses ->
+        if not (List.for_all domain_is_extension addresses)
+        then failf "Got something else than a general-address-literal: %s" input
+      | Error _ -> () )
+    invalid_addresses_according_rfc5321_without_general_address_literal
+
 let () =
-  Alcotest.run "rfc5322" [("valid", valid_tests); ("invalid", invalid_tests)]
+  Alcotest.run "rfc5322" [ ("valid", valid_tests)
+                         ; ("invalid", invalid_tests)
+                         ; ("invalid", invalid_tests') ]

@@ -234,7 +234,7 @@ module Local = struct
     | [] : Peano.z local
     | ( :: ) : word * 'a local -> 'a Peano.s local
 
-  let word x = make_word x
+  let word x = if String.length x > 0 then make_word x else None
 
   let word_exn x =
     match word x with
@@ -301,10 +301,36 @@ module Encoder = struct
     | `Addr (Ext (ldh, v)) ->
       keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ':'; !!string; char $ ']' ] ])) ldh v
 
-  let phrase ppf = function
-    | `Dot -> Format.char ppf '.'
-    | `Word w -> word ppf w
-    | `Encoded e -> assert false
+  let phrase ppf lst =
+    let elt ppf = function
+      | `Dot -> Format.char ppf '.'
+      | `Word w -> word ppf w
+      | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
+    let space ppf () = keval ppf id (o [ space ]) in
+    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:(space, ()) elt) ] ])) lst
+
+  let mailbox ppf (t:Rfc5322.mailbox) =
+    match t.Rfc5322.name, t.Rfc5322.domain with
+    | Some name, (x, []) ->
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ !!phrase ]; space; fmt Format.[ char $ '<'; !!local; char $ '@'; !!domain; char $ '>' ] ]))
+        name t.Rfc5322.local x
+    | None, (x, []) ->
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ !!local; char $ '@'; !!domain; ] ]))
+        t.Rfc5322.local x
+    | name, (x, r) ->
+      let domains ppf lst =
+        let domain ppf x = keval ppf id (o [ fmt Format.[ char $ '@'; !!domain ] ]) x in
+        let comma = Format.using (fun () -> ',') Format.char, () in
+        keval ppf id (o [ fmt Format.[ !!(list ~sep:comma domain) ] ]) lst in
+      let phrase ppf x = keval ppf id (node (hov 1) (o [ fmt Format.[ !!phrase ]; space ])) x in
+
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ !!(option phrase) ]
+                         ; cut
+                         ; fmt Format.[ char $ '<'; !!domains; char $ ':'; !!local; char $ '@'; !!domain; char $ '>' ] ]))
+        name r t.Rfc5322.local x
 end
 
 let pp_word ppf = function

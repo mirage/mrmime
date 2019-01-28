@@ -3,7 +3,9 @@ type phrase = Rfc5322.phrase
 type literal_domain = Rfc5321.literal_domain
 type domain = Rfc5322.domain
 type local = Rfc822.local
-type t = Rfc5322.mailbox
+
+type t = Rfc5322.mailbox =
+  {name: phrase option; local: local; domain: domain * domain list}
 
 module Peano : sig
   type z = Z
@@ -11,7 +13,7 @@ module Peano : sig
 end
 
 module Phrase : sig
-  type elt
+  type elt = [ `Dot | `Word of word | `Encoded of Encoded_word.t ]
   type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
 
   val o : elt
@@ -47,8 +49,8 @@ module Literal_domain : sig
 end
 
 module Domain : sig
-  type atom
-  type literal
+  type atom = [`Atom of string]
+  type literal = [`Literal of string]
 
   type 'a domain =
     | ( :: ) : atom * 'a domain -> 'a Peano.s domain
@@ -106,3 +108,7 @@ val pp_literal_domain : literal_domain Fmt.t
 val pp_domain : domain Fmt.t
 val pp_local : local Fmt.t
 val pp : t Fmt.t
+
+module Encoder : sig
+  val mailbox : t Encoder.t
+end

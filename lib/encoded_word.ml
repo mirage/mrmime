@@ -87,17 +87,17 @@ module Encoder = struct
   let encoded_word ppf t =
     match t.Rfc2047.data with
     | Ok data ->
-      keval ppf id
-        (node
-           (hov 0)
-           (o [ fmt Format.[ string $ "=?"
-                           ; !!charset
-                           ; char $ '?'
-                           ; !!encoding
-                           ; char $ '?'
-                           ; a
-                           ; string $ "?=" ] ]))
+      let format =
+        Format.[ string $ "=?"
+               ; !!charset
+               ; char $ '?'
+               ; !!encoding
+               ; char $ '?'
+               ; a
+               ; string $ "?=" ] in
+      let data_format = if is_base64 t.Rfc2047.encoding then base64 else quoted_printable in
+      keval ppf id (node (hov 0) (o [ fmt format ]))
         t.Rfc2047.charset t.Rfc2047.encoding
-        (if is_base64 t.Rfc2047.encoding then base64 else quoted_printable) data
+        data_format data
     | Error (`Msg err) -> Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
 end
