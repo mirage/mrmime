@@ -11,6 +11,7 @@ synopsis:     "Mr. MIME"
 
 build: [
   ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
 ]
 
 pin-depends: [
@@ -33,4 +34,5 @@ depends: [
   "rresult"
   "fmt"
   "angstrom"
+  "alcotest" {with-test}
 ]

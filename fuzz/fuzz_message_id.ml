@@ -73,13 +73,16 @@ let writer_of_buffer buf =
 let () =
   let open Mrmime in
 
-  Crowbar.add_test ~name:"mailbox" [ message_id ] @@ fun message_id ->
+  Crowbar.add_test ~name:"message_id" [ message_id ] @@ fun message_id ->
 
   let buffer = Buffer.create 0x100 in
   let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
   let encoder = Encoder.Format.with_writer encoder (writer_of_buffer buffer) in
   let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!MessageID.Encoder.message_id ]; new_line; new_line ]) message_id in
   let result = Buffer.contents buffer in
+
+  Fmt.epr "%a.\n%!" Utils.pp_string result ;
+
   match Angstrom.parse_string Angstrom.(Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf <* Rfc822.crlf) result with
   | Ok message_id' ->
     check_eq ~pp:MessageID.pp ~eq:MessageID.equal message_id message_id'
