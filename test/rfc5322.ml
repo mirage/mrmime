@@ -341,6 +341,29 @@ CC: =?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>
 Subject: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=
  =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=
 |};
+
+(* See RFC 2047 § 8 *)
+{|From: =?ISO-8859-1?Q?Olle_J=E4rnefors?= <ojarnef@admin.kth.se>
+To: ietf-822@dimacs.rutgers.edu, ojarnef@admin.kth.se
+Subject: Time for ISO 10646?
+|};
+
+(* See RFC 2047 § 8 *)
+{|To: Dave Crocker <dcrocker@mordor.stanford.edu>
+Cc: ietf-822@dimacs.rutgers.edu, paf@comsol.se
+From: =?ISO-8859-1?Q?Patrik_F=E4ltstr=F6m?= <paf@nada.kth.se>
+Subject: Re: RFC-HDR care and feeding
+|};
+
+(* See RFC 2047 § 8 *)
+{|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>
+      (=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?=)
+To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed
+   <ned@innosoft.com>, Keith Moore <moore@cs.utk.edu>
+Subject: Test of new header generator
+MIME-Version: 1.0
+Content-type: text/plain; charset=ISO-8859-1
+|};
   ]
 
 exception Invalid_address
