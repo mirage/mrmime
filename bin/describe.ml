@@ -97,31 +97,21 @@ let count header =
       lst ;
     Hashtbl.fold (fun field v a -> (field, v) :: a) tbl [] in
   let open Mrmime in
-  let common = [ "Date", Header.Set.cardinal header.Header.date
-               ; "From", Header.Set.cardinal header.Header.from
-               ; "Sender", Header.Set.cardinal header.Header.sender
-               ; "Reply-To", Header.Set.cardinal header.Header.reply_to
-               ; "To", Header.Set.cardinal header.Header.too
-               ; "Cc", Header.Set.cardinal header.Header.cc
-               ; "Bcc", Header.Set.cardinal header.Header.bcc
-               ; "Subject", Header.Set.cardinal header.Header.subject
-               ; "Message-ID", Header.Set.cardinal header.Header.message_id
-               ; "In-Reply-To", Header.Set.cardinal header.Header.in_reply_to
-               ; "References", Header.Set.cardinal header.Header.references
-               ; "Comments", Header.Set.cardinal header.Header.comments
-               ; "Keywords", Header.Set.cardinal header.Header.keywords ] in
-  let fields =
-    Header.Set.fold
-      (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
-         | Header.B (Header.Field field, _, _) -> Header.Field.(capitalize (canonicalize field)) :: a
-         | _ -> a) header.Header.fields [] |>
-    merge in
-  let unsafes =
-    Header.Set.fold
-      (fun i a -> match Ptmap.find (i :> int) header.Header.ordered with
-         | Header.B (Header.Unsafe field, _, _) -> Header.Field.(capitalize (canonicalize field)) :: a
-         | _ -> a) header.Header.unsafes [] |>
-    merge in
+  let common = [ "Date", List.length Header.(get date header)
+               ; "From", List.length Header.(get from header)
+               ; "Sender", List.length Header.(get sender header)
+               ; "Reply-To", List.length Header.(get reply_to header)
+               ; "To", List.length Header.(get too header)
+               ; "Cc", List.length Header.(get cc header)
+               ; "Bcc", List.length Header.(get bcc header)
+               ; "Subject", List.length Header.(get subject header)
+               ; "Message-ID", List.length Header.(get message_id header)
+               ; "In-Reply-To", List.length Header.(get in_reply_to header)
+               ; "References", List.length Header.(get references header)
+               ; "Comments", List.length Header.(get comments header)
+               ; "Keywords", List.length Header.(get keywords header) ] in
+  let fields = Header.get_fields header |> List.map fst |> List.map fst |> merge in
+  let unsafes = Header.get_unsafes header |> List.map fst |> List.map fst |> merge in
   List.concat [ common; fields; unsafes ]
 
 let pp_header =

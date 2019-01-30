@@ -97,6 +97,26 @@ let pp_value_of_field : type a. a field -> a Fmt.t = function
   | Unsafe _ -> Unstructured.pp
   | Line -> Utils.pp_string
 
+let field_to_string : type a. a field -> string = function
+  | Date -> "Date"
+  | From -> "From"
+  | Sender -> "Sender"
+  | ReplyTo -> "Reply-To"
+  | To -> "To"
+  | Cc -> "Cc"
+  | Bcc -> "Bcc"
+  | Subject -> "Subject"
+  | MessageID -> "Message-ID"
+  | InReplyTo -> "In-Reply-To"
+  | References -> "References"
+  | Comments -> "Comments"
+  | Keywords -> "Keywords"
+  | Resent -> "Resents"
+  | Trace -> "Traces"
+  | Field field -> Field.capitalize field
+  | Line -> "#line"
+  | Unsafe field -> Field.capitalize field
+
 module Value = struct
   type t =
     | Date of Date.t
@@ -354,6 +374,20 @@ let get : type a. a field -> t -> (a * Location.t) list = fun field t -> match f
          | B (Line, v, loc) -> ((v : string), loc) :: a
          | _ -> a)
       t.lines []
+
+let get_fields t =
+  Set.fold
+    (fun i a -> match Ptmap.find (i :> int) t.ordered with
+       | B (Field field, v, loc) -> ((field, (v : Unstructured.t)), loc) :: a
+       | _ -> a)
+    t.fields []
+
+let get_unsafes t =
+  Set.fold
+    (fun i a -> match Ptmap.find (i :> int) t.ordered with
+       | B (Unsafe field, v, loc) -> ((field, (v : Unstructured.t)), loc) :: a
+       | _ -> a)
+    t.unsafes []
 
 let with_date ?(location = Location.none) n t v =
   { t with ordered = Ptmap.add (n :> int) (B (Date, v, location)) t.ordered

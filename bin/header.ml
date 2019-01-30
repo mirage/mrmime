@@ -20,25 +20,7 @@ let header_of_input ~newline ic =
 
 open Mrmime
 
-let pp_field : type a. a Header.field Fmt.t = let open Header in fun ppf -> function
-  | Date -> Fmt.string ppf "Date"
-  | From -> Fmt.string ppf "From"
-  | Sender -> Fmt.string ppf "Sender"
-  | ReplyTo -> Fmt.string ppf "Reply-To"
-  | To -> Fmt.string ppf "To"
-  | Cc -> Fmt.string ppf "Cc"
-  | Bcc -> Fmt.string ppf "Bcc"
-  | Subject -> Fmt.string ppf "Subject"
-  | MessageID -> Fmt.string ppf "Message-ID"
-  | InReplyTo -> Fmt.string ppf "In-Reply-To"
-  | References -> Fmt.string ppf "References"
-  | Comments -> Fmt.string ppf "Comments"
-  | Keywords -> Fmt.string ppf "Keywords"
-  | Resent -> Fmt.string ppf "Resents"
-  | Trace -> Fmt.string ppf "Traces"
-  | Field field -> Header.Field.pp ppf field
-  | Line -> Fmt.string ppf "#line"
-  | Unsafe field -> Header.Field.pp ppf field
+let pp_field : type a. a Header.field Fmt.t = fun ppf field -> Fmt.of_to_string Header.field_to_string ppf field
 
 type t = Header.value
 type binding = Header.binding
@@ -56,7 +38,7 @@ let get_fields fields header =
        | Ok a, Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
        | Error _, _ -> a
        | Ok a, Error _ ->
-         let field = Header.Unsafe (Fmt.to_to_string pp_field field) in
+         let field = Header.unsafe (Fmt.to_to_string pp_field field) in
          match get_field field header with
          | Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
          | Error e -> Error e)
@@ -97,22 +79,22 @@ open Cmdliner
 
 let field =
   let parser = function
-    | "date" -> Header.V Date
-    | "from" -> Header.V From
-    | "sender" -> Header.V Sender
-    | "reply-to" -> Header.V ReplyTo
-    | "to" -> Header.V To
-    | "cc" -> Header.V Cc
-    | "bcc" -> Header.V Bcc
-    | "subject" -> Header.V Subject
-    | "msg-id" -> Header.V MessageID
-    | "in-reply-to" -> Header.V InReplyTo
-    | "references" -> Header.V References
-    | "comments" -> Header.V Comments
-    | "keywords" -> Header.V Keywords
-    | "resents" -> Header.V Resent
-    | "traces" -> Header.V Trace
-    | field -> Header.V (Field field) in
+    | "date" -> Header.V Header.date
+    | "from" -> Header.V Header.from
+    | "sender" -> Header.V Header.sender
+    | "reply-to" -> Header.V Header.reply_to
+    | "to" -> Header.V Header.too
+    | "cc" -> Header.V Header.cc
+    | "bcc" -> Header.V Header.bcc
+    | "subject" -> Header.V Header.subject
+    | "msg-id" -> Header.V Header.message_id
+    | "in-reply-to" -> Header.V Header.in_reply_to
+    | "references" -> Header.V Header.references
+    | "comments" -> Header.V Header.comments
+    | "keywords" -> Header.V Header.keywords
+    | "resents" -> Header.V Header.resent
+    | "traces" -> Header.V Header.trace
+    | field -> Header.V (Header.field field) in
   let pp ppf (Header.V x) = pp_field ppf x in
   let parser = Rresult.R.ok <.> parser in
   Arg.conv ~docv:"<field>" (parser <.> Header.Field.canonicalize, pp)

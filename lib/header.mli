@@ -42,6 +42,7 @@ val unsafe : Field.t -> Unstructured.t field
 val line : string field
 
 val pp_value_of_field : 'a field -> 'a Fmt.t
+val field_to_string : 'a field -> string
 
 module Value : sig
   type t =
@@ -73,6 +74,8 @@ type t
 val default : t
 val pp : t Fmt.t
 val get : 'a field -> t -> ('a * Location.t) list
+val get_fields : t -> ((Field.t * Unstructured.t) * Location.t) list
+val get_unsafes : t -> ((Field.t * Unstructured.t) * Location.t) list
 
 val with_date : ?location:Location.t -> Number.t -> t -> Date.t -> t
 val with_from : ?location:Location.t -> Number.t -> t -> Mailbox.t list -> t
