@@ -12,6 +12,7 @@ module Rfc6532 = Rfc6532
 
 (* / *)
 
+module Iana = Iana
 module Location = Location
 module Content_encoding = Content_encoding
 module MessageID = MessageID

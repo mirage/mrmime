@@ -98,7 +98,7 @@ let nothing_to_do = Fmt.kstrf fail "nothing to do"
 
 (* / *)
 
-let is_ctl = function '\000' .. '\031' -> true | _ -> false
+let is_ctl = function '\000' .. '\031' | '\127' -> true | _ -> false
 let is_space = ( = ) ' '
 
 (* From RFC 2045
@@ -106,7 +106,8 @@ let is_space = ( = ) ' '
         token := 1*<any (US-ASCII) CHAR except SPACE, CTLs,
                     or tspecials>
 *)
-let is_token c = (not (is_tspecials c)) && (not (is_ctl c)) && not (is_space c)
+let is_ascii = function '\000' .. '\127' -> true | _ -> false
+let is_token c = (is_ascii c) && (not (is_tspecials c)) && (not (is_ctl c)) && (not (is_space c))
 let token = take_while1 is_token
 let is_digit = function '0' .. '9' -> true | _ -> false
 
@@ -205,18 +206,12 @@ let ty_to_string = function
         subtype := extension-token / iana-token
 *)
 let subty ty =
-  peek_char
-  >>= (function
-        | Some 'X' | Some 'x' -> extension_token
-        | _ -> (
-            token
-            >>| fun v ->
-            try
-              `Iana_token
-                (Iana.Set.find v
-                   (Iana.Map.find (ty_to_string ty) Iana.database))
-            with _exn -> `X_token v ))
-  >>| fun subty -> (ty, subty)
+  token
+  >>= fun s ->
+    try let v = `Iana_token (Iana.Set.find s (Iana.Map.find (ty_to_string ty) Iana.database)) in return (ty, v)
+    with Not_found -> match of_string s extension_token with
+      | Some v -> return (ty, v)
+      | None -> invalid_token s
 
 (* From RFC 2045
 

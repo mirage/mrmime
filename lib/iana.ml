@@ -29,10 +29,10 @@ let database =
     (Map.add "text"
        (Set.of_list
           [ "1d-interleaved-parityfec"; "RED"; "cache-manifest"; "calendar"
-          ; "css"; "csv"; "csv-schema"; "directory - DEPRECATED by RFC6350"
-          ; "dns"; "ecmascript - OBSOLETED in favor of application/ecmascript"
+          ; "css"; "csv"; "csv-schema"; "directory"
+          ; "dns"; "ecmascript"
           ; "encaprtp"; "enriched"; "example"; "fwdred"; "grammar-ref-list"
-          ; "html"; "javascript - OBSOLETED in favor of application/javascript"
+          ; "html"; "javascript"
           ; "jcr-cnd"; "markdown"; "mizar"; "n3"; "parameters"; "parityfec"
           ; "plain"; "provenance-notation"; "prs.fallenstein.rst"
           ; "prs.lines.tag"; "prs.prop.logic"; "raptorfec"; "rfc822-headers"
@@ -45,7 +45,7 @@ let database =
           ; "vnd.graphviz"; "vnd.in3d.3dml"; "vnd.in3d.spot"; "vnd.latex-z"
           ; "vnd.motorola.reflex"; "vnd.ms-mediapackage"
           ; "vnd.net2phone.commcenter.command"; "vnd.radisys.msml-basic-layout"
-          ; "vnd.si.uricatalogue - OBSOLETED by request"
+          ; "vnd.si.uricatalogue"
           ; "vnd.sun.j2me.app-descriptor"; "vnd.trolltech.linguist"
           ; "vnd.wap.si"; "vnd.wap.sl"; "vnd.wap.wml"; "vnd.wap.wmlscript"
           ; "xml"; "xml-external-parsed-entity" ])
@@ -71,9 +71,9 @@ let database =
                    ; "example"; "external-body"; "feedback-report"; "global"
                    ; "global-delivery-status"
                    ; "global-disposition-notification"; "global-headers"
-                   ; "http"; "imdn+xml"; "news - OBSOLETED by RFC5537"
+                   ; "http"; "imdn+xml"; "news"
                    ; "partial"; "rfc822"; "s-http"; "sip"; "sipfrag"
-                   ; "tracking-status"; "vnd.si.simp - OBSOLETED by request"
+                   ; "tracking-status"; "vnd.si.simp"
                    ; "vnd.wfa.wsc" ])
                 (Map.add "image"
                    (Set.of_list
@@ -92,8 +92,8 @@ let database =
                       ; "vnd.sealedmedia.softseal.jpg"; "vnd.svf"
                       ; "vnd.tencent.tap"; "vnd.valve.source.texture"
                       ; "vnd.wap.wbmp"; "vnd.xiff"; "vnd.zbrush.pcx"; "wmf"
-                      ; "x-emf - DEPRECATED in favor of image/emf"
-                      ; "x-wmf - DEPRECATED in favor of image/wmf" ])
+                      ; "x-emf"
+                      ; "x-wmf" ])
                    (Map.add "examples" (Set.of_list [])
                       (Map.add "audio"
                          (Set.of_list
@@ -136,7 +136,7 @@ let database =
                             ; "vnd.nokia.mobile-xmf"; "vnd.nortel.vbk"
                             ; "vnd.nuera.ecelp4800"; "vnd.nuera.ecelp7470"
                             ; "vnd.nuera.ecelp9600"; "vnd.octel.sbc"
-                            ; "vnd.qcelp - DEPRECATED in favor of audio/qcelp"
+                            ; "vnd.qcelp"
                             ; "vnd.rhetorex.32kadpcm"; "vnd.rip"
                             ; "vnd.sealedmedia.softseal.mpeg"; "vnd.vmx.cvsd"
                             ; "vorbis"; "vorbis-config" ])
@@ -252,8 +252,7 @@ let database =
                                ; "sgml-open-catalog"; "shf+xml"; "sieve"
                                ; "simple-filter+xml"; "simple-message-summary"
                                ; "simpleSymbolContainer"; "slate"
-                               ; "smil - OBSOLETED in favor of \
-                                  application/smil+xml"; "smil+xml"
+                               ; "smil"
                                ; "smpte336m"; "soap+fastinfoset"; "soap+xml"
                                ; "sparql-query"; "sparql-results+xml"
                                ; "spirits-event+xml"; "sql"; "srgs"; "srgs+xml"
@@ -309,8 +308,7 @@ let database =
                                ; "vnd.apache.thrift.compact"
                                ; "vnd.apache.thrift.json"; "vnd.api+json"
                                ; "vnd.apple.installer+xml"; "vnd.apple.mpegurl"
-                               ; "vnd.arastra.swi - OBSOLETED in favor of \
-                                  application/vnd.aristanetworks.swi"
+                               ; "vnd.arastra.swi"
                                ; "vnd.aristanetworks.swi"; "vnd.artsquare"
                                ; "vnd.astraea-software.iota"; "vnd.audiograph"
                                ; "vnd.autopackage"; "vnd.avistar+xml"
@@ -420,13 +418,13 @@ let database =
                                ; "vnd.fujixerox.docuworks.container"
                                ; "vnd.fut-misnet"; "vnd.fuzzysheet"
                                ; "vnd.genomatix.tuxedo"; "vnd.geo+json"
-                               ; "vnd.geocube+xml - OBSOLETED by request"
+                               ; "vnd.geocube+xml"
                                ; "vnd.geogebra.file"; "vnd.geogebra.tool"
                                ; "vnd.geometry-explorer"; "vnd.geonext"
                                ; "vnd.geoplan"; "vnd.geospace"; "vnd.gerber"
                                ; "vnd.globalplatform.card-content-mgt"
                                ; "vnd.globalplatform.card-content-mgt-response"
-                               ; "vnd.gmx - DEPRECATED"
+                               ; "vnd.gmx"
                                ; "vnd.google-earth.kml+xml"
                                ; "vnd.google-earth.kmz"
                                ; "vnd.gov.sk.e-form+xml"
@@ -460,8 +458,7 @@ let database =
                                ; "vnd.ims.lti.v2.toolsettings+json"
                                ; "vnd.ims.lti.v2.toolsettings.simple+json"
                                ; "vnd.informedcontrol.rms+xml"
-                               ; "vnd.informix-visionary - OBSOLETED in favor \
-                                  of application/vnd.visionary"
+                               ; "vnd.informix-visionary"
                                ; "vnd.infotech.project"
                                ; "vnd.infotech.project+xml"
                                ; "vnd.innopath.wamp.notification"
@@ -578,8 +575,7 @@ let database =
                                ; "vnd.nokia.landmarkcollection+xml"
                                ; "vnd.nokia.n-gage.ac+xml"
                                ; "vnd.nokia.n-gage.data"
-                               ; "vnd.nokia.n-gage.symbian.install - \
-                                  OBSOLETE; no replacement given"
+                               ; "vnd.nokia.n-gage.symbian.install"
                                ; "vnd.nokia.ncd"; "vnd.nokia.pcd+wbxml"
                                ; "vnd.nokia.pcd+xml"; "vnd.nokia.radio-preset"
                                ; "vnd.nokia.radio-presets"; "vnd.novadigm.EDM"

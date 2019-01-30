@@ -12,3 +12,8 @@
  (name fuzz_message_id)
  (modules fuzz_message_id)
  (libraries mrmime crowbar))
+
+(executable
+ (name fuzz_content_type)
+ (modules fuzz_content_type)
+ (libraries mrmime crowbar))

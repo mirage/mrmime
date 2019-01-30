@@ -281,3 +281,52 @@ let equal a b =
   && Subtype.equal a.Rfc2045.subty b.Rfc2045.subty
   && Parameters.(
        equal (of_list a.Rfc2045.parameters) (of_list b.Rfc2045.parameters))
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let ty ppf = function
+    | `Text -> Format.string ppf "text"
+    | `Image -> Format.string ppf "image"
+    | `Audio -> Format.string ppf "audio"
+    | `Video -> Format.string ppf "video"
+    | `Application -> Format.string ppf "application"
+    | `Message -> Format.string ppf "message"
+    | `Multipart -> Format.string ppf "multipart"
+    | `Ietf_token v -> Format.string ppf v
+    | `X_token v -> Format.using (fun v -> "X-" ^ v) Format.string ppf v
+
+  let subty ppf = function
+    | `Ietf_token v -> Format.string ppf v
+    | `Iana_token v -> Format.string ppf v
+    | `X_token v -> Format.using (fun v -> "X-" ^ v) Format.string ppf v
+
+  let value =
+    Format.using
+      (function `Token x -> `Atom x | `String x -> `String x)
+      Mailbox.Encoder.word
+
+  let parameter ppf (key, v) =
+    keval ppf id (node (hov 0) (o [ fmt Format.[ !!string; char $ '='; !!value ] ]))
+      key v
+
+  let parameters ppf parameters =
+    let sep ppf () = keval ppf id (o [ fmt Format.[ char $ ';' ]; space ]) in
+    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:(sep, ()) parameter) ] ]))
+      parameters
+
+  let content_type ppf t =
+    match t.Rfc2045.parameters with
+    | [] ->
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ !!ty; char $ '/'; !!subty; ] ]))
+        t.Rfc2045.ty t.Rfc2045.subty
+    | _ ->
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ !!ty; char $ '/'; !!subty; ]
+                         ; fmt Format.[ char $ ';' ]; space
+                         ; fmt Format.[ !!parameters ] ]))
+        t.Rfc2045.ty t.Rfc2045.subty t.Rfc2045.parameters
+end
