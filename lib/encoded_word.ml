@@ -99,5 +99,6 @@ module Encoder = struct
       keval ppf id (node (hov 0) (o [ fmt format ]))
         t.Rfc2047.charset t.Rfc2047.encoding
         data_format data
-    | Error (`Msg err) -> Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
+    | Error (`Msg err) ->
+      Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
 end

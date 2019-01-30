@@ -95,15 +95,15 @@ let is_qtext_valid_string = is_utf8_valid_string_with Rfc822.is_qtext
 let need_to_escape, escape_char =
   (* See [Rfc822.of_escaped_character] but totally arbitrary. *)
   let bindings = [('\000', '\000')
-                  ;('\\', '\\')
-                  ;('\x07', 'a')
-                  ;('\b', 'b')
-                  ;('\t', 't')
-                  ;('\n', 'n')
-                  ;('\x0b', 'v')
-                  ;('\x0c', 'f')
-                  ;('\r', 'r')
-                  ;('"', '"')] in
+                 ;('\\',   '\\')
+                 ;('\x07', 'a')
+                 ;('\b',   'b')
+                 ;('\t',   't')
+                 ;('\n',   'n')
+                 ;('\x0b', 'v')
+                 ;('\x0c', 'f')
+                 ;('\r',   'r')
+                 ;('"',    '"')] in
   ( (fun chr -> List.mem_assoc chr bindings)
   , fun chr -> List.assoc chr bindings )
 
@@ -126,9 +126,7 @@ let make_word raw =
   else if is_utf8_valid_string raw then Some (`String (escape_string raw))
   else None
 
-module Peano = struct type z = Z
-
-                      and 'a s = S end
+module Peano = struct type z = Z and 'a s = S end
 
 module Phrase = struct
   type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]

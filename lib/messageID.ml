@@ -35,3 +35,30 @@ let equal_domain a b = match a, b with
 let equal a b =
   equal_local (fst a) (fst b)
   && equal_domain (snd a) (snd b)
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let dot = Format.using (fun () -> '.') Format.char, ()
+
+  let domain ppf = function
+    | `Domain domain ->
+      let x ppf x = keval ppf id (node (hov 0) (o [ fmt Format.[ !!string ] ])) x in
+      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot x) ] ])) domain
+    | `Literal literal ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ']' ] ])) literal
+    | `Addr Rfc822.Nonsense.Nonsense -> assert false
+
+  let message_id ppf (t:Rfc822.nonsense Rfc822.msg_id) =
+    match t with
+    | (local_part, domain_part) ->
+      keval ppf id
+        (node (hov 1) (o [ fmt Format.[ char $ '<'
+                                      ; !!Mailbox.Encoder.local
+                                      ; char $ '@'
+                                      ; !!domain
+                                      ; char $ '>' ] ]))
+        local_part domain_part
+end

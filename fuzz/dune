@@ -7,3 +7,8 @@
  (name fuzz_mailbox)
  (modules fuzz_mailbox)
  (libraries mrmime crowbar))
+
+(executable
+ (name fuzz_message_id)
+ (modules fuzz_message_id)
+ (libraries mrmime crowbar))

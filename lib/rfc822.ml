@@ -2,7 +2,13 @@ type word = [`Atom of string | `String of string]
 type 'addr domain = [`Domain of string list | `Literal of string | `Addr of 'addr]
 type local = word list
 type 'addr msg_id = local * 'addr domain
-type nonsense = Nonsense
+
+[@@@warning "-37"]
+
+module Nonsense : sig type t = private Nonsense end = struct type t = Nonsense end
+type nonsense = Nonsense.t
+
+[@@@warning "+37"]
 
 (* From RFC 5234 (used in RFC 5322)
 

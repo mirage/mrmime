@@ -14,9 +14,11 @@ val equal_domain : domain -> domain -> bool
 val equal_literal_domain : literal_domain -> literal_domain -> bool
 val equal : t -> t -> bool
 
+val escape_string : string -> string
+
 module Peano : sig
   type z = Z
- and 'a s = S
+  type 'a s = S
 end
 
 module Phrase : sig
@@ -24,19 +26,11 @@ module Phrase : sig
   type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
 
   val o : elt
-
-  (* / *)
+  val w : string -> elt
+  val e : encoding:Encoded_word.encoding -> string -> elt
 
   val word : string -> elt option
   val word_exn : string -> elt
-  val w : string -> elt
-
-  (* / *)
-
-  val e : encoding:Encoded_word.encoding -> string -> elt
-
-  (* / *)
-
   val coerce : 'a Peano.s t -> phrase
   val make : 'a t -> phrase option
   val make_exn : 'a t -> phrase
@@ -48,8 +42,6 @@ module Literal_domain : sig
   val ipv4 : Ipaddr.V4.t t
   val ipv6 : Ipaddr.V6.t t
   val extension : (string * string) t
-
-  (* / *)
 
   val make : 'a t -> 'a -> literal_domain option
   val make_exn : 'a t -> 'a -> literal_domain
@@ -69,20 +61,14 @@ module Domain : sig
   val atom_exn : string -> atom
   val a : string -> atom
 
-  (* / *)
-
   val literal : string -> literal option
   val literal_exn : string -> literal
-
-  (* / *)
 
   val domain : 'a domain t
   val ipv4 : Ipaddr.V4.t t
   val ipv6 : Ipaddr.V6.t t
   val extension : (string * string) t
   val default : literal t
-
-  (* / *)
 
   val make : 'a t -> 'a -> Rfc5322.domain option
   val make_exn : 'a t -> 'a -> Rfc5322.domain
@@ -93,11 +79,9 @@ module Local : sig
     | [] : Peano.z local
     | ( :: ) : word * 'a local -> 'a Peano.s local
 
+  val w : string -> word
   val word : string -> word option
   val word_exn : string -> word
-  val w : string -> word
-
-  (* / *)
 
   val coerce : 'a Peano.s local -> Rfc822.local
   val make : 'a local -> Rfc822.local option
@@ -107,8 +91,6 @@ end
 val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> t option
 val with_name : phrase -> t -> t
 
-(* / *)
-
 val pp_phrase : phrase Fmt.t
 val pp_word : word Fmt.t
 val pp_literal_domain : literal_domain Fmt.t
@@ -117,5 +99,7 @@ val pp_local : local Fmt.t
 val pp : t Fmt.t
 
 module Encoder : sig
+  val word : word Encoder.t
+  val local : local Encoder.t
   val mailbox : t Encoder.t
 end

@@ -58,6 +58,25 @@ type 'a field =
   | Unsafe : string -> Unstructured.t field
   | Line : string field
 
+let date = Date
+let from = From
+let sender = Sender
+let reply_to = ReplyTo
+let too = To
+let cc = Cc
+let bcc = Bcc
+let subject = Subject
+let message_id = MessageID
+let in_reply_to = InReplyTo
+let references = References
+let comments = Comments
+let keywords = Keywords
+let resent = Resent
+let trace = Trace
+let field field = Field field
+let unsafe field = Unsafe field
+let line = Line
+
 let pp_value_of_field : type a. a field -> a Fmt.t = function
   | Date -> Date.pp
   | From -> Fmt.Dump.list Mailbox.pp
@@ -186,15 +205,15 @@ let default =
   ; ordered = Ptmap.empty }
 
 let pp ppf t =
-  let pp field =
-    Fmt.Dump.iter_bindings
-      (fun pp set ->
-         List.iter
-           (fun (x : Number.t) ->
-              let B (field, value, _) = Ptmap.find (x :> int) t.ordered in
-              pp (V field) (Value.of_field field value))
-           (Set.elements set))
-      field Fmt.nop Value.pp in
+  let pp_values =
+    let iter computation set =
+      List.iter
+        (fun (x : Number.t) ->
+           let B (field, value, _) = Ptmap.find (x :> int) t.ordered in
+           computation (Value.of_field field value))
+        (Set.elements set) in
+
+    Fmt.Dump.iter iter Fmt.nop Value.pp in
   Fmt.pf ppf "{ @[<hov>date = %a;@ \
                        from = %a;@ \
                        sender = %a;@ \
@@ -213,24 +232,24 @@ let pp ppf t =
                        field = %a;@ \
                        unsafe = %a;@ \
                        lines = %a;@] }"
-    Fmt.(pp (always "date")) t.date
-    Fmt.(pp (always "from")) t.from
-    Fmt.(pp (always "sender")) t.sender
-    Fmt.(pp (always "reply-to")) t.reply_to
-    Fmt.(pp (always "to")) t.too
-    Fmt.(pp (always "cc")) t.cc
-    Fmt.(pp (always "bcc")) t.bcc
-    Fmt.(pp (always "subject")) t.subject
-    Fmt.(pp (always "message-id")) t.message_id
-    Fmt.(pp (always "in-reply-to")) t.in_reply_to
-    Fmt.(pp (always "reference")) t.references
-    Fmt.(pp (always "comment")) t.comments
-    Fmt.(pp (always "keywords")) t.keywords
+    pp_values t.date
+    pp_values t.from
+    pp_values t.sender
+    pp_values t.reply_to
+    pp_values t.too
+    pp_values t.cc
+    pp_values t.bcc
+    pp_values t.subject
+    pp_values t.message_id
+    pp_values t.in_reply_to
+    pp_values t.references
+    pp_values t.comments
+    pp_values t.keywords
     Fmt.(Dump.list Resent.pp) t.resents
     Fmt.(Dump.list Trace.pp) t.traces
-    Fmt.(pp (always "fields")) t.fields
-    Fmt.(pp (always "unsafes")) t.unsafes
-    Fmt.(pp (always "lines")) t.lines
+    pp_values t.fields
+    pp_values t.unsafes
+    pp_values t.lines
 
 let get : type a. a field -> t -> (a * Location.t) list = fun field t -> match field with
   | Date ->
@@ -400,7 +419,9 @@ let with_unsafe ?(location = Location.none) n t field v =
   { t with ordered = Ptmap.add (n :> int) (B (Unsafe field, v, location)) t.ordered
          ; unsafes = Set.add n t.unsafes }
 
-let fold : Number.t -> (([> Rfc5322.field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list) = fun n fields t ->
+let fold
+  : Number.t -> (([> Rfc5322.field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+  = fun n fields t ->
   List.fold_left
     (fun (n, t, rest) -> function
        | `Date v, loc ->
