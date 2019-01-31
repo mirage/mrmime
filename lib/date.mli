@@ -81,3 +81,7 @@ type t = Rfc5322.date =
 
 val pp : t Fmt.t
 val equal : t -> t -> bool
+
+module Encoder : sig
+  val date : t Encoder.t
+end

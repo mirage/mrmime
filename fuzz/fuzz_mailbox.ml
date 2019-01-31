@@ -110,7 +110,6 @@ let writer_of_buffer buf =
       Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
-
 let () =
   let open Mrmime in
 
@@ -126,6 +125,6 @@ let () =
 
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with
   | Ok mailbox' ->
-    check_eq ~pp:Mrmime.Mailbox.pp ~eq:Mrmime.Mailbox.equal mailbox mailbox'
+    check_eq ~pp:Mailbox.pp ~eq:Mailbox.equal mailbox mailbox'
   | Error err ->
     failf "%a can not be parsed: %s" Mailbox.pp mailbox err

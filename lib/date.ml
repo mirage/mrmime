@@ -190,7 +190,7 @@ module Zone = struct
     | Military_zone c -> Fmt.pf ppf "(Military_zone %c)" c
 
   let to_string = function
-    | TZ (x, y) -> Fmt.strf "%02d%02d" x y
+    | TZ (x, y) -> if x >= 0 then Fmt.strf "+%02d%02d" x y else Fmt.strf "-%02d%02d" x y
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
@@ -268,3 +268,43 @@ let pp ppf = function
                         zone = %a@]}"
       d Month.pp m y hh mm (Option.value ~default:0 ss)
       Zone.pp zone
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let day ppf =
+    let day = Format.using Day.to_string Format.string in
+    keval ppf id (o [ fmt Format.[ !!day; char $ ',' ]; space ])
+
+  let month = Format.using Month.to_string Format.string
+
+  let time ppf (hours, minutes, seconds) =
+    let string_of_number = Fmt.strf "%02d" in
+    let number ppf x = keval ppf id (o [ cut; fmt Format.[ !!(using string_of_number string) ]; cut ]) x in
+    match seconds with
+    | Some seconds ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ !!number; char $ ':'; !!number; char $ ':'; !!number ] ]))
+        hours minutes seconds
+    | None ->
+      keval ppf id (node (hov 1) (o [ fmt Format.[ !!number; char $ ':'; !!number ] ]))
+        hours minutes
+
+  let zone = Format.using Zone.to_string Format.string
+  let int = Format.using string_of_int Format.string
+
+  let date ppf t =
+      let (d, m, y) = t.date in
+      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(option day) ]
+                                    ; fmt Format.[ !!int ]
+                                    ; space
+                                    ; fmt Format.[ !!month ]
+                                    ; space
+                                    ; fmt Format.[ !!int ]
+                                    ; space
+                                    ; fmt Format.[ !!time ]
+                                    ; space
+                                    ; fmt Format.[ !!zone ] ]))
+        t.day d m y t.time t.zone
+end

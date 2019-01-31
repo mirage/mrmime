@@ -18,6 +18,11 @@
  (modules fuzz_content_type)
  (libraries mrmime crowbar))
 
+(executable
+ (name fuzz_date)
+ (modules fuzz_date)
+ (libraries mrmime crowbar))
+
 (alias
  (name runtest)
  (deps (:fuzz_encoder fuzz_encoder.exe))
