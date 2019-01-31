@@ -8,6 +8,7 @@ env:
  global:
    - PACKAGE="mrmime"
    - DISTRO="alpine"
+   - PINS="crowbar:https://github.com/stedolan/crowbar.git"
  matrix:
    - OCAML_VERSION=4.06 TESTS=true
    - OCAML_VERSION=4.07 TESTS=true
