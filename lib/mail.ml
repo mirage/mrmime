@@ -41,6 +41,14 @@ let header : (Content.t * Header.t * (Number.t * Field.mail) list) Angstrom.t =
   return (Content.fold_as_mail fields Content.default)
   >>= fun (content, fields) -> return (content, header, fields)
 
+type ('valid, 'invalid) contents =
+  | Contents of 'valid
+  | Invalid of 'invalid
+
+let best_effort strict_parser raw_parser =
+  ((strict_parser >>| fun () -> `Contents)
+   <|> (raw_parser >>| fun () -> `Invalid))
+
 let octet boundary content =
   match boundary with
   | None ->
@@ -50,16 +58,30 @@ let octet boundary content =
       Buffer.add_string buf "\n" in
     let write_data = Buffer.add_string buf in
     (match Content.encoding content with
-     | `Quoted_printable -> Quoted_printable.to_end_of_input ~write_data ~write_line
-     | `Base64 -> B64.to_end_of_input ~write_data
-     | `Bit7 | `Bit8 | `Binary -> Rfc5322.to_end_of_input ~write_data
-     | `Ietf_token _x | `X_token _x -> assert false) >>| fun () -> Buffer.contents buf
+     | `Quoted_printable ->
+       best_effort
+         (Quoted_printable.to_end_of_input ~write_data ~write_line)
+         ((return (Buffer.clear buf)) *> Rfc5322.to_end_of_input ~write_data)
+     | `Base64 ->
+       best_effort
+         (B64.to_end_of_input ~write_data)
+         ((return (Buffer.clear buf)) *> Rfc5322.to_end_of_input ~write_data)
+     | `Bit7 | `Bit8 | `Binary ->
+       (Rfc5322.to_end_of_input ~write_data >>| fun () -> `Contents)
+     | `Ietf_token _x | `X_token _x -> assert false) >>|
+    (function
+      | `Contents -> Contents (Buffer.contents buf)
+      | `Invalid -> Invalid (Buffer.contents buf))
   | Some boundary ->
     let end_of_body = Rfc2046.make_delimiter boundary in
     match Content.encoding content with
-    | `Quoted_printable -> Quoted_printable.with_buffer end_of_body
-    | `Base64 -> B64.with_buffer end_of_body
-    | `Bit7 | `Bit8 | `Binary -> Rfc5322.with_buffer end_of_body
+    | `Quoted_printable ->
+      (Quoted_printable.with_buffer end_of_body >>| fun contents -> Contents contents)
+      <|> (Rfc5322.with_buffer end_of_body >>| fun invalid -> Invalid invalid)
+    | `Base64 ->
+      (B64.with_buffer end_of_body >>| fun contents -> Contents contents)
+      <|> (Rfc5322.with_buffer end_of_body >>| fun invalid -> Invalid invalid)
+    | `Bit7 | `Bit8 | `Binary -> (Rfc5322.with_buffer end_of_body >>| fun contents -> Contents contents)
     | `Ietf_token _x | `X_token _x -> assert false
 
 let boundary content =
