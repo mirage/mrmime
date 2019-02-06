@@ -14,8 +14,8 @@
  (libraries alcotest mrmime))
 
 (executable
- (name format)
- (modules format)
+ (name fformat)
+ (modules fformat)
  (libraries fmt jsonm alcotest mrmime.encoder))
 
 (executable
@@ -55,8 +55,8 @@
  
 (alias
  (name runtest)
- (deps (:format format.exe))
- (action (run %{format} --color=always)))
+ (deps (:fformat fformat.exe))
+ (action (run %{fformat} --color=always)))
 
 (alias
  (name runtest)
