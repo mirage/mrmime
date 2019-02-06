@@ -1,5 +1,10 @@
 open Angstrom
 
+(* NOTE: contents parser needs to commit ONLY at the end. They are surrounded by
+   a best-effort parser (RFC 5322 parser) if they fail. If we commit while we
+   compute, [fail] will just fail and Angstrom will not try best-effort parser
+   then. [commit] only at the end. *)
+
 let parser ~write_data ~write_line end_of_body =
   let dec = Pecu.decoder `Manual in
 
@@ -70,7 +75,7 @@ let parser ~write_data ~write_line end_of_body =
          [end_of_body]. The result will be sended to [choose]. *)
       let chunk' = Bytes.create (String.length chunk + 1) in
       Bytes.blit_string chunk 0 chunk' 0 (String.length chunk) ;
-      commit *> check_end_of_body >>= choose chunk'
+      check_end_of_body >>= choose chunk'
     | `Data data ->
       write_data data ; go ()
     | `Line line ->

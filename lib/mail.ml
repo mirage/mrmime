@@ -45,6 +45,9 @@ type ('valid, 'invalid) contents =
   | Contents of 'valid
   | Invalid of 'invalid
 
+let contents x = Contents x
+let invalid x = Invalid x
+
 let best_effort strict_parser raw_parser =
   ((strict_parser >>| fun () -> `Contents)
    <|> (raw_parser >>| fun () -> `Invalid))
@@ -76,12 +79,14 @@ let octet boundary content =
     let end_of_body = Rfc2046.make_delimiter boundary in
     match Content.encoding content with
     | `Quoted_printable ->
-      (Quoted_printable.with_buffer end_of_body >>| fun contents -> Contents contents)
-      <|> (Rfc5322.with_buffer end_of_body >>| fun invalid -> Invalid invalid)
+      choice
+        [ (Quoted_printable.with_buffer end_of_body >>| contents)
+        ; (Rfc5322.with_buffer end_of_body >>| invalid) ]
     | `Base64 ->
-      (B64.with_buffer end_of_body >>| fun contents -> Contents contents)
-      <|> (Rfc5322.with_buffer end_of_body >>| fun invalid -> Invalid invalid)
-    | `Bit7 | `Bit8 | `Binary -> (Rfc5322.with_buffer end_of_body >>| fun contents -> Contents contents)
+      choice
+        [ (B64.with_buffer end_of_body >>| contents)
+        ; (Rfc5322.with_buffer end_of_body >>| invalid) ]
+    | `Bit7 | `Bit8 | `Binary -> (Rfc5322.with_buffer end_of_body >>| contents)
     | `Ietf_token _x | `X_token _x -> assert false
 
 let boundary content =

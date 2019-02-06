@@ -1,5 +1,10 @@
 open Angstrom
 
+(* NOTE: contents parser needs to commit ONLY at the end. They are surrounded by
+   a best-effort parser (RFC 5322 parser) if they fail. If we commit while we
+   compute, [fail] will just fail and Angstrom will not try best-effort parser
+   then. [commit] only at the end. *)
+
 let parser ~write_data end_of_body =
   let dec = Base64_rfc2045.decoder `Manual in
 
@@ -45,7 +50,7 @@ let parser ~write_data end_of_body =
     | `Await ->
       let chunk' = Bytes.create (String.length chunk + 1) in
       Bytes.blit_string chunk 0 chunk' 0 (String.length chunk) ;
-      commit *> check_end_of_body >>= choose chunk'
+      check_end_of_body >>= choose chunk'
     | `Flush data ->
       write_data data ; go ()
     | `Malformed err -> fail err
