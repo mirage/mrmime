@@ -19,7 +19,26 @@ val pp_phrase : phrase Fmt.t
 val pp_message_id : MessageID.t Fmt.t
 val pp_phrase_or_message_id : phrase_or_message_id Fmt.t
 
-type 'a field
+type 'a field =
+  | Date : Date.t field
+  | From : Mailbox.t list field
+  | Sender : Mailbox.t field
+  | ReplyTo : Address.t list field
+  | To : Address.t list field
+  | Cc : Address.t list field
+  | Bcc : Address.t list field
+  | Subject : Unstructured.t field
+  | MessageID : MessageID.t field
+  | InReplyTo : phrase_or_message_id list field
+  | References : phrase_or_message_id list field
+  | Comments : Unstructured.t field
+  | Keywords : phrase list field
+  | Resent : Resent.t field
+  | Trace : Trace.t field
+  | Field  : string -> Unstructured.t field
+  | Unsafe : string -> Unstructured.t field
+  | Line : string field
+
 type value = V : 'a field -> value
 type binding = B : 'a field * 'a * Location.t -> binding
 
