@@ -191,6 +191,28 @@ end
 type value = V : 'a field -> value
 type binding = B : 'a field * 'a * Location.t -> binding
 
+let field_of_string
+  : string -> (value, Rresult.R.msg) result
+  = fun x -> match String.lowercase_ascii x with
+  | "date" -> Ok (V Date)
+  | "from" -> Ok (V From)
+  | "sender" -> Ok (V Sender)
+  | "reply-to" -> Ok (V ReplyTo)
+  | "to" -> Ok (V To)
+  | "cc" -> Ok (V Cc)
+  | "bcc" -> Ok (V Bcc)
+  | "subject" -> Ok (V Subject)
+  | "message-id" -> Ok (V MessageID)
+  | "in-reply-to" -> Ok (V InReplyTo)
+  | "references" -> Ok (V References)
+  | "comments" -> Ok (V Comments)
+  | "keywords" -> Ok (V Keywords)
+  | "resents" -> Ok (V Resent)
+  | "traces" -> Ok (V Trace)
+  | field ->
+    let open Rresult.R in
+    Field.of_string field >>| fun field -> V (Field field)
+
 type t =
   { date : Set.t
   ; from : Set.t

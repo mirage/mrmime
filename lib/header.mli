@@ -44,6 +44,7 @@ val line : string field
 
 val pp_value_of_field : 'a field -> 'a Fmt.t
 val field_to_string : 'a field -> string
+val field_of_string : string -> (value, Rresult.R.msg) result
 
 module Value : sig
   type t =
