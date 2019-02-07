@@ -1,6 +1,10 @@
 open Common
 open Mrmime
 
+let is_invalid = function
+  | Mail.Contents _ -> false
+  | Mail.Invalid _ -> true
+
 let rec print_atom ?(pad : string * string = "", "") { Mail.content; part; _ } =
   let ty = Content.ty content in
   let subty = Content.subty content in
@@ -12,8 +16,8 @@ let rec print_atom ?(pad : string * string = "", "") { Mail.content; part; _ } =
   | None -> ()
 
 and print_part ?(pad : string * string = "", "") = function
-  | Mail.Part_discrete _ ->
-    Fmt.pr "%s<#discrete>\n" (fst pad)
+  | Mail.Part_discrete contents ->
+    Fmt.pr "%s<#discrete(invalid:%b)>\n" (fst pad) (is_invalid contents)
   | Mail.Part_extension _ ->
     Fmt.pr "%s<#extension>\n" (fst pad)
   | Mail.Part_multipart parts ->
