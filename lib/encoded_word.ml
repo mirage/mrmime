@@ -1,6 +1,8 @@
-type charset = Rfc2047.charset
+type uutf_charset = [`UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE]
+type charset = [Rosetta.encoding | uutf_charset | `US_ASCII | `Charset of string]
 type encoding = Rfc2047.encoding = Quoted_printable | Base64
-type t = Rfc2047.encoded_word
+type t = Rfc2047.encoded_word =
+  {charset: charset; encoding: encoding; data: (string, Rresult.R.msg) result}
 
 exception Invalid_utf8
 

@@ -1,6 +1,9 @@
 type word = Rfc822.word
 type phrase = Rfc5322.phrase
-type literal_domain = Rfc5321.literal_domain
+type literal_domain = Rfc5321.literal_domain =
+  | IPv4 of Ipaddr.V4.t
+  | IPv6 of Ipaddr.V6.t
+  | Ext of string * string
 type domain = Rfc5322.domain
 type local = Rfc822.local
 
