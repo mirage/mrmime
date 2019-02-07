@@ -25,6 +25,15 @@ module Field = struct
 
   let canonicalize = String.lowercase_ascii
 
+  exception Break
+
+  let of_string x =
+    try
+      for i = 0 to String.length x - 1
+      do if not (Rfc5322.is_ftext x.[i]) then raise Break done ;
+      Ok (canonicalize x)
+    with Break -> Rresult.R.error_msgf "Invalid field: %S" x
+
   let pp = Fmt.using capitalize Fmt.string
 end
 

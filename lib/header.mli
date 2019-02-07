@@ -9,6 +9,7 @@ module Field : sig
   val capitalize : t -> t
   val canonicalize : t -> t
   val pp : t Fmt.t
+  val of_string : string -> (t, [ `Msg of string ]) result
 end
 
 module Map : Map.S with type key = Field.t
