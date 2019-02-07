@@ -1,4 +1,4 @@
-type t = Rfc5322.address
+type t = [`Group of Group.t | `Mailbox of Mailbox.t]
 
 val group : Group.t -> t
 val mailbox : Mailbox.t -> t
