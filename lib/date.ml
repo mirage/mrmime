@@ -190,7 +190,7 @@ module Zone = struct
     | Military_zone c -> Fmt.pf ppf "(Military_zone %c)" c
 
   let to_string = function
-    | TZ (x, y) -> if x >= 0 then Fmt.strf "+%02d%02d" x y else Fmt.strf "-%02d%02d" x y
+    | TZ (x, y) -> if x >= 0 then Fmt.strf "+%02d%02d" x y else Fmt.strf "-%02d%02d" (abs x) y
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
