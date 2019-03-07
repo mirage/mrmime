@@ -1,17 +1,6 @@
 type phrase = Rfc5322.phrase
 type phrase_or_message_id = Rfc5322.phrase_or_message_id
 
-module Field : sig
-  type t = string
-
-  val compare : t -> t -> int
-  val equal : t -> t -> bool
-  val capitalize : t -> t
-  val canonicalize : t -> t
-  val pp : t Fmt.t
-  val of_string : string -> (t, [ `Msg of string ]) result
-end
-
 module Map : Map.S with type key = Field.t
 module Set : Set.S with type elt = Number.t
 
@@ -41,25 +30,6 @@ type 'a field =
 
 type value = V : 'a field -> value
 type binding = B : 'a field * 'a * Location.t -> binding
-
-val date : Date.t field
-val from : Mailbox.t list field
-val sender : Mailbox.t field
-val reply_to : Address.t list field
-val too : Address.t list field
-val cc : Address.t list field
-val bcc : Address.t list field
-val subject : Unstructured.t field
-val message_id : MessageID.t field
-val in_reply_to : phrase_or_message_id list field
-val references : phrase_or_message_id list field
-val comments : Unstructured.t field
-val keywords : phrase list field
-val resent : Resent.t field
-val trace : Trace.t field
-val field : Field.t -> Unstructured.t field
-val unsafe : Field.t -> Unstructured.t field
-val line : string field
 
 val pp_value_of_field : 'a field -> 'a Fmt.t
 val field_to_string : 'a field -> string

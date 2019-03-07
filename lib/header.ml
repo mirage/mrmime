@@ -1,42 +1,6 @@
 type phrase = Rfc5322.phrase
 type phrase_or_message_id = Rfc5322.phrase_or_message_id
 
-module Field = struct
-  type t = string
-
-  let compare a b =
-    let a = String.lowercase_ascii a in
-    let b = String.lowercase_ascii b in
-    String.compare a b
-
-  let equal a b = compare a b = 0
-
-  let capitalize x =
-    let capitalize res idx =
-      let map = function 'a' .. 'z' as chr  -> Char.unsafe_chr (Char.code chr - 32) | chr -> chr in
-      Bytes.set res idx (map (Bytes.get res idx)) in
-    let is_dash_or_space = function ' ' | '-' -> true | _ -> false in
-    let res = Bytes.of_string x in
-    for i = 0 to String.length x - 1 do
-      if i > 0 && is_dash_or_space x.[i - 1]
-      then capitalize res i
-      else if i = 0 then capitalize res i
-    done ; Bytes.unsafe_to_string res
-
-  let canonicalize = String.lowercase_ascii
-
-  exception Break
-
-  let of_string x =
-    try
-      for i = 0 to String.length x - 1
-      do if not (Rfc5322.is_ftext x.[i]) then raise Break done ;
-      Ok (canonicalize x)
-    with Break -> Rresult.R.error_msgf "Invalid field: %S" x
-
-  let pp = Fmt.using capitalize Fmt.string
-end
-
 module Map = Map.Make(Field)
 module Set = Set.Make(Number)
 
@@ -66,25 +30,6 @@ type 'a field =
   | Field  : string -> Unstructured.t field
   | Unsafe : string -> Unstructured.t field
   | Line : string field
-
-let date = Date
-let from = From
-let sender = Sender
-let reply_to = ReplyTo
-let too = To
-let cc = Cc
-let bcc = Bcc
-let subject = Subject
-let message_id = MessageID
-let in_reply_to = InReplyTo
-let references = References
-let comments = Comments
-let keywords = Keywords
-let resent = Resent
-let trace = Trace
-let field field = Field field
-let unsafe field = Unsafe field
-let line = Line
 
 let pp_value_of_field : type a. a field -> a Fmt.t = function
   | Date -> Date.pp

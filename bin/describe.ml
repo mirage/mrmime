@@ -101,19 +101,19 @@ let count header =
       lst ;
     Hashtbl.fold (fun field v a -> (field, v) :: a) tbl [] in
   let open Mrmime in
-  let common = [ "Date", List.length Header.(get date header)
-               ; "From", List.length Header.(get from header)
-               ; "Sender", List.length Header.(get sender header)
-               ; "Reply-To", List.length Header.(get reply_to header)
-               ; "To", List.length Header.(get too header)
-               ; "Cc", List.length Header.(get cc header)
-               ; "Bcc", List.length Header.(get bcc header)
-               ; "Subject", List.length Header.(get subject header)
-               ; "Message-ID", List.length Header.(get message_id header)
-               ; "In-Reply-To", List.length Header.(get in_reply_to header)
-               ; "References", List.length Header.(get references header)
-               ; "Comments", List.length Header.(get comments header)
-               ; "Keywords", List.length Header.(get keywords header) ] in
+  let common = [ "Date", List.length Header.(get Date header)
+               ; "From", List.length Header.(get From header)
+               ; "Sender", List.length Header.(get Sender header)
+               ; "Reply-To", List.length Header.(get ReplyTo header)
+               ; "To", List.length Header.(get To header)
+               ; "Cc", List.length Header.(get Cc header)
+               ; "Bcc", List.length Header.(get Bcc header)
+               ; "Subject", List.length Header.(get Subject header)
+               ; "Message-ID", List.length Header.(get MessageID header)
+               ; "In-Reply-To", List.length Header.(get InReplyTo header)
+               ; "References", List.length Header.(get References header)
+               ; "Comments", List.length Header.(get Comments header)
+               ; "Keywords", List.length Header.(get Keywords header) ] in
   let fields = Header.get_fields header |> List.map fst |> List.map fst |> merge in
   let unsafes = Header.get_unsafes header |> List.map fst |> List.map fst |> merge in
   List.concat [ common; fields; unsafes ]

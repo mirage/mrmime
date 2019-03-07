@@ -22,6 +22,7 @@ module Encoded_word = Encoded_word
 module Mailbox = Mailbox
 module Option = Option
 module Date = Date
+module Field = Field
 module Header = Header
 module Address = Address
 module Group = Group
@@ -29,3 +30,7 @@ module Unstructured = Unstructured
 module Mail = Mail
 module Resent = Resent
 module Trace = Trace
+
+(* / *)
+
+module St_header = St_header
