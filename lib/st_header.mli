@@ -32,7 +32,8 @@ type 'value decoder
 
 type 'value decode =
   [ `Field of 'value
-  | `Other of Value.binding
+  | `Other of Field.t * string
+  | `Lines of string list
   | `Await
   | `End
   | `Malformed of string ]

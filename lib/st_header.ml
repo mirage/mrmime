@@ -101,7 +101,8 @@ type 'value decoder =
 
 type 'value decode =
   [ `Field of 'value
-  | `Other of Value.binding
+  | `Other of Field.t * string
+  | `Lines of string list
   | `Await
   | `End
   | `Malformed of string ]
@@ -180,17 +181,21 @@ let decode : type field. field decoder -> field decode =
   | Angstrom.Unbuffered.Done (committed, (#end_of_header, _)) ->
     Q.N.shift_exn decoder.q committed ;
     `End
-  | Angstrom.Unbuffered.Done (committed, ((#Rfc5322.field, _) as v)) ->
+  | Angstrom.Unbuffered.Done (committed, ((#Rfc5322.field, location) as v)) ->
+    let off = Location.left_exn location in
+    let len = Location.length_exn location in
+    let[@warning "-8"] [ x ] = Q.N.peek decoder.q in
+    let raw = Bigstringaf.substring x ~off ~len in
     Q.N.shift_exn decoder.q committed ;
     match to_binding v with
-    | Value.L (lines, _) as cf -> `Other cf
-    | Value.B (field, value, x, _) as cf ->
+    | Value.L (lines, _) -> `Lines lines
+    | Value.B (field, value, x, _) ->
       let () = match Q.N.peek decoder.q with
         | [ x ] -> decoder.cs <- Angstrom.Unbuffered.parse_incomplete_bigstring parser x
         | _ :: _ | [] -> assert false in
       match Value.equal decoder.v value, Field.equal decoder.f field with
       | Some Refl.Refl, true -> `Field x
-      | _ -> `Other cf
+      | _ -> `Other (field, raw)
 
 let blit_from_string src src_off dst dst_off len =
   Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
