@@ -14,7 +14,10 @@ type charset =
 type encoding = Quoted_printable | Base64
 
 type encoded_word =
-  {charset: charset; encoding: encoding; data: (string, Rresult.R.msg) result}
+  { charset: charset
+  ; encoding: encoding
+  ; raw: string
+  ; data: (string, Rresult.R.msg) result}
 
 let is_normalized {charset; _} =
   match charset with `Charset _ -> false | _ -> true
@@ -307,5 +310,5 @@ let encoded_word =
         | encoding -> invalid_encoding encoding)
   >>= fun encoding ->
   char '?' *> encoded_text
-  >>| normalize ~chunk:512 ~charset ~encoding
-  >>= fun data -> string "?=" *> return {charset; encoding; data}
+  >>= fun raw -> return (normalize ~chunk:512 ~charset ~encoding raw)
+  >>= fun data -> string "?=" *> return {charset; encoding; raw; data}

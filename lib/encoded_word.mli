@@ -13,7 +13,10 @@ val b : encoding
 val q : encoding
 
 type t = Rfc2047.encoded_word =
-  {charset: charset; encoding: encoding; data: (string, Rresult.R.msg) result}
+  { charset: charset
+  ; encoding: encoding
+  ; raw : string
+  ; data: (string, Rresult.R.msg) result }
 
 val is_normalized : t -> bool
 val make : encoding:encoding -> string -> t option

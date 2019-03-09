@@ -2,7 +2,10 @@ type uutf_charset = [`UTF_8 | `UTF_16 | `UTF_16BE | `UTF_16LE]
 type charset = [Rosetta.encoding | uutf_charset | `US_ASCII | `Charset of string]
 type encoding = Rfc2047.encoding = Quoted_printable | Base64
 type t = Rfc2047.encoded_word =
-  {charset: charset; encoding: encoding; data: (string, Rresult.R.msg) result}
+  { charset: charset
+  ; encoding: encoding
+  ; raw: string
+  ; data: (string, Rresult.R.msg) result}
 
 exception Invalid_utf8
 
@@ -21,7 +24,7 @@ let is_normalized = Rfc2047.is_normalized
 
 let make ~encoding value =
   if is_utf8_valid_string value then
-    Some {Rfc2047.charset= `UTF_8; encoding; data= Ok value}
+    Some {Rfc2047.charset= `UTF_8; encoding; raw= "" (* TODO *); data= Ok value}
   else None
 
 let make_exn ~encoding value =
