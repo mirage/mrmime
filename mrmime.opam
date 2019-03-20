@@ -24,7 +24,7 @@ pin-depends: [
 depends: [
   "ocaml"    {>= "4.03.0"}
   "dune"     {build}
-  "ptmap"
+  "hmap"
   "uutf"
   "ke"
   "ptime"
