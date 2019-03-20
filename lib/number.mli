@@ -20,3 +20,6 @@ val equal : t -> t -> bool
 
 val of_int_exn : int -> t
 (** [of_int_exn n] makes a new number. It raises an exception if [n < 0]. *)
+
+val max : t -> t -> t
+val min : t -> t -> t

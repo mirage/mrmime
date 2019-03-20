@@ -19,6 +19,8 @@ module Value = struct
   type phrase_or_message_id = [`Phrase of Rfc5322.phrase | `MessageID of Rfc822.nonsense Rfc822.msg_id]
   type trace = Rfc5322.mailbox option * ([ `Addr of Rfc5322.mailbox | `Domain of Rfc5322.domain | `Word of Rfc822.word ] list * Rfc5322.date option) list
 
+  (* XXX(dinosaure): [trace] is folded by the parser. *)
+
   type 'a t =
     | Date : Rfc5322.date t
     | Mailboxes : Rfc5322.mailbox list t
@@ -29,7 +31,6 @@ module Value = struct
     | Unstructured : Rfc5322.unstructured t
     | Phrases : Rfc5322.phrase list t
     | Trace : trace t
-    | Lines : string list t
 
   type value = V : 'a t -> value
 
@@ -43,7 +44,6 @@ module Value = struct
     | "unstructured" -> Ok (V Unstructured)
     | "phrases" -> Ok (V Phrases)
     | "trace" -> Ok (V Trace)
-    | "lines" -> Ok (V Lines)
     | x -> Rresult.R.error_msgf "Invalid value kind: %s" x
 
   let pp : type a. a t Fmt.t = fun ppf -> function
@@ -56,7 +56,6 @@ module Value = struct
       | Unstructured -> Fmt.string ppf "Unstructured"
       | Phrases -> Fmt.string ppf "Phrases"
       | Trace -> Fmt.string ppf "Trace"
-      | Lines -> Fmt.string ppf "Lines"
 
   let pp_of_value : type a. a t -> a Fmt.t = function
     | Date -> Date.pp
@@ -64,14 +63,13 @@ module Value = struct
     | Mailbox -> Mailbox.pp
     | Addresses -> Fmt.(Dump.list Address.pp)
     | MessageID -> MessageID.pp
-    | Phrase_or_message_id -> assert false (* TODO *)
+    | Phrase_or_message_id -> Fmt.Dump.list Header.pp_phrase_or_message_id
     | Unstructured -> Unstructured.pp
-    | Phrases -> assert false (* TODO *)
+    | Phrases -> Fmt.Dump.list Header.pp_phrase
     | Trace -> assert false (* TODO *)
-    | Lines -> Fmt.(Dump.list string)
 
   type binding = B : Field.t * 'a t * 'a * Location.t -> binding
-               | L : string list * Location.t -> binding
+               | L : (string * Location.t) list * Location.t -> binding
 
   let equal
     : type a b. a t -> b t -> (a, b) Refl.t option
@@ -85,7 +83,6 @@ module Value = struct
       | Unstructured, Unstructured -> Some Refl.Refl
       | Phrases, Phrases -> Some Refl.Refl
       | Trace, Trace -> Some Refl.Refl
-      | Lines, Lines -> Some Refl.Refl
       | _, _ -> None
 end
 
@@ -102,9 +99,9 @@ type 'value decoder =
 type 'value decode =
   [ `Field of 'value
   | `Other of Field.t * string
-  | `Lines of string list
+  | `Lines of (string * Location.t) list
   | `Await
-  | `End
+  | `End of string
   | `Malformed of string ]
 
 let to_binding
@@ -180,7 +177,9 @@ let decode : type field. field decoder -> field decode =
     `Malformed err
   | Angstrom.Unbuffered.Done (committed, (#end_of_header, _)) ->
     Q.N.shift_exn decoder.q committed ;
-    `End
+    Q.compress decoder.q ;
+    let[@warning "-8"] [ x ] = Q.N.peek decoder.q in
+    `End (Bigstringaf.substring x ~off:0 ~len:(Bigstringaf.length x))
   | Angstrom.Unbuffered.Done (committed, ((#Rfc5322.field, location) as v)) ->
     let off = Location.left_exn location in
     let len = Location.length_exn location in

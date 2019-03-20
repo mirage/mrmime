@@ -5,17 +5,17 @@ end
 
 type ('discrete, 'extension) t =
   | Discrete of { content : Content.t
-                ; fields : Field.mail list
+                ; fields : (Number.t * Field.mail * Location.t) list
                 ; body : 'discrete }
   | Extension of { content : Content.t
-                 ; fields : Field.mail list
+                 ; fields : (Number.t * Field.mail * Location.t) list
                  ; body : 'extension }
   | Multipart of { content : Content.t
-                 ; fields : Field.mail list
+                 ; fields : (Number.t * Field.mail * Location.t) list
                  ; parts : ('discrete, 'extension) atom list }
   | Message of { content : Content.t
                ; header : Header.t
-               ; fields : Field.mail list
+               ; fields : (Number.t * Field.mail * Location.t) list
                ; message : ('discrete, 'extension) t }
 and ('discrete, 'extension) part =
   | Part_discrete of 'discrete
@@ -25,20 +25,18 @@ and ('discrete, 'extension) part =
                     ; message : ('discrete, 'extension) t }
 and ('discrete, 'extension) atom =
   { content : Content.t
-  ; fields : Field.part list
+  ; fields : (Number.t * Field.part * Location.t) list
   ; part : ('discrete, 'extension) part option }
 
 open Angstrom
 
-let header : (Content.t * Header.t * (Number.t * Field.mail) list) Angstrom.t =
+let header : (Content.t * Header.t * (Number.t * Field.mail * Location.t) list) Angstrom.t =
   Rfc5322.header
     (Rfc2045.message_field
        (fun _ -> fail "Nothing to do")
        (fun _ -> fail "Nothing to do"))
-  >>= fun fields -> return (Header.fold Number.zero fields Header.default)
-  >>= fun (header, fields) ->
-  let fields = List.map (fun (idx, field, _) -> (idx, field)) fields in
-  return (Content.fold_as_mail fields Content.default)
+  >>= fun fields -> return (Header.fold Number.zero fields Header.empty)
+  >>= fun (header, fields) -> return (Content.fold_as_mail fields Content.empty)
   >>= fun (content, fields) -> return (content, header, fields)
 
 type ('valid, 'invalid) contents =
@@ -108,7 +106,7 @@ let mail =
       match boundary content with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields= List.map snd fields; part; })
+        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
         >>| fun parts -> Part_multipart parts
       | None -> fail "expected boundary"
 
@@ -119,15 +117,15 @@ let mail =
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
       octet parent content
-      >>| fun body -> header, Discrete { content; fields= List.map snd fields; body; }
+      >>| fun body -> header, Discrete { content; fields; body; }
     | `Message ->
-      mail parent >>| fun (header', message') -> header, Message { content; fields= List.map snd fields; header= header'; message= message' }
+      mail parent >>| fun (header', message') -> header, Message { content; fields; header= header'; message= message' }
     | `Multipart ->
       match boundary content with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields= List.map snd fields; part; })
-        >>| fun parts -> header, Multipart { content; fields= List.map snd fields; parts; }
+        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
+        >>| fun parts -> header, Multipart { content; fields; parts; }
       | None -> fail "expected boundary" in
 
   mail None

@@ -1,221 +1,215 @@
-module Field = struct
-  type mail = [ Rfc2045.field | Rfc2045.field_version | Rfc2045.lines ]
-  type part = [ Rfc2045.field | Rfc2045.lines ]
-end
+type mail = [ Rfc2045.field | Rfc2045.field_version | Rfc2045.lines ]
+type part = [ Rfc2045.field | Rfc2045.lines ]
 
-module Map = Map.Make(struct type t = string let compare a b = String.(compare (lowercase_ascii a) (lowercase_ascii b)) end)
+let prefixed_by_content = Field.prefixed_by "Content"
 
-module Set = Set.Make(Number)
-
-type 'a field =
-  | ContentType : Content_type.t field
-  | ContentEncoding : Content_encoding.t field
-  | MIMEVersion : Mime_version.t field
-  | ContentID : MessageID.t field
-  | ContentDescription : Unstructured.t field
-  | Field : string -> Unstructured.t field
-  | Unsafe : string -> Unstructured.t field
-  | Line : string field
-
-let pp_value_of_field : type a. a field -> a Fmt.t = function
-  | ContentType -> Content_type.pp
-  | ContentEncoding -> Content_encoding.pp
-  | MIMEVersion -> Mime_version.pp
-  | ContentID -> MessageID.pp
-  | ContentDescription -> Unstructured.pp
-  | Field field -> Fmt.using (fun v -> (field, v)) @@ Fmt.Dump.pair Fmt.string Unstructured.pp
-  | Unsafe field -> Fmt.using (fun v -> (field, v)) @@ Fmt.Dump.pair Fmt.string Unstructured.pp
-  | Line -> Utils.pp_string
-
-type value = V : 'a field -> value
-type binding = B : 'a field * 'a -> binding
+module Ordered = Map.Make(Number)
 
 module Value = struct
   type t =
-    | ContentType of Content_type.t
-    | ContentEncoding of Content_encoding.t
-    | MIMEVersion of Mime_version.t
-    | ContentID of MessageID.t
-    | ContentDescription of Unstructured.t
-    | Field of string * Unstructured.t
-    | Unsafe of string * Unstructured.t
-    | Line of string
+    | ContentType : Content_type.t -> t
+    | ContentEncoding : Content_encoding.t -> t
+    | MIMEVersion : Mime_version.t -> t
+    | ContentID : MessageID.t -> t
+    | ContentDescription : Unstructured.t -> t
+    | Field : Unstructured.t -> t
+    | Unsafe : Unstructured.t -> t
+
+  let of_content_type x = ContentType x
+  let of_content_encoding x = ContentEncoding x
+  let of_mime_version x = MIMEVersion x
+  let of_content_id x = ContentID x
+  let of_content_description x = ContentDescription x
 
   let pp ppf = function
-    | ContentType v -> Content_type.pp ppf v
-    | ContentEncoding v -> Content_encoding.pp ppf v
-    | MIMEVersion v -> Mime_version.pp ppf v
-    | ContentID v -> MessageID.pp ppf v
-    | ContentDescription v -> Unstructured.pp ppf v
-    | Field (field, v) -> Fmt.Dump.pair Fmt.string Unstructured.pp ppf (field, v)
-    | Unsafe (field, v) -> Fmt.Dump.pair Fmt.string Unstructured.pp ppf (field, v)
-    | Line v -> Utils.pp_string ppf v
-
-  let of_field : type a. a field -> a -> t= fun field v -> match field with
-    | ContentType -> ContentType v
-    | ContentEncoding -> ContentEncoding v
-    | MIMEVersion -> MIMEVersion v
-    | ContentID -> ContentID v
-    | ContentDescription -> ContentDescription v
-    | Field field -> Field (field, v)
-    | Unsafe field -> Unsafe (field, v)
-    | Line -> Line v
+    | ContentType x -> Content_type.pp ppf x
+    | ContentEncoding x -> Content_encoding.pp ppf x
+    | MIMEVersion x -> Mime_version.pp ppf x
+    | ContentID x -> MessageID.pp ppf x
+    | ContentDescription x | Field x | Unsafe x -> Unstructured.pp ppf x
 end
 
-type t =
-  { ty : Set.t
-  ; encoding : Set.t
-  ; version : Set.t
-  ; id : Set.t
-  ; description : Set.t
-  ; fields : Set.t
-  ; unsafes : Set.t
-  ; lines : Set.t
-  ; ordered : binding Ptmap.t }
+module Info = struct
+  type 'a ordered = { vs : 'a Ordered.t }
 
-let pp_field ppf = function
-  | `Content (key, value) ->
-    Fmt.pf ppf "@[<hov>Content-%s:@ %a@]"
-      (String.capitalize_ascii key)
-      Unstructured.pp value
-  | `ContentDescription v ->
-    Fmt.pf ppf "@[<hov>Content-description:@ %a@]"
-      Unstructured.pp v
-  | `ContentType t ->
-    Fmt.pf ppf "@[<hov>Content-type:@ %a@]"
-      Content_type.pp t
-  | `ContentEncoding t ->
-    Fmt.pf ppf "@[<hov>Content-encoding:@ %a@]"
-      Content_encoding.pp t
-  | `ContentID t ->
-    Fmt.pf ppf "@[<hov>Content-id:@ %a@]"
-      MessageID.pp t
-  | `MIMEVersion t ->
-    Fmt.pf ppf "@[<hov>MIME-Version: %a@]"
-      Mime_version.pp t
-  | `Unsafe (key, value) ->
-    Fmt.pf ppf "@[<hov>unsafe:%s: %a@]"
-      (String.capitalize_ascii key)
-      Unstructured.pp value
-  | `Lines lines ->
-    Fmt.pf ppf "@[<hov>line:%a]" (Fmt.hvbox Line.pp) lines
+  type 'a t =
+    | Normalized : { field : Field.t
+                   ; pp : 'a Fmt.t
+                   ; prj : 'a -> Value.t } -> 'a ordered t
+
+  let make ~field ~pp ~prj =
+    Normalized { field; pp; prj; }
+end
+
+module Hmap = Hmap.Make(Info)
+
+module Key = struct
+  type 'a ordered = 'a Info.ordered
+
+  let content_type : Content_type.t ordered Hmap.key =
+    Hmap.Key.create (Info.make ~field:(Field.v "Content-Type") ~pp:Content_type.pp ~prj:Value.of_content_type)
+  let content_encoding : Content_encoding.t ordered Hmap.key =
+    Hmap.Key.create (Info.make ~field:(Field.v "Content-Encoding") ~pp:Content_encoding.pp ~prj:Value.of_content_encoding)
+  let mime_version : Mime_version.t ordered Hmap.key =
+    Hmap.Key.create (Info.make ~field:(Field.v "MIME-Version") ~pp:Mime_version.pp ~prj:Value.of_mime_version)
+  let content_id : MessageID.t ordered Hmap.key =
+    Hmap.Key.create (Info.make ~field:(Field.v "Content-ID") ~pp:MessageID.pp ~prj:Value.of_content_id)
+  let content_description : Unstructured.t ordered Hmap.key =
+    Hmap.Key.create (Info.make ~field:(Field.v "Content-Description") ~pp:Unstructured.pp ~prj:Value.of_content_description)
+end
+
+type field =
+  | Normalized : { k : 'a Hmap.key; n : Number.t } -> field
+  | Field : { field : Field.t; value : Unstructured.t; n : Number.t } -> field
+  | Unsafe : { field : Field.t; value : Unstructured.t; n : Number.t } -> field
+
+type t =
+  { normalized : Hmap.t
+  ; v : field Location.with_location list }
+
+let empty =
+  { normalized= Hmap.empty
+  ; v= [] }
 
 let pp ppf t =
-  let pp field =
-    Fmt.Dump.iter_bindings
-      (fun pp set ->
-         List.iter
-           (fun (x : Number.t) ->
-              let B (field, value) = Ptmap.find (x :> int) t.ordered in
-              pp (V field) (Value.of_field field value))
-           (Set.elements set))
-      field Fmt.nop Value.pp in
-  Fmt.pf ppf "{ @[<hov>content-type = %a;@ \
-                       content-transfer-encoding = %a;@ \
-                       mime-version = %a;@ \
-                       content-id = %a;@ \
-                       content-description = %a;@ \
-                       content-field = %a;@ \
-                       unsafe = %a;@ \
-                       line = %a;@] }"
-    Fmt.(pp (always "content-type")) t.ty
-    Fmt.(pp (always "content-encoding")) t.encoding
-    Fmt.(pp (always "mime-version")) t.version
-    Fmt.(pp (always "content-id")) t.id
-    Fmt.(pp (always "content-description")) t.description
-    Fmt.(pp (always "content-fields")) t.fields
-    Fmt.(pp (always "unsafes")) t.unsafes
-    Fmt.(pp (always "lines")) t.lines
+  let pp_field ppf = function
+    | Normalized { k; n; } ->
+      let m = Hmap.get k t.normalized in
+      let Info.Normalized { field; pp; _ } = Hmap.Key.info k in
+      Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
+        Field.pp field pp (Ordered.find n m.vs)
+    | Field { field; value; _ } ->
+      Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
+        Field.pp field Unstructured.pp value
+    | Unsafe { field; value; _ } ->
+      Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
+        Field.pp field Unstructured.pp value in
+  Fmt.(list ~sep:(const string "\n") (using Location.prj pp_field)) ppf t.v
 
-let default =
-  { ty = Set.empty
-  ; encoding = Set.empty
-  ; version = Set.empty
-  ; id = Set.empty
-  ; description = Set.empty
-  ; fields = Set.empty
-  ; unsafes = Set.empty
-  ; lines = Set.empty
-  ; ordered = Ptmap.empty }
+let value_of_field : t -> field -> Value.t = fun t -> function
+  | Normalized { k; n; } ->
+    let Info.Normalized { prj; _ } = Hmap.Key.info k in
+    let m = Hmap.get k t.normalized in
+    let v = Ordered.find n m.Info.vs in
+    prj v
+  | Field { value; _ } -> Value.Field value
+  | Unsafe { value; _ } -> Value.Unsafe value
 
-let ty t =
-  try
-    let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
-    match field with ContentType -> Content_type.ty ty | _ -> assert false
-  with Not_found -> Content_type.Type.default
+let (<.>) f g = fun x -> f (g x)
 
-let subty t =
-  try
-    let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
-    match field with ContentType -> Content_type.subty ty | _ -> assert false
-  with Not_found -> Content_type.Subtype.default
+let get f t =
+  let res = ref [] in
+  let collect : field -> unit = fun x -> match x with
+    | Normalized { k; _ } ->
+      let Info.Normalized { field; _ } = Hmap.Key.info k in
+      let v = value_of_field t x in
+      if Field.equal field f then res := v :: !res
+    | Field { field; _ } ->
+      let v = value_of_field t x in
+      if Field.equal field f then res := v :: !res
+    | Unsafe { field; _ } ->
+      let v = value_of_field t x in
+      if Field.equal field f then res := v :: !res in
+  List.iter (collect <.> Location.prj) t.v ; List.rev !res
 
-let encoding t : Rfc2045.mechanism =
-  try
-    let B (field, encoding) = Ptmap.find (Set.choose t.encoding :> int) t.ordered in
-    match field with ContentEncoding -> encoding | _ -> assert false
-  with Not_found -> Content_encoding.default
+let ty : t -> Content_type.Type.t = fun t ->
+  match Hmap.find Key.content_type t.normalized with
+  | Some m ->
+    let _, v = Ordered.choose m.Info.vs in
+    Content_type.ty v
+  | None -> Content_type.Type.default
+
+let subty : t -> Content_type.Subtype.t = fun t ->
+  match Hmap.find Key.content_type t.normalized with
+  | Some m ->
+    let _, v = Ordered.choose m.Info.vs in
+    Content_type.subty v
+  | None -> Content_type.Subtype.default
+
+let encoding : t -> Content_encoding.t = fun t ->
+  match Hmap.find Key.content_encoding t.normalized with
+  | Some m ->
+    let _, v = Ordered.choose m.Info.vs in v
+  | None -> Content_encoding.default
 
 let parameters t =
-  let B (field, ty) = Ptmap.find (Set.choose t.ty :> int) t.ordered in
-  match field with ContentType -> Content_type.parameters ty | _ -> assert false
+  match Hmap.find Key.content_type t.normalized with
+  | Some m ->
+    let _, v = Ordered.choose m.Info.vs in
+    Content_type.parameters v
+  | None -> []
 
-let with_type n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (ContentType, v)) t.ordered
-         ; ty = Set.add n t.ty }
+let add k n v t =
+  let vs = match Hmap.find k t with
+    | Some { Info.vs } -> Ordered.add n v vs
+    | None -> Ordered.singleton n v in
+  Hmap.add k { Info.vs } t
 
-let with_encoding n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (ContentEncoding, v)) t.ordered
-         ; encoding = Set.add n t.encoding }
+let snoc x l = l @ [ x ]
 
-let with_version n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (MIMEVersion, v)) t.ordered
-         ; version = Set.add n t.version }
-
-let with_id n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (ContentID, v)) t.ordered
-         ; id = Set.add n t.id }
-
-let with_description n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (ContentDescription, v)) t.ordered
-         ; description = Set.add n t.description }
-
-let with_field n t field v =
-  { t with ordered = Ptmap.add (n :> int) (B (Field field, v)) t.ordered
-         ; fields = Set.add n t.fields }
-
-let with_unsafe n t field v =
-  { t with ordered = Ptmap.add (n :> int) (B (Unsafe field, v)) t.ordered
-         ; unsafes = Set.add n t.unsafes }
-
-let with_line n t v =
-  { t with ordered = Ptmap.add (n :> int) (B (Line, v)) t.ordered
-         ; lines = Set.add n t.lines }
-
-let fold_as_mail : ((Number.t * ([> Field.mail ] as 'a)) list) -> t -> (t * (Number.t * 'a) list) = fun fields t ->
+let fold_as_mail : ((Number.t * ([> mail ] as 'a) * Location.t) list) -> t -> (t * (Number.t * 'a * Location.t) list) = fun fields t ->
+  let add ~location k n v t =
+    { normalized= add k n v t.normalized
+    ; v= snoc (Location.inj ~location (Normalized { k; n; })) t.v } in
   List.fold_left
     (fun (t, rest) -> function
-       | index, `ContentType v -> with_type index t v, rest
-       | index, `ContentEncoding v -> with_encoding index t v, rest
-       | index, `ContentID v -> with_id index t v, rest
-       | index, `ContentDescription v -> with_description index t v, rest
-       | index, `Content (field, v) -> with_field index t field v, rest
-       | index, `MIMEVersion v -> with_version index t v, rest
-       | index, `Unsafe (field, v) -> with_unsafe index t field v, rest
-       | index, field -> t, (index, field) :: rest)
+       | n, `ContentType v, location ->
+         add ~location Key.content_type n v t, rest
+       | n, `ContentEncoding v, location ->
+         add ~location Key.content_encoding n v t, rest
+       | n, `ContentID v, location ->
+         add ~location Key.content_id n v t, rest
+       | n, `ContentDescription v, location ->
+         add ~location Key.content_description n v t, rest
+       | n, `MIMEVersion v, location ->
+         add ~location Key.mime_version n v t, rest
+       | n, `Content (field, v), location ->
+         { t with v= snoc (Location.inj ~location (Field { field; value= v; n; })) t.v }, rest
+       | n, `Unsafe (field, v), location ->
+         let t, rest =
+           if prefixed_by_content field
+           then { t with v= snoc (Location.inj ~location (Unsafe { field; value= v; n; })) t.v }, rest
+           else t, (n, `Unsafe (field, v), location) :: rest in
+         t, rest
+       | n, `Field (field, v), location ->
+         let t, rest =
+           if prefixed_by_content field
+           then { t with v= snoc (Location.inj ~location (Field { field; value= v; n; })) t.v }, rest
+           else t, (n, `Field (field, v), location) :: rest in
+         t, rest
+       | n, field, location -> t, (n, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> (t, List.rev fields)
 
 
-let fold_as_part : ((Number.t * ([> Field.part ] as 'a)) list) -> t -> (t * (Number.t * 'a) list) = fun fields t ->
+let fold_as_part : ((Number.t * ([> part ] as 'a) * Location.t) list) -> t -> (t * (Number.t * 'a * Location.t) list) = fun fields t ->
+  let add ~location k n v t =
+    { normalized= add k n v t.normalized
+    ; v= snoc (Location.inj ~location (Normalized { k; n; })) t.v } in
   List.fold_left
     (fun (t, rest) -> function
-       | index, `ContentType v -> with_type index t v, rest
-       | index, `ContentEncoding v -> with_encoding index t v, rest
-       | index, `ContentID v -> with_id index t v, rest
-       | index, `ContentDescription v -> with_description index t v, rest
-       | index, `Content (field, v) -> with_field index t field v, rest
-       | index, `Unsafe (field, v) -> with_unsafe index t field v, rest
-       | index, field -> t, (index, field) :: rest)
+       | n, `ContentType v, location ->
+         add ~location Key.content_type n v t, rest
+       | n, `ContentEncoding v, location ->
+         add ~location Key.content_encoding n v t, rest
+       | n, `ContentID v, location ->
+         add ~location Key.content_id n v t, rest
+       | n, `ContentDescription v, location ->
+         add ~location Key.content_description n v t, rest
+       | n, `Content (field, v), location ->
+         { t with v= snoc (Location.inj ~location (Field { field; value= v; n; })) t.v }, rest
+       | n, `Unsafe (field, v), location ->
+         let t, rest =
+           if prefixed_by_content field
+           then { t with v= snoc (Location.inj ~location (Unsafe { field; value= v; n; })) t.v }, rest
+           else t, (n, `Unsafe (field, v), location) :: rest in
+         t, rest
+       | n, `Field (field, v), location ->
+         let t, rest =
+           if prefixed_by_content field
+           then { t with v= snoc (Location.inj ~location (Field { field; value= v; n; })) t.v }, rest
+           else t, (n, `Field (field, v), location) :: rest in
+         t, rest
+       | n, field, location -> t, (n, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> (t, List.rev fields)

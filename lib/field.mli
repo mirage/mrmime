@@ -7,3 +7,5 @@ val canonicalize : t -> t
 val pp : t Fmt.t
 val of_string : string -> (t, [ `Msg of string ]) result
 val of_string_exn : string -> t
+val v : string -> t
+val prefixed_by : string -> t -> bool

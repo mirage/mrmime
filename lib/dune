@@ -3,4 +3,4 @@
  (public_name mrmime)
  (flags (:standard -w -32-27))
  (libraries encoder
-            ptmap ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))
+            hmap ptmap ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))

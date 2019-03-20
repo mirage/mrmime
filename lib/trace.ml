@@ -26,6 +26,22 @@ and received =
   | `Domain of domain
   | `Word of word ]
 
+module Value = struct
+  type t =
+    | Received : (received list * Date.t option) -> t
+    | ReturnPath : Mailbox.t -> t
+
+  let pp_received ppf = function
+    | `Addr x -> Mailbox.pp ppf x
+    | `Domain x -> Mailbox.pp_domain ppf x
+    | `Word x -> Mailbox.pp_word ppf x
+
+  let pp ppf = function
+    | ReturnPath x -> Mailbox.pp ppf x
+    | Received x -> Fmt.(Dump.pair (Dump.list pp_received) (Dump.option Date.pp)) ppf x
+end
+
+let number { index; _ } = index
 let location { location; _ } = location
 
 let pp_trace ppf (local, (x, r)) = match r with
@@ -62,10 +78,17 @@ let pp ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(vbox (list ~sep:(always "@\n&@ ") pp_received)) received
 
+let get f t =
+  if Field.(equal (v "Received") f)
+  then List.map (fun x -> Value.Received x) t.received
+  else if Field.(equal (v "Return-Path") f)
+  then Option.(value ~default:[] (map (fun x -> [ Value.ReturnPath x ]) t.trace))
+  else raise Not_found (* XXX(dinosaure): or [Invalid_argument _]? *)
+
 let fold : (Number.t * ([> field ] as 'a) * Location.t) list -> t list -> (t list * (Number.t * 'a * Location.t) list) = fun fields t ->
   List.fold_left
     (fun (t, rest) -> function
-       | index, `Trace (trace, received), loc -> { index; trace; received; location= loc; } :: t, rest
-       | index, field, loc -> t, (index, field, loc) :: rest)
+       | index, `Trace (trace, received), location -> { index; trace; received; location; } :: t, rest
+       | index, field, location -> t, (index, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> t, List.rev fields

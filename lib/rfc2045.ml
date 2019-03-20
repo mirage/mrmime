@@ -67,7 +67,7 @@ type field =
   | `Content of string * Rfc5322.unstructured ]
 
 type unsafe = [`Unsafe of string * Rfc5322.unstructured]
-type lines = [`Lines of string list]
+type lines = [`Lines of (string * Location.t) list]
 type field_version = [`MIMEVersion of version]
 
 open Angstrom
@@ -323,6 +323,9 @@ let encoding = option () Rfc822.cfws *> mechanism <* option () Rfc822.cfws
 *)
 let id = option () Rfc822.cfws *> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* option () Rfc822.cfws
 
+let with_location p =
+  pos >>= fun a -> p >>= fun r -> pos >>= fun b -> return (r, Location.make a b)
+
 (* From RFC 5322
 
    This specification uses the Augmented Backus-Naur Form (ABNF)
@@ -405,19 +408,21 @@ let message_field extend_mime extend field_name =
     field_name
 
 let entity_part_headers extend_mime extend =
-  many
+  let p =
     ( Rfc5322.field_name
     <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     <* char ':'
     >>= (fun field_name -> part_field extend_mime extend field_name)
-    <|> (Rfc5322.lines >>| fun lines -> `Lines lines) )
+    <|> (Rfc5322.lines >>| fun lines -> `Lines lines) ) in
+  many (with_location p)
 
 let entity_message_headers extend_mime extend =
-  many
+  let p =
     ( Rfc5322.field_name
     <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     <* char ':'
-    >>= fun field_name -> message_field extend_mime extend field_name )
+    >>= fun field_name -> message_field extend_mime extend field_name ) in
+  many (with_location p)
 
 (* From RFC 2045
 

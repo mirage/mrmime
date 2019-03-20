@@ -22,9 +22,9 @@ let run ~newline ic field (Mrmime.St_header.Value.V value) capacity =
   let rec go () = match decode decoder with
     | `Field v ->
       exists := true ; print_field value v ; go ()
-    | `Other (Value.B (field', _, _, _)) ->
+    | `Other (field', _) ->
       add_other field' ; go ()
-    | `Other (Value.L (_, _)) -> go ()
+    | `Lines _ -> go ()
     | `Malformed err ->Rresult.R.error_msg err
     | `End ->
       if not !exists then print_others field others ;

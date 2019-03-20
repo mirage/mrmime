@@ -34,4 +34,13 @@ let of_string_exn x = match of_string x with
   | Ok x -> x
   | Error (`Msg err) -> Fmt.invalid_arg "%s" err
 
+let v = of_string_exn
+
 let pp = Fmt.using capitalize Fmt.string
+
+let prefixed_by prefix field =
+  if String.contains prefix '-' then Fmt.invalid_arg "Field.prefixed_by: %s contains '-'" prefix ;
+  match String.(split_on_char '-' (lowercase_ascii field)) with
+  | [] -> assert false (* XXX(dinosaure): see invariants of [split_on_char]. *)
+  | [ x ] -> false
+  | x :: r -> String.(equal x (lowercase_ascii prefix))

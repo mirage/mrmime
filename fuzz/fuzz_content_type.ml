@@ -106,8 +106,6 @@ let () =
   let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!Content_type.Encoder.content_type ]; new_line; new_line; ]) content_type in
   let result = Buffer.contents buffer in
 
-  Fmt.epr "%a.\n%!" Utils.pp_string result ;
-
   match Angstrom.parse_string Angstrom.(Rfc2045.content <* Rfc822.crlf <* Rfc822.crlf) result with
   | Ok content_type' ->
     check_eq ~pp:Content_type.pp ~eq:Content_type.equal content_type content_type'

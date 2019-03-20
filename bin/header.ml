@@ -24,35 +24,22 @@ let pp_field
   : type a. a Header.field Fmt.t
   = fun ppf field -> Fmt.of_to_string Header.field_to_string ppf field
 
-type t = Header.value
-type binding = Header.binding
-
 type error = [ `Not_found | Rresult.R.msg ]
 
-let get_field : type a. a Header.field -> Header.t -> ((a * Location.t) list, error) result = fun field header ->
+let get_field : Field.t -> Header.t -> (Header.Value.t list, error) result = fun field header ->
   match Header.get field header with
   | [] -> Error `Not_found
   | lst -> Ok lst
 
 let get_fields fields header =
   List.fold_left
-    (fun a (Header.V field) -> match a, get_field field header with
-       | Ok a, Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
+    (fun a field -> match a, get_field field header with
+       | Ok a, Ok l -> Ok (l @ a)
        | Error _, _ -> a
-       | Ok a, Error _ ->
-         let field = Header.Unsafe (Fmt.to_to_string pp_field field) in
-         match get_field field header with
-         | Ok l -> Ok (List.map (fun (v, loc) -> Header.B (field, v, loc)) l @ a)
-         | Error e -> Error e)
+       | Ok _, Error e -> Error e)
     (Ok []) fields
 
-let pp_of_field = Header.pp_value_of_field
-
 let ( <.> ) f g = fun x -> f (g x)
-
-let pp_of_binding ppf (Header.B (field, v, loc)) =
-  let pp_value = pp_of_field field in
-  Fmt.pf ppf "%a[%a]: @[<hov>%a@]" pp_field field Location.pp loc pp_value v
 
 let extract_raw ic (Header.B (_, _, loc)) =
   (* TODO: lie when input use LF as line-breaker. *)
@@ -62,7 +49,7 @@ let extract_raw ic (Header.B (_, _, loc)) =
   seek_in ic old ; res
 
 let extract ~newline ~with_raw ic fields =
-  let print ~with_raw binding =
+  let print ~with_raw v =
     Fmt.pr "%a@\n@\n" pp_of_binding binding ;
     if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic binding) in
   let open Rresult.R in
@@ -80,26 +67,9 @@ let run newline with_raw input fields =
 open Cmdliner
 
 let field =
-  let parser = function
-    | "date" -> Header.V Header.Date
-    | "from" -> Header.V Header.From
-    | "sender" -> Header.V Header.Sender
-    | "reply-to" -> Header.V Header.ReplyTo
-    | "to" -> Header.V Header.To
-    | "cc" -> Header.V Header.Cc
-    | "bcc" -> Header.V Header.Bcc
-    | "subject" -> Header.V Header.Subject
-    | "msg-id" -> Header.V Header.MessageID
-    | "in-reply-to" -> Header.V Header.InReplyTo
-    | "references" -> Header.V Header.References
-    | "comments" -> Header.V Header.Comments
-    | "keywords" -> Header.V Header.Keywords
-    | "resents" -> Header.V Header.Resent
-    | "traces" -> Header.V Header.Trace
-    | field -> Header.V (Header.Field field) in
-  let pp ppf (Header.V x) = pp_field ppf x in
-  let parser = Rresult.R.ok <.> parser in
-  Arg.conv ~docv:"<field>" (parser <.> Field.canonicalize, pp)
+  let parser = Field.of_string in
+  let pp = Field.pp in
+  Arg.conv ~docv:"<field>" (parser, pp)
 
 let fields =
   Arg.(value & opt (list field) [] & info [ "f"; "fields" ] ~doc:"fields to extract")

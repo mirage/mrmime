@@ -90,8 +90,6 @@ let () =
   let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!Date.Encoder.date ]; new_line; new_line ]) date in
   let result = Buffer.contents buffer in
 
-  Fmt.epr "%a.\n%!" Utils.pp_string result ;
-
   match Angstrom.parse_string Angstrom.(Rfc5322.date_time <* Rfc822.crlf <* Rfc822.crlf) result with
   | Ok date' ->
     check_eq ~pp:Date.pp ~eq:Date.equal date date'

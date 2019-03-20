@@ -121,8 +121,6 @@ let () =
   let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!Mailbox.Encoder.mailbox ]; new_line; new_line ]) mailbox in
   let result = Buffer.contents buffer in
 
-  Fmt.epr "%a.\n%!" Utils.pp_string result ;
-
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with
   | Ok mailbox' ->
     check_eq ~pp:Mailbox.pp ~eq:Mailbox.equal mailbox mailbox'

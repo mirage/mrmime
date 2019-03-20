@@ -14,11 +14,10 @@ module Value : sig
     | Unstructured : Rfc5322.unstructured t
     | Phrases : Rfc5322.phrase list t
     | Trace : trace t
-    | Lines : string list t
 
   type binding =
     | B : Field.t * 'a t * 'a * Location.t -> binding
-    | L : string list * Location.t -> binding
+    | L : (string * Location.t) list * Location.t -> binding
   type value = V : 'a t -> value
 
   val of_string : string -> (value, Rresult.R.msg) result
@@ -33,9 +32,9 @@ type 'value decoder
 type 'value decode =
   [ `Field of 'value
   | `Other of Field.t * string
-  | `Lines of string list
+  | `Lines of (string * Location.t) list
   | `Await
-  | `End
+  | `End of string
   | `Malformed of string ]
 
 val decoder : field:Field.t -> 'value Value.t -> Bigstringaf.t -> 'value decoder

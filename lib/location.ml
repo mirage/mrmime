@@ -3,6 +3,9 @@ type zone = { a : point
             ; b : point }
 type t = zone option
 
+type 'a with_location = { value : 'a; location : t }
+type 'a w = 'a with_location = { value : 'a; location : t }
+
 let make a b =
   if a < 0 || b < 0 then Fmt.invalid_arg "A point must be positive" ;
   if a > b then Fmt.invalid_arg "[a] must be lower or equal to [b]" ;
@@ -10,6 +13,15 @@ let make a b =
 
 let some zone = Some zone
 let none = None
+
+let union a b = match a, b with
+  | None, None -> None
+  | Some _, None -> a
+  | None, Some _ -> b
+  | Some { a; b; }, Some { a= x; b= y} ->
+    let a = (min : int -> int -> int) a x in
+    let b = (max : int -> int -> int) b y in
+    Some { a; b; }
 
 let pp ppf = function
   | Some { a; b; } -> Fmt.pf ppf "%d:%d" a b
@@ -38,3 +50,14 @@ let length = function
 let length_exn t = match length t with
   | Some length -> length
   | None -> Fmt.invalid_arg "<dummy location>"
+
+let without_location : 'a with_location -> 'a =
+  fun { value; _ } -> value
+
+let location { location; _ } = location
+
+let with_location ~location v =
+  { value= v; location; }
+
+let inj = with_location
+let prj = without_location

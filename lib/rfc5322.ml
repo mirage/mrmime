@@ -93,7 +93,7 @@ type field_header =
   | `Field of string * unstructured
   | `Unsafe of string * unstructured ]
 
-type lines = [`Lines of string list]
+type lines = [`Lines of (string * Location.t) list]
 type field = [field_header | resent | trace | lines]
 
 (* / *)
@@ -1586,7 +1586,7 @@ let field_name = take_while1 is_ftext
 
 let trace path =
   let r =
-    string "Received"
+    string "Received" (* XXX(dinosaure): TODO lowercase. *)
     *> many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
     *> char ':'
     *> received
@@ -1647,10 +1647,10 @@ let field extend field_name =
 
 let lines =
   fix @@ fun m ->
-  take_while ((<>) '\r') >>= fun line -> peek_char >>= fun next -> match String.length line, next with
+  with_location (take_while ((<>) '\r')) >>= fun (line, loc) -> peek_char >>= fun next -> match String.length line, next with
   | 0, _ -> failf "end of header"
-  | _, Some _ -> (Rfc822.crlf *> return [ line ]) <|> (m >>| fun r -> line :: r)
-  | _, None -> return [ line ]
+  | _, Some _ -> (with_location Rfc822.crlf >>= fun ((), loc') -> return [ line, Location.union loc loc' ]) <|> (m >>| fun r -> (line, loc) :: r)
+  | _, None -> return [ line, loc ]
 
 let header extend =
   let p =

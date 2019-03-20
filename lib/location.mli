@@ -9,6 +9,9 @@ type zone = { a : int; b : int; }
 type t
 (** Type of location to a flow *)
 
+type 'a with_location
+type 'a w = 'a with_location
+
 val make : point -> point -> t
 (** [make a b] makes a new location of [b - a] byte(s) starting at [a]. *)
 
@@ -42,3 +45,13 @@ val length : t -> int option
 val length_exn : t -> int
 (** Same as {!length} but it raises an exception if [location] is an unknowable
     location (see {!none}). *)
+
+val with_location : location:t -> 'a -> 'a with_location
+val inj : location:t -> 'a -> 'a with_location
+
+val without_location : 'a with_location -> 'a
+val prj : 'a with_location -> 'a
+
+val location : 'a with_location -> t
+
+val union : t -> t -> t
