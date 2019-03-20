@@ -52,6 +52,18 @@ module type ENCODER = sig
 
   val schedule_flush : (int -> encoder -> unit) -> encoder -> encoder
 
+  val new_line : (encoder -> 'v state) -> encoder -> 'v state
+  val force_new_line : (encoder -> 'v state) -> encoder -> 'v state
+  val if_new_line : (encoder -> 'v state) -> encoder -> 'v state
+  val space : (encoder -> 'v state) -> encoder -> 'v state
+  val cut : (encoder -> 'v state) -> encoder -> 'v state
+  val hbox : (encoder -> 'v state) -> encoder -> 'v state
+  val vbox : int -> (encoder -> 'v state) -> encoder -> 'v state
+  val hvbox : int -> (encoder -> 'v state) -> encoder -> 'v state
+  val hovbox : int -> (encoder -> 'v state) -> encoder -> 'v state
+  val box : int -> (encoder -> 'v state) -> encoder -> 'v state
+  val close_box : (encoder -> 'v state) -> encoder -> 'v state
+
   module LE : sig
     val write_uint16 : int -> (encoder -> 'v state) -> encoder -> 'v state
     val write_uint32 : int32 -> (encoder -> 'v state) -> encoder -> 'v state
@@ -68,8 +80,8 @@ end
 type writer = Level0.IOVec.t list -> int
 type vec = {off: int option; len: int option}
 
-val std : writer
-(** Use [Pervasives.output_*] functions to emit bytes. *)
+val stdout : writer
+(** Use [Pervasives.output_*] on [stdout] functions to emit bytes. *)
 
 module Make (Level0 : ENCODER) : sig
   type t = { writer : writer
@@ -123,6 +135,19 @@ module Make (Level0 : ENCODER) : sig
   val eval : t -> ('ty, Level0.encoder) fmt -> 'ty
   val const : 'a encoding -> 'a -> ('v, 'v) order
   val ( $ ) : 'a encoding -> 'a -> ('v, 'v) order
+
+  val hov : int -> ('v, 'v) order
+  val hv : int -> ('v, 'v) order
+  val v : int -> ('v, 'v) order
+  val h : ('v, 'v) order
+  val box : int -> ('v, 'v) order
+
+  val close : ('v, 'v) order
+
+  val cut : ('v, 'v) order
+  val space : ('v, 'v) order
+  val force_new_line : ('v, 'v) order
+  val new_line : ('v, 'v) order
 
   module Const : sig
     val char : char -> ('v, 'v) order

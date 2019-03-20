@@ -275,36 +275,27 @@ module Encoder = struct
   external id : 'a -> 'a = "%identity"
 
   let day ppf =
-    let day = Format.using Day.to_string Format.string in
-    keval ppf id (o [ fmt Format.[ !!day; char $ ',' ]; space ])
+    let day = using Day.to_string string in
+    keval ppf id [ !!day; char $ ','; space ]
 
-  let month = Format.using Month.to_string Format.string
+  let month = using Month.to_string string
 
   let time ppf (hours, minutes, seconds) =
     let string_of_number = Fmt.strf "%02d" in
-    let number ppf x = keval ppf id (o [ cut; fmt Format.[ !!(using string_of_number string) ]; cut ]) x in
+    let number ppf x = keval ppf id [ cut; !!(using string_of_number string); cut ] x in
     match seconds with
     | Some seconds ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ !!number; char $ ':'; !!number; char $ ':'; !!number ] ]))
+      keval ppf id [ hov 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close ]
         hours minutes seconds
     | None ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ !!number; char $ ':'; !!number ] ]))
+      keval ppf id [ hov 1; !!number; char $ ':'; !!number; close ]
         hours minutes
 
-  let zone = Format.using Zone.to_string Format.string
-  let int = Format.using string_of_int Format.string
+  let zone = using Zone.to_string string
+  let int = using string_of_int string
 
   let date ppf t =
-      let (d, m, y) = t.date in
-      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(option day) ]
-                                    ; fmt Format.[ !!int ]
-                                    ; space
-                                    ; fmt Format.[ !!month ]
-                                    ; space
-                                    ; fmt Format.[ !!int ]
-                                    ; space
-                                    ; fmt Format.[ !!time ]
-                                    ; space
-                                    ; fmt Format.[ !!zone ] ]))
-        t.day d m y t.time t.zone
+    let (d, m, y) = t.date in
+    keval ppf id [ hov 1; !!(option day); !!int; space; !!month; space; !!int; space; !!time; space; !!zone; close ]
+      t.day d m y t.time t.zone
 end

@@ -288,45 +288,42 @@ module Encoder = struct
   external id : 'a -> 'a = "%identity"
 
   let ty ppf = function
-    | `Text -> Format.string ppf "text"
-    | `Image -> Format.string ppf "image"
-    | `Audio -> Format.string ppf "audio"
-    | `Video -> Format.string ppf "video"
-    | `Application -> Format.string ppf "application"
-    | `Message -> Format.string ppf "message"
-    | `Multipart -> Format.string ppf "multipart"
-    | `Ietf_token v -> Format.string ppf v
-    | `X_token v -> Format.using (fun v -> "X-" ^ v) Format.string ppf v
+    | `Text -> string ppf "text"
+    | `Image -> string ppf "image"
+    | `Audio -> string ppf "audio"
+    | `Video -> string ppf "video"
+    | `Application -> string ppf "application"
+    | `Message -> string ppf "message"
+    | `Multipart -> string ppf "multipart"
+    | `Ietf_token v -> string ppf v
+    | `X_token v -> using (fun v -> "X-" ^ v) string ppf v
 
   let subty ppf = function
-    | `Ietf_token v -> Format.string ppf v
-    | `Iana_token v -> Format.string ppf v
-    | `X_token v -> Format.using (fun v -> "X-" ^ v) Format.string ppf v
+    | `Ietf_token v -> string ppf v
+    | `Iana_token v -> string ppf v
+    | `X_token v -> using (fun v -> "X-" ^ v) string ppf v
 
   let value =
-    Format.using
+    using
       (function `Token x -> `Atom x | `String x -> `String x)
       Mailbox.Encoder.word
 
   let parameter ppf (key, v) =
-    keval ppf id (node (hov 0) (o [ fmt Format.[ !!string; char $ '='; !!value ] ]))
+    keval ppf id [ hov 0; !!string; char $ '='; !!value; close ]
       key v
 
   let parameters ppf parameters =
-    let sep ppf () = keval ppf id (o [ fmt Format.[ char $ ';' ]; space ]) in
-    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:(sep, ()) parameter) ] ]))
-      parameters
+    let sep ppf () = keval ppf id [ char $ ';'; space ] in
+    keval ppf id [ hov 1; !!(list ~sep:(sep, ()) parameter); close ] parameters
 
   let content_type ppf t =
     match t.Rfc2045.parameters with
     | [] ->
       keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!ty; char $ '/'; !!subty; ] ]))
+        [ hov 1; !!ty; char $ '/'; !!subty; close ]
         t.Rfc2045.ty t.Rfc2045.subty
     | _ ->
       keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!ty; char $ '/'; !!subty; ]
-                         ; fmt Format.[ char $ ';' ]; space
-                         ; fmt Format.[ !!parameters ] ]))
+        [ hov 1; !!ty; char $ '/'; !!subty; char $ ';'; space; !!parameters; close ]
         t.Rfc2045.ty t.Rfc2045.subty t.Rfc2045.parameters
 end

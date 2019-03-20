@@ -77,8 +77,8 @@ let () =
 
   let buffer = Buffer.create 0x100 in
   let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
-  let encoder = Encoder.Format.with_writer encoder (writer_of_buffer buffer) in
-  let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!MessageID.Encoder.message_id ]; new_line; new_line ]) message_id in
+  let encoder = Encoder.with_writer encoder (writer_of_buffer buffer) in
+  let _ = Encoder.eval encoder Encoder.[ !!MessageID.Encoder.message_id; new_line; new_line ] message_id in
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf <* Rfc822.crlf) result with

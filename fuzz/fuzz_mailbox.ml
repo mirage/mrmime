@@ -117,8 +117,8 @@ let () =
 
   let buffer = Buffer.create 0x100 in
   let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
-  let encoder = Encoder.Format.with_writer encoder (writer_of_buffer buffer) in
-  let _ = Encoder.eval encoder Encoder.(o [ fmt Format.[ !!Mailbox.Encoder.mailbox ]; new_line; new_line ]) mailbox in
+  let encoder = Encoder.with_writer encoder (writer_of_buffer buffer) in
+  let _ = Encoder.eval encoder Encoder.[ !!Mailbox.Encoder.mailbox; new_line; new_line ] mailbox in
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with

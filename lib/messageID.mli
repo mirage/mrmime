@@ -14,6 +14,6 @@ val equal_domain : domain -> domain -> bool
 val equal : t -> t -> bool
 
 module Encoder : sig
-  val domain : domain Encoder.t
-  val message_id : t Encoder.t
+  val domain : domain Encoder.encoding
+  val message_id : t Encoder.encoding
 end

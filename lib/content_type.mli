@@ -153,7 +153,7 @@ val equal : t -> t -> bool
 (** Equal on {!t}. *)
 
 module Encoder : sig
-  val ty : Type.t Encoder.t
-  val subty : Subtype.t Encoder.t
-  val content_type : t Encoder.t
+  val ty : Type.t Encoder.encoding
+  val subty : Subtype.t Encoder.encoding
+  val content_type : t Encoder.encoding
 end

@@ -83,5 +83,5 @@ val pp : t Fmt.t
 val equal : t -> t -> bool
 
 module Encoder : sig
-  val date : t Encoder.t
+  val date : t Encoder.encoding
 end

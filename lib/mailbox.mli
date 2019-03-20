@@ -102,7 +102,7 @@ val pp_local : local Fmt.t
 val pp : t Fmt.t
 
 module Encoder : sig
-  val word : word Encoder.t
-  val local : local Encoder.t
-  val mailbox : t Encoder.t
+  val word : word Encoder.encoding
+  val local : local Encoder.encoding
+  val mailbox : t Encoder.encoding
 end

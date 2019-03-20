@@ -1,4 +1,4 @@
-module Format = Encoder.MakeFormat(Encoder.Level0)
+module Format = Encoder.MakeFormat(Encoder.Level1)
 module Box = Encoder.MakeBox(Encoder.Level1)
 
 let comma =
@@ -193,7 +193,7 @@ let writer_of_buffer buf =
 
 let () =
   Crowbar.add_test ~name:"encoder" [ json ] @@ fun json ->
-  let encoder = Encoder.Level0.create 0x100 in
+  let encoder = Encoder.Level1.create 0x100 in
   let buffer = Buffer.create 0x100 in
   let t = Format.with_writer encoder (writer_of_buffer buffer) in
 

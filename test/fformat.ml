@@ -1,4 +1,4 @@
-module Format = Encoder.MakeFormat(Encoder.Level0)
+module Format = Encoder.MakeFormat(Encoder.Level1)
 
 let comma =
   (Format.using (fun () -> ',') Format.char, ())
@@ -134,7 +134,7 @@ let json = Alcotest.testable (Fmt.using json_to_string Fmt.string) ( = )
 let make v =
   Alcotest.test_case (json_to_string v) `Quick
   @@ fun () ->
-  let encoder = Encoder.Level0.create 0x100 in
+  let encoder = Encoder.Level1.create 0x100 in
   let buffer = Buffer.create 0x100 in
   let t = Format.with_writer encoder (writer_of_buf buffer) in
   let _ = Format.eval t Format.[!!value; yield] v in

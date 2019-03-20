@@ -41,24 +41,19 @@ module Encoder = struct
 
   external id : 'a -> 'a = "%identity"
 
-  let dot = Format.using (fun () -> '.') Format.char, ()
+  let dot = using (fun () -> '.') char, ()
 
   let domain ppf = function
     | `Domain domain ->
-      let x ppf x = keval ppf id (node (hov 0) (o [ fmt Format.[ !!string ] ])) x in
-      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot x) ] ])) domain
+      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
+      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
     | `Literal literal ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ']' ] ])) literal
+      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
     | `Addr Rfc822.Nonsense.Nonsense -> assert false
 
   let message_id ppf (t:Rfc822.nonsense Rfc822.msg_id) =
     match t with
     | (local_part, domain_part) ->
-      keval ppf id
-        (node (hov 1) (o [ fmt Format.[ char $ '<'
-                                      ; !!Mailbox.Encoder.local
-                                      ; char $ '@'
-                                      ; !!domain
-                                      ; char $ '>' ] ]))
+      keval ppf id [ hov 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain; char $ '>'; close ]
         local_part domain_part
 end

@@ -330,73 +330,60 @@ module Encoder = struct
 
   external id : 'a -> 'a = "%identity"
 
-  let atom = node (hov 0) (o [ fmt Format.[ !!string ] ])
-  let str = node (hov 0) (o [ fmt Format.[ char $ '"'; !!string; char $ '"' ] ])
+  let atom = [ hov 0; !!string; close ]
+  let str = [ hov 0; char $ '"'; !!string; char $ '"'; close ]
 
   let word ppf = function
     | `Atom x -> keval ppf id atom x
     | `String x ->
       keval ppf id str (escape_string x)
 
-  let dot = Format.using (fun () -> '.') Format.char, ()
+  let dot = using (fun () -> '.') char, ()
 
   let local ppf lst =
-    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot word) ] ])) lst
+    keval ppf id [ hov 1; !!(list ~sep:dot word); close ] lst
 
-  let ipaddr_v4 = Format.using Ipaddr.V4.to_string Format.string
-  let ipaddr_v6 = Format.using Ipaddr.V6.to_string Format.string
+  let ipaddr_v4 = using Ipaddr.V4.to_string string
+  let ipaddr_v6 = using Ipaddr.V6.to_string string
 
   let domain ppf = function
     | `Domain domain ->
-      let x ppf x = keval ppf id (node (hov 0) (o [ fmt Format.[ !!string ] ])) x in
-      keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:dot x) ] ])) domain
+      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
+      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
     | `Literal literal ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ']' ] ])) literal
+      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
     | `Addr (IPv4 ip) ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!ipaddr_v4; char $ ']' ] ])) ip
+      keval ppf id [ hov 1; char $ '['; !!ipaddr_v4; char $ ']'; close ] ip
     | `Addr (IPv6 ip) ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']' ] ])) ip
+      keval ppf id [ hov 1; char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']'; close ] ip
     | `Addr (Ext (ldh, v)) ->
-      keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '['; !!string; char $ ':'; !!string; char $ ']' ] ])) ldh v
+      keval ppf id [ hov 1; char $ '['; !!string; char $ ':'; !!string; char $ ']'; close ] ldh v
 
   let phrase ppf lst =
     let elt ppf = function
-      | `Dot -> Format.char ppf '.'
+      | `Dot -> char ppf '.'
       | `Word w -> word ppf w
       | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
-    let space ppf () = keval ppf id (o [ space ]) in
-    keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:(space, ()) elt) ] ])) lst
+    let space ppf () = keval ppf id [ space ] in
+    keval ppf id [ hov 1; !!(list ~sep:(space, ()) elt); close ] lst
 
   let mailbox ppf (t:Rfc5322.mailbox) =
     match t.Rfc5322.name, t.Rfc5322.domain with
     | Some name, (x, []) ->
-      keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!phrase ]; space; fmt Format.[ char $ '<'; !!local; char $ '@'; !!domain; char $ '>' ] ]))
+      keval ppf id [ hov 1; !!phrase ; space; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
         name t.Rfc5322.local x
     | None, (x, []) ->
-      keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!local ]; cut; fmt Format.[ char $ '@' ]; cut; fmt Format.[ !!domain ]; ]))
+      keval ppf id [ hov 1; !!local ; cut; char $ '@'; cut; !!domain; close ]
         t.Rfc5322.local x
     | name, (x, r) ->
       let domains ppf lst =
-        let domain ppf x = keval ppf id (node (hov 1) (o [ fmt Format.[ char $ '@'; !!domain ] ])) x in
-        let comma = (fun ppf () -> keval ppf id (o [ fmt Format.[ char $ ',' ]; cut ])), () in
-        keval ppf id (node (hov 1) (o [ fmt Format.[ !!(list ~sep:comma domain) ] ])) lst in
-      let phrase ppf x = keval ppf id (node (hov 1) (o [ fmt Format.[ !!phrase ]; space ])) x in
+        let domain ppf x = keval ppf id [ hov 1; char $ '@'; !!domain; close ] x in
+        let comma = (fun ppf () -> keval ppf id [ char $ ','; cut ]), () in
+        keval ppf id [ hov 1; !!(list ~sep:comma domain); close ] lst in
+      let phrase ppf x = keval ppf id [ hov 1; !!phrase; space; close ] x in
 
       keval ppf id
-        (node (hov 1) (o [ fmt Format.[ !!(option phrase) ]
-                         ; cut
-                         ; fmt Format.[ char $ '<' ]
-                         ; cut
-                         ; fmt Format.[ !!domains; char $ ':' ]
-                         ; cut
-                         ; fmt Format.[ !!local ]
-                         ; cut
-                         ; fmt Format.[ char $ '@' ]
-                         ; cut
-                         ; fmt Format.[ !!domain ]
-                         ; fmt Format.[ char $ '>' ] ]))
+        [ hov 1; !!(option phrase); cut; char $ '<'; cut; !!domains; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; char $ '>'; close ]
         name r t.Rfc5322.local x
 end
 
