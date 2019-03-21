@@ -46,11 +46,31 @@ let should_be_normalized field =
 
 let prefixed_by_resent = Field.prefixed_by "Resent"
 
+type 'a resent_field =
+  | Resent_date : Date.t resent_field
+  | Resent_from : Mailbox.t list resent_field
+  | Resent_sender : Mailbox.t resent_field
+  | Resent_to : Address.t list resent_field
+  | Resent_cc : Address.t list resent_field
+  | Resent_bcc : Address.t list resent_field
+  | Resent_message_id : MessageID.t resent_field
+  | Resent_reply_to : Address.t list resent_field
+
+let resent_field_to_field : type a. a resent_field -> Field.t = function
+  | Resent_date -> Field.v "Resent-Date"
+  | Resent_from -> Field.v "Resent-From"
+  | Resent_sender -> Field.v "Resent-Sender"
+  | Resent_to -> Field.v "Resent-To"
+  | Resent_cc -> Field.v "Resent-Cc"
+  | Resent_bcc -> Field.v "Resent-Bcc"
+  | Resent_message_id -> Field.v "Resent-Message-ID"
+  | Resent_reply_to -> Field.v "Resent-Reply-To"
+
 module Info = struct
   type 'a ordered = { vs : 'a Ordered.t }
 
   type 'a t =
-    | Normalized : { field : Field.t
+    | Normalized : { field : 'a resent_field
                    ; pp : 'a Fmt.t
                    ; prj : 'a -> Value.t } -> 'a ordered t
 
@@ -64,21 +84,21 @@ module Key = struct
   type 'a ordered = 'a Info.ordered
 
   let date : Date.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Date") ~pp:Date.pp ~prj:Value.of_date)
+    Hmap.Key.create (Info.make ~field:Resent_date ~pp:Date.pp ~prj:Value.of_date)
   let from : Mailbox.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-From") ~pp:(Fmt.Dump.list Mailbox.pp) ~prj:Value.of_from)
+    Hmap.Key.create (Info.make ~field:Resent_from ~pp:(Fmt.Dump.list Mailbox.pp) ~prj:Value.of_from)
   let sender : Mailbox.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Sender") ~pp:Mailbox.pp ~prj:Value.of_sender)
+    Hmap.Key.create (Info.make ~field:Resent_sender ~pp:Mailbox.pp ~prj:Value.of_sender)
   let _to : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-To") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_to)
+    Hmap.Key.create (Info.make ~field:Resent_to ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_to)
   let cc : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Cc") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_cc)
+    Hmap.Key.create (Info.make ~field:Resent_cc ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_cc)
   let bcc : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Bcc") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_bcc)
+    Hmap.Key.create (Info.make ~field:Resent_bcc ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_bcc)
   let message_id : MessageID.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Message-ID") ~pp:MessageID.pp ~prj:Value.of_message_id)
+    Hmap.Key.create (Info.make ~field:Resent_message_id ~pp:MessageID.pp ~prj:Value.of_message_id)
   let reply_to : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Resent-Reply-To") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_reply_to)
+    Hmap.Key.create (Info.make ~field:Resent_reply_to ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_reply_to)
 end
 
 type field =
@@ -141,7 +161,7 @@ let get f t =
     | Normalized { k; _ } ->
       let Info.Normalized { field; _ } = Hmap.Key.info k in
       let v = value_of_field t x in
-      if Field.equal field f then res := v :: !res
+      if Field.equal (resent_field_to_field field) f then res := v :: !res
     | Field { field; _ } ->
       let v = value_of_field t x in
       if Field.equal field f then res := v :: !res
@@ -156,7 +176,7 @@ let pp ppf t =
       let m = Hmap.get k t.normalized in
       let Info.Normalized { field; pp; _ } = Hmap.Key.info k in
       Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
-        Field.pp field pp (Ordered.find n m.vs)
+        Field.pp (resent_field_to_field field) pp (Ordered.find n m.vs)
     | Field { field; value; _ } ->
       Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
         Field.pp field Unstructured.pp value
@@ -269,3 +289,48 @@ let fold
            resents, rfc5322_field :: rest)
       (resents, []) fields
     |> fun (resents, fields) -> resents, List.rev fields (* XXX(dinosaure): keep the order. *)
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let field = Field.Encoder.field
+  let date = Date.Encoder.date
+  let mailbox = Mailbox.Encoder.mailbox
+  let mailboxes = Mailbox.Encoder.mailboxes
+  let addresses = Address.Encoder.addresses
+  let message_id = MessageID.Encoder.message_id
+  let unstructured = Unstructured.Encoder.unstructured
+
+  let field_and_value field_value value_encoding ppf value =
+    keval ppf id [ !!field; char $ ':'; space; hov 1; !!value_encoding; close; string $ "\r\n" ] field_value value
+
+  let resent_date = field_and_value (Field.v "Resent-Date") date
+  let resent_from = field_and_value (Field.v "Resent-From") mailboxes
+  let resent_sender = field_and_value (Field.v "Resent-Sender") mailbox
+  let resent_to = field_and_value (Field.v "Resent-To") addresses
+  let resent_cc = field_and_value (Field.v "Resent-Cc") addresses
+  let resent_bcc = field_and_value (Field.v "Resent-Bcc") addresses
+  let resent_message_id = field_and_value (Field.v "Resent-Message-ID") message_id
+  let resent_reply_to = field_and_value (Field.v "Resent-Reply-To") addresses
+  let resent_field field = field_and_value field unstructured
+  let resent_unsafe field = field_and_value field unstructured
+
+  let resent t ppf = function
+    | Field { field; value; _ } -> resent_field field ppf value
+    | Unsafe { field; value; _ } -> resent_unsafe field ppf value
+    | Normalized { k; n; } ->
+      let Normalized { field; _ } = Hmap.Key.info k in
+      let m = Hmap.get k t.normalized in
+      let v = Ordered.find n m.Info.vs in
+      match field with
+      | Resent_date -> resent_date ppf v
+      | Resent_from -> resent_from ppf v
+      | Resent_sender -> resent_sender ppf v
+      | Resent_to -> resent_to ppf v
+      | Resent_cc -> resent_cc ppf v
+      | Resent_bcc -> resent_bcc ppf v
+      | Resent_message_id -> resent_message_id ppf v
+      | Resent_reply_to -> resent_reply_to ppf v
+end

@@ -92,3 +92,33 @@ let fold : (Number.t * ([> field ] as 'a) * Location.t) list -> t list -> (t lis
        | index, field, location -> t, (index, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> t, List.rev fields
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let field = Field.Encoder.field
+  let word = Mailbox.Encoder.word
+  let domain = Mailbox.Encoder.domain
+  let mailbox = Mailbox.Encoder.mailbox
+  let date = Date.Encoder.date
+
+  let return_path ppf m =
+    keval ppf id [ !!field; char $ ':'; space; hov 1; !!mailbox; close; string $ "\r\n" ]
+      (Field.v "Return-Path") m
+
+  let received ppf = function
+    | `Addr x -> mailbox ppf x
+    | `Domain x -> domain ppf x
+    | `Word x -> word ppf x
+
+  let received ppf (l, d) =
+    let sep = (fun ppf () -> keval ppf id [ space ]), () in
+    let date ppf x = keval ppf id [ char $ ';'; space; !!date ] x in
+    keval ppf id [ field $ (Field.v "Received"); char $ ':'; space; hov 1; !!(list ~sep received); !!(option date); close; string $ "\r\n" ] l d
+
+  let trace ppf = function
+    | { trace= Some r; received= rs; _ } -> keval ppf id [ !!return_path; !!(list received) ] r rs
+    | { trace= None; received= rs; _ } -> (list received) ppf rs
+end

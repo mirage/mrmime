@@ -10,3 +10,7 @@ val v : name:phrase -> Mailbox.t list -> t
 
 val pp : t Fmt.t
 (** Pretty-printer of {!t}. *)
+
+module Encoder : sig
+  val group : t Encoder.encoding
+end

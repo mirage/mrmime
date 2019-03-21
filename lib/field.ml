@@ -44,3 +44,9 @@ let prefixed_by prefix field =
   | [] -> assert false (* XXX(dinosaure): see invariants of [split_on_char]. *)
   | [ x ] -> false
   | x :: r -> String.(equal x (lowercase_ascii prefix))
+
+module Encoder = struct
+  open Encoder
+
+  let field = using capitalize string
+end

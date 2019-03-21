@@ -104,5 +104,8 @@ val pp : t Fmt.t
 module Encoder : sig
   val word : word Encoder.encoding
   val local : local Encoder.encoding
+  val phrase : phrase Encoder.encoding
+  val domain : domain Encoder.encoding
   val mailbox : t Encoder.encoding
+  val mailboxes : t list Encoder.encoding
 end

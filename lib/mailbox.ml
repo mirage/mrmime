@@ -339,6 +339,7 @@ module Encoder = struct
       keval ppf id str (escape_string x)
 
   let dot = using (fun () -> '.') char, ()
+  let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), ()
 
   let local ppf lst =
     keval ppf id [ hov 1; !!(list ~sep:dot word); close ] lst
@@ -385,6 +386,8 @@ module Encoder = struct
       keval ppf id
         [ hov 1; !!(option phrase); cut; char $ '<'; cut; !!domains; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; char $ '>'; close ]
         name r t.Rfc5322.local x
+
+  let mailboxes = list ~sep:comma mailbox
 end
 
 let pp_word ppf = function

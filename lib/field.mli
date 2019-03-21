@@ -9,3 +9,7 @@ val of_string : string -> (t, [ `Msg of string ]) result
 val of_string_exn : string -> t
 val v : string -> t
 val prefixed_by : string -> t -> bool
+
+module Encoder : sig
+  val field : t Encoder.encoding
+end

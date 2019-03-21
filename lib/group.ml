@@ -18,3 +18,17 @@ let pp : t Fmt.t = fun ppf t ->
                        mailboxes = %a;@] }"
     Mailbox.pp_phrase t.name
     (Fmt.Dump.list Mailbox.pp) t.mailboxes
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), ()
+  let phrase = Mailbox.Encoder.phrase
+  let mailbox = Mailbox.Encoder.mailbox
+
+  let group ppf t =
+    keval ppf id [ hov 1; !!phrase; char $ ':'; space; hov 1; !!(list ~sep:comma mailbox); close; char $ ';'; close ]
+      t.name t.mailboxes
+end
