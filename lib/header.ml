@@ -57,11 +57,41 @@ module Value = struct
     | Trace x -> Fmt.Dump.list Trace.Value.pp ppf x
 end
 
+type 'a header_field =
+  | Date : Date.t header_field
+  | From : Mailbox.t list header_field
+  | Sender : Mailbox.t header_field
+  | ReplyTo : Address.t list header_field
+  | To : Address.t list header_field
+  | Cc : Address.t list header_field
+  | Bcc : Address.t list header_field
+  | Subject : Unstructured.t header_field
+  | MessageID : MessageID.t header_field
+  | InReplyTo : phrase_or_message_id list header_field
+  | References : phrase_or_message_id list header_field
+  | Comments : Unstructured.t header_field
+  | Keywords : phrase list header_field
+
+let field_of_header_field : type a. a header_field -> Field.t = function
+  | Date -> Field.v "Date"
+  | From -> Field.v "From"
+  | Sender -> Field.v "Sender"
+  | ReplyTo -> Field.v "Reply-To"
+  | To -> Field.v "To"
+  | Cc -> Field.v "Cc"
+  | Bcc -> Field.v "Bcc"
+  | Subject -> Field.v "Subject"
+  | MessageID -> Field.v "MessageID"
+  | InReplyTo -> Field.v "In-Reply-To"
+  | References -> Field.v "References"
+  | Comments -> Field.v "Comments"
+  | Keywords -> Field.v "Keywords"
+
 module Info = struct
   type 'a ordered = { vs : 'a Ordered.t }
 
   type 'a t =
-    | Normalized : { field : Field.t
+    | Normalized : { field : 'a header_field
                    ; pp : 'a Fmt.t
                    ; prj : 'a -> Value.t } -> 'a ordered t
 
@@ -75,31 +105,31 @@ module Key = struct
   type 'a ordered = 'a Info.ordered
 
   let date : Date.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Date") ~pp:Date.pp ~prj:Value.of_date)
+    Hmap.Key.create (Info.make ~field:Date ~pp:Date.pp ~prj:Value.of_date)
   let from : Mailbox.t list Info.ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "From") ~pp:(Fmt.Dump.list Mailbox.pp) ~prj:Value.of_from)
+    Hmap.Key.create (Info.make ~field:From ~pp:(Fmt.Dump.list Mailbox.pp) ~prj:Value.of_from)
   let sender : Mailbox.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Sender") ~pp:Mailbox.pp ~prj:Value.of_sender)
+    Hmap.Key.create (Info.make ~field:Sender ~pp:Mailbox.pp ~prj:Value.of_sender)
   let reply_to : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Reply-To") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_reply_to)
+    Hmap.Key.create (Info.make ~field:ReplyTo ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_reply_to)
   let _to : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "To") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_to)
+    Hmap.Key.create (Info.make ~field:To ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_to)
   let cc : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Cc") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_cc)
+    Hmap.Key.create (Info.make ~field:Cc ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_cc)
   let bcc : Address.t list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Bcc") ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_bcc)
+    Hmap.Key.create (Info.make ~field:Bcc ~pp:(Fmt.Dump.list Address.pp) ~prj:Value.of_bcc)
   let subject : Unstructured.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Subject") ~pp:Unstructured.pp ~prj:Value.of_subject)
+    Hmap.Key.create (Info.make ~field:Subject ~pp:Unstructured.pp ~prj:Value.of_subject)
   let message_id : MessageID.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Message-ID") ~pp:MessageID.pp ~prj:Value.of_message_id)
+    Hmap.Key.create (Info.make ~field:MessageID ~pp:MessageID.pp ~prj:Value.of_message_id)
   let in_reply_to : phrase_or_message_id list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "In-Reply-To") ~pp:(Fmt.Dump.list pp_phrase_or_message_id) ~prj:Value.of_in_reply_to)
+    Hmap.Key.create (Info.make ~field:InReplyTo ~pp:(Fmt.Dump.list pp_phrase_or_message_id) ~prj:Value.of_in_reply_to)
   let references : phrase_or_message_id list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "References") ~pp:(Fmt.Dump.list pp_phrase_or_message_id) ~prj:Value.of_references)
+    Hmap.Key.create (Info.make ~field:References ~pp:(Fmt.Dump.list pp_phrase_or_message_id) ~prj:Value.of_references)
   let comments : Unstructured.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Comments") ~pp:Unstructured.pp ~prj:Value.of_comments)
+    Hmap.Key.create (Info.make ~field:Comments ~pp:Unstructured.pp ~prj:Value.of_comments)
   let keywords : phrase list ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Keywords") ~pp:(Fmt.Dump.list pp_phrase) ~prj:Value.of_keywords)
+    Hmap.Key.create (Info.make ~field:Keywords ~pp:(Fmt.Dump.list pp_phrase) ~prj:Value.of_keywords)
 
   let field_of_key (Info.Normalized { field; _ }) = field
   let pp_of_key (Info.Normalized { pp; _ }) = pp
@@ -137,7 +167,7 @@ let pp ppf t =
       let m = Hmap.get k t.normalized in
       let Info.Normalized { field; pp; _ } = Hmap.Key.info k in
       Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
-        Field.pp field pp (Ordered.find n m.vs)
+        Field.pp (field_of_header_field field) pp (Ordered.find n m.vs)
     | Resent x -> Resent.pp ppf x
     | Trace x -> Trace.pp ppf x
     | Field { field; value; _ } ->
@@ -177,7 +207,7 @@ let get f t =
     | Normalized { k; _ } ->
       let Info.Normalized { field; _ } = Hmap.Key.info k in
       let v = value_of_field t x in
-      if Field.equal field f then res := v :: !res
+      if Field.equal (field_of_header_field field) f then res := v :: !res
     | Field { field; _ } ->
       let v = value_of_field t x in
       if Field.equal field f then res := v :: !res
@@ -287,3 +317,70 @@ let fold
                       @ List.map resent resents
                       @ t.v },
      fields)
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let field = Field.Encoder.field
+  let date = Date.Encoder.date
+  let mailboxes = Mailbox.Encoder.mailboxes
+  let mailbox = Mailbox.Encoder.mailbox
+  let addresses = Address.Encoder.addresses
+  let unstructured = Unstructured.Encoder.unstructured
+  let message_id = MessageID.Encoder.message_id
+  let phrase_or_message_id ppf = function
+    | `Phrase x -> Mailbox.Encoder.phrase ppf x
+    | `MessageID x -> MessageID.Encoder.message_id ppf x
+  let phrase = Mailbox.Encoder.phrase
+  let phrases =
+    let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), () in
+    list ~sep:comma phrase
+
+  let field_and_value field_value value_encoding ppf value =
+    keval ppf id [ !!field; char $ ':'; space; hov 1; !!value_encoding; close; string $ "\r\n" ] field_value value
+
+  let date = field_and_value (Field.v "Date") date
+  let from = field_and_value (Field.v "From") mailboxes
+  let sender = field_and_value (Field.v "Sender") mailbox
+  let reply_to = field_and_value (Field.v "Reply-To") addresses
+  let _to = field_and_value (Field.v "To") addresses
+  let cc = field_and_value (Field.v "Cc") addresses
+  let bcc = field_and_value (Field.v "Bcc") addresses
+  let subject = field_and_value (Field.v "Subject") unstructured
+  let message_id = field_and_value (Field.v "Message-ID") message_id
+  let in_reply_to = field_and_value (Field.v "In-Reply-To") (list phrase_or_message_id)
+  let references = field_and_value (Field.v "References") (list phrase_or_message_id)
+  let comments = field_and_value (Field.v "Comments") unstructured
+  let keywords = field_and_value (Field.v "Keywords") phrases
+  let field field = field_and_value field unstructured
+  let unsafe field = field_and_value field unstructured
+
+  let header t ppf = function
+    | Line (line, _) -> keval ppf id [ !!string; string $ "\r\n" ] line
+    | Field { field= f; value= v; _ } -> field f ppf v
+    | Unsafe { field= f; value= v; _ } -> unsafe f ppf v
+    | Resent x -> Resent.Encoder.resent ppf x
+    | Trace x -> Trace.Encoder.trace ppf x
+    | Normalized { k; n; } ->
+      let Normalized { field; _ } = Hmap.Key.info k in
+      let m = Hmap.get k t.normalized in
+      let v = Ordered.find n m.Info.vs in
+      match field with
+      | Date -> date ppf v
+      | From -> from ppf v
+      | Sender -> sender ppf v
+      | ReplyTo -> reply_to ppf v
+      | To -> _to ppf v
+      | Cc -> cc ppf v
+      | Bcc -> bcc ppf v
+      | Subject -> subject ppf v
+      | MessageID -> message_id ppf v
+      | InReplyTo -> in_reply_to ppf v
+      | References -> references ppf v
+      | Comments -> comments ppf v
+      | Keywords -> keywords ppf v
+
+  let header ppf t = (list (using Location.prj (header t))) ppf t.v
+end

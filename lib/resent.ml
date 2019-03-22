@@ -333,4 +333,6 @@ module Encoder = struct
       | Resent_bcc -> resent_bcc ppf v
       | Resent_message_id -> resent_message_id ppf v
       | Resent_reply_to -> resent_reply_to ppf v
+
+  let resent ppf t = (list (using Location.prj (resent t))) ppf t.v
 end

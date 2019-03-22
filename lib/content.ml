@@ -29,11 +29,25 @@ module Value = struct
     | ContentDescription x | Field x | Unsafe x -> Unstructured.pp ppf x
 end
 
+type 'a content_field =
+  | Content_type : Content_type.t content_field
+  | Content_encoding : Content_encoding.t content_field
+  | Mime_version : Mime_version.t content_field
+  | Content_id : MessageID.t content_field
+  | Content_description : Unstructured.t content_field
+
+let field_of_content_field : type a. a content_field -> Field.t = function
+  | Content_type -> Field.v "Content-Type"
+  | Content_encoding -> Field.v "Content-Encoding"
+  | Mime_version -> Field.v "MIME-Version"
+  | Content_id -> Field.v "Content-ID"
+  | Content_description -> Field.v "Content-Description"
+
 module Info = struct
   type 'a ordered = { vs : 'a Ordered.t }
 
   type 'a t =
-    | Normalized : { field : Field.t
+    | Normalized : { field : 'a content_field
                    ; pp : 'a Fmt.t
                    ; prj : 'a -> Value.t } -> 'a ordered t
 
@@ -47,15 +61,15 @@ module Key = struct
   type 'a ordered = 'a Info.ordered
 
   let content_type : Content_type.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Content-Type") ~pp:Content_type.pp ~prj:Value.of_content_type)
+    Hmap.Key.create (Info.make ~field:Content_type ~pp:Content_type.pp ~prj:Value.of_content_type)
   let content_encoding : Content_encoding.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Content-Encoding") ~pp:Content_encoding.pp ~prj:Value.of_content_encoding)
+    Hmap.Key.create (Info.make ~field:Content_encoding ~pp:Content_encoding.pp ~prj:Value.of_content_encoding)
   let mime_version : Mime_version.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "MIME-Version") ~pp:Mime_version.pp ~prj:Value.of_mime_version)
+    Hmap.Key.create (Info.make ~field:Mime_version ~pp:Mime_version.pp ~prj:Value.of_mime_version)
   let content_id : MessageID.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Content-ID") ~pp:MessageID.pp ~prj:Value.of_content_id)
+    Hmap.Key.create (Info.make ~field:Content_id ~pp:MessageID.pp ~prj:Value.of_content_id)
   let content_description : Unstructured.t ordered Hmap.key =
-    Hmap.Key.create (Info.make ~field:(Field.v "Content-Description") ~pp:Unstructured.pp ~prj:Value.of_content_description)
+    Hmap.Key.create (Info.make ~field:Content_description ~pp:Unstructured.pp ~prj:Value.of_content_description)
 end
 
 type field =
@@ -77,7 +91,7 @@ let pp ppf t =
       let m = Hmap.get k t.normalized in
       let Info.Normalized { field; pp; _ } = Hmap.Key.info k in
       Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
-        Field.pp field pp (Ordered.find n m.vs)
+        Field.pp (field_of_content_field field) pp (Ordered.find n m.vs)
     | Field { field; value; _ } ->
       Fmt.pf ppf "@[<1>(@[%a@],@ @[%a@])@]"
         Field.pp field Unstructured.pp value
@@ -103,7 +117,7 @@ let get f t =
     | Normalized { k; _ } ->
       let Info.Normalized { field; _ } = Hmap.Key.info k in
       let v = value_of_field t x in
-      if Field.equal field f then res := v :: !res
+      if Field.equal (field_of_content_field field) f then res := v :: !res
     | Field { field; _ } ->
       let v = value_of_field t x in
       if Field.equal field f then res := v :: !res
@@ -213,3 +227,44 @@ let fold_as_part : ((Number.t * ([> part ] as 'a) * Location.t) list) -> t -> (t
        | n, field, location -> t, (n, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> (t, List.rev fields)
+
+module Encoder = struct
+  open Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let field = Field.Encoder.field
+  let content_type = Content_type.Encoder.content_type
+  let content_encoding = Content_encoding.Encoder.mechanism
+  let message_id = MessageID.Encoder.message_id
+  let unstructured = Unstructured.Encoder.unstructured
+  let mime_version = Mime_version.Encoder.mime_version
+
+  let field_and_value field_value value_encoding ppf value =
+    keval ppf id [ !!field; char $ ':'; space; hov 1; !!value_encoding; close; string $ "\r\n" ] field_value value
+
+  let content_type = field_and_value (Field.v "Content-Type") content_type
+  let content_encoding = field_and_value (Field.v "Content-Encoding") content_encoding
+  let content_id = field_and_value (Field.v "Content-ID") message_id
+  let content_description = field_and_value (Field.v "Content-Description") unstructured
+  let mime_version = field_and_value (Field.v "MIME-Version") mime_version
+  let content field = field_and_value field unstructured
+  let content_unsafe field = field_and_value field unstructured
+  let content_field field = field_and_value field unstructured
+
+  let content t ppf = function
+    | Field { field; value; _ } -> content_field field ppf value
+    | Unsafe { field; value; _ } -> content_unsafe field ppf value
+    | Normalized { k; n; } ->
+      let Normalized { field; _ } = Hmap.Key.info k in
+      let m = Hmap.get k t.normalized in
+      let v = Ordered.find n m.Info.vs in
+      match field with
+      | Content_type -> content_type ppf v
+      | Content_encoding -> content_encoding ppf v
+      | Content_id -> content_id ppf v
+      | Content_description -> content_description ppf v
+      | Mime_version -> mime_version ppf v
+
+  let content ppf t = (list (using Location.prj (content t))) ppf t.v
+end
