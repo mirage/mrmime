@@ -10,6 +10,19 @@ let pp_atom ppf = function
 
 let pp : t Fmt.t = Fmt.list ~sep:(Fmt.always "@,") pp_atom
 
+let equal_atom a b = match a, b with
+  | `Text a, `Text b -> String.equal a b
+  | `WSP a, `WSP b -> String.equal a b
+  | `CR a, `CR b -> a = b
+  | `LF a, `LF b -> a = b
+  | `CRLF, `CRLF -> true
+  | `Encoded a, `Encoded b -> Encoded_word.equal a b
+  | _, _ -> false
+
+let equal a b =
+  try List.for_all2 equal_atom a b
+  with _ -> false
+
 module Encoder = struct
   open Encoder
 
