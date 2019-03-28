@@ -30,7 +30,7 @@ end
 type 'value decoder
 
 type 'value decode =
-  [ `Field of 'value
+  [ `Field of Field.t * 'value
   | `Other of Field.t * string
   | `Lines of (string * Location.t) list
   | `Await

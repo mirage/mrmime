@@ -7,7 +7,7 @@ let parser =
   let nothing_to_do _ = fail "Nothing to do" in
   field_name <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
   <* char ':'
-  >>= (fun field_name -> field nothing_to_do field_name)
+  >>= (fun field_name -> field nothing_to_do field_name >>| fun v -> `Field (Field.v field_name, v))
       <|> (lines >>| fun lines -> `Lines lines)
 
 let parser =
@@ -94,10 +94,10 @@ type 'value decoder =
   ; b : Bigstringaf.t
   ; f : Field.t
   ; v : 'value Value.t
-  ; mutable cs : ([ Rfc5322.field | `End ] * Location.t) Angstrom.Unbuffered.state }
+  ; mutable cs : ([ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list | `End ] * Location.t) Angstrom.Unbuffered.state }
 
 type 'value decode =
-  [ `Field of 'value
+  [ `Field of Field.t * 'value
   | `Other of Field.t * string
   | `Lines of (string * Location.t) list
   | `Await
@@ -105,60 +105,64 @@ type 'value decode =
   | `Malformed of string ]
 
 let to_binding
-  : (Rfc5322.field * Location.t) -> Value.binding
-  = fun (field, location) -> match field with
-    | `Date date ->
-      Value.(B (Field.of_string_exn "Date", Value.Date, date, location))
-    | `From mailboxes ->
-      Value.(B (Field.of_string_exn "From", Value.Mailboxes, mailboxes, location))
-    | `Sender mailbox ->
-      Value.(B (Field.of_string_exn "Sender", Value.Mailbox, mailbox, location))
-    | `ReplyTo addresses ->
-      Value.(B (Field.of_string_exn "Reply-To", Value.Addresses, addresses, location))
-    | `To addresses ->
-      Value.(B (Field.of_string_exn "To", Value.Addresses, addresses, location))
-    | `Cc addresses ->
-      Value.(B (Field.of_string_exn "Cc", Value.Addresses, addresses, location))
-    | `Bcc addresses ->
-      Value.(B (Field.of_string_exn "Bcc", Value.Addresses, addresses, location))
-    | `MessageID message_id ->
-      Value.(B (Field.of_string_exn "Message-ID", Value.MessageID, message_id, location))
-    | `Subject unstructured ->
-      Value.(B (Field.of_string_exn "Subject", Value.Unstructured, unstructured, location))
-    | `Comments unstructured ->
-      Value.(B (Field.of_string_exn "Comments", Value.Unstructured, unstructured, location))
-    | `Keywords phrases ->
-      Value.(B (Field.of_string_exn "Keywords", Value.Phrases, phrases, location))
-    | `Field (field, unstructured) ->
-      Value.(B (Field.of_string_exn field, Value.Unstructured, unstructured, location))
-    | `Trace trace ->
-      Value.(B (Field.of_string_exn "Return-Path", Value.Trace, trace, location))
-    | `Unsafe (field, unstructured) ->
-      Value.(B (Field.of_string_exn field, Value.Unstructured, unstructured, location))
-    | `InReplyTo x ->
-      Value.(B (Field.of_string_exn "In-Reply-To", Value.Phrase_or_message_id, x, location))
-    | `References x ->
-      Value.(B (Field.of_string_exn "References", Value.Phrase_or_message_id, x, location))
-    | `ResentDate date ->
-      Value.(B (Field.of_string_exn "Resent-Date", Value.Date, date, location))
-    | `ResentFrom mailboxes ->
-      Value.(B (Field.of_string_exn "Resent-From", Value.Mailboxes, mailboxes, location))
-    | `ResentSender mailbox ->
-      Value.(B (Field.of_string_exn "Resent-Sender", Value.Mailbox, mailbox, location))
-    | `ResentTo addresses ->
-      Value.(B (Field.of_string_exn "Resent-To", Value.Addresses, addresses, location))
-    | `ResentCc addresses ->
-      Value.(B (Field.of_string_exn "Resent-Cc", Value.Addresses, addresses, location))
-    | `ResentBcc addresses ->
-      Value.(B (Field.of_string_exn "Resent-Bcc", Value.Addresses, addresses, location))
-    | `ResentMessageID message_id ->
-      Value.(B (Field.of_string_exn "Resent-Message-ID", Value.MessageID, message_id, location))
-    | `ResentReplyTo addresses ->
-      Value.(B (Field.of_string_exn "Resent-Reply-To", Value.Addresses, addresses, location))
+  : ([ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list ] * Location.t) -> Value.binding
+  = fun (v, location) -> match v with
     | `Lines lines ->
       Value.(L (lines, location))
+    | `Field (field_name, v) -> match v with
+      | `Date date ->
+        Value.(B (field_name, Value.Date, date, location))
+      | `From mailboxes ->
+        Value.(B (field_name, Value.Mailboxes, mailboxes, location))
+      | `Sender mailbox ->
+        Value.(B (field_name, Value.Mailbox, mailbox, location))
+      | `ReplyTo addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `To addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `Cc addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `Bcc addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `MessageID message_id ->
+        Value.(B (field_name, Value.MessageID, message_id, location))
+      | `Subject unstructured ->
+        Value.(B (field_name, Value.Unstructured, unstructured, location))
+      | `Comments unstructured ->
+        Value.(B (field_name, Value.Unstructured, unstructured, location))
+      | `Keywords phrases ->
+        Value.(B (field_name, Value.Phrases, phrases, location))
+      | `Field (field, unstructured) ->
+        Value.(B (field_name, Value.Unstructured, unstructured, location))
+      | `Trace trace ->
+        Value.(B (field_name, Value.Trace, trace, location))
+      | `Unsafe (field, unstructured) ->
+        Value.(B (field_name, Value.Unstructured, unstructured, location))
+      | `InReplyTo x ->
+        Value.(B (field_name, Value.Phrase_or_message_id, x, location))
+      | `References x ->
+        Value.(B (field_name, Value.Phrase_or_message_id, x, location))
+      | `ResentDate date ->
+        Value.(B (field_name, Value.Date, date, location))
+      | `ResentFrom mailboxes ->
+        Value.(B (field_name, Value.Mailboxes, mailboxes, location))
+      | `ResentSender mailbox ->
+        Value.(B (field_name, Value.Mailbox, mailbox, location))
+      | `ResentTo addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `ResentCc addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `ResentBcc addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `ResentMessageID message_id ->
+        Value.(B (field_name, Value.MessageID, message_id, location))
+      | `ResentReplyTo addresses ->
+        Value.(B (field_name, Value.Addresses, addresses, location))
+      | `Lines lines ->
+        Value.(L (lines, location))
 
 type end_of_header = [ `End ]
+type value = [ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list ]
 
 let decoder ~field value buffer =
   { q= Q.from buffer
@@ -180,7 +184,7 @@ let decode : type field. field decoder -> field decode =
     Q.compress decoder.q ;
     let[@warning "-8"] [ x ] = Q.N.peek decoder.q in
     `End (Bigstringaf.substring x ~off:0 ~len:(Bigstringaf.length x))
-  | Angstrom.Unbuffered.Done (committed, ((#Rfc5322.field, location) as v)) ->
+  | Angstrom.Unbuffered.Done (committed, ((#value, location) as v)) ->
     let off = Location.left_exn location in
     let len = Location.length_exn location in
     let[@warning "-8"] [ x ] = Q.N.peek decoder.q in
@@ -193,7 +197,7 @@ let decode : type field. field decoder -> field decode =
         | [ x ] -> decoder.cs <- Angstrom.Unbuffered.parse_incomplete_bigstring parser x
         | _ :: _ | [] -> assert false in
       match Value.equal decoder.v value, Field.equal decoder.f field with
-      | Some Refl.Refl, true -> `Field x
+      | Some Refl.Refl, true -> `Field (field, x)
       | _ -> `Other (field, raw)
 
 let blit_from_string src src_off dst dst_off len =

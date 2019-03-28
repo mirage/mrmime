@@ -1,4 +1,4 @@
-type t = string
+type t = private string
 
 val compare : t -> t -> int
 val equal : t -> t -> bool

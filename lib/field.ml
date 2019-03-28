@@ -23,11 +23,16 @@ let canonicalize = String.lowercase_ascii
 
 exception Break
 
+let is_ftext = function
+  | '\033' .. '\057' | '\059' .. '\126' -> true
+  | _ -> false
+(* XXX(dinosaure): from [Rfc5322] but to avoid cyclic dependency. *)
+
 let of_string x =
   try
     for i = 0 to String.length x - 1
-    do if not (Rfc5322.is_ftext x.[i]) then raise Break done ;
-    Ok (canonicalize x)
+    do if not (is_ftext x.[i]) then raise Break done ;
+    Ok x
   with Break -> Rresult.R.error_msgf "Invalid field: %S" x
 
 let of_string_exn x = match of_string x with

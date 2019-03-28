@@ -41,7 +41,13 @@ let with_uutf is =
       res)
   >>= fun (consumed, state) -> match !not_satisfy with
   | false ->
-    assert (state = `End) ;
+    (* assert (state = `End) ;
+       TODO: assert false with [parse_string unstructured
+             "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC24+ \
+             oWY3VEvkeJ8ZYCpp00YX61+Yyya6mgxgx6fbjUqAgaaqq \
+             DdQoByt05XUYMKFV7Zs+wbtqNlJe15jUActNAu06LQnrM \
+             Hhtdmepad/8jYR8YRhoPppKG6MmDlIRkzcmAA/E8ZZF7h \
+             gaAiOvCtnoTY0/ZTabr3wC9NPpiL5tn1QIDAQAB" *)
     let normalized = Buffer.contents res in
     Buffer.clear res ;
     return { normalized; raw= consumed; }
