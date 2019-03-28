@@ -40,6 +40,9 @@ val equal_charset : charset -> charset -> bool
 val equal_encoding : encoding -> encoding -> bool
 val equal : t -> t -> bool
 
+val reconstruct : t -> string
+(** [reconstruct t] reconstructs [t] as it is in the mail. *)
+
 module Encoder : sig
   val encoded_word : t Encoder.encoding
 end

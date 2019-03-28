@@ -27,6 +27,10 @@ let make ~encoding value =
     Some {Rfc2047.charset= `UTF_8; encoding; raw= "", '\000', "" (* TODO *); data= Ok value}
   else None
 
+let reconstruct t =
+  let charset, encoding, raw = t.raw in
+  Fmt.strf "=?%s?%c?%s?=" charset encoding raw
+
 let make_exn ~encoding value =
   match make ~encoding value with
   | Some v -> v
