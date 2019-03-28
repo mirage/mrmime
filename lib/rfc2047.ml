@@ -16,7 +16,7 @@ type encoding = Quoted_printable | Base64
 type encoded_word =
   { charset: charset
   ; encoding: encoding
-  ; raw: string
+  ; raw: string * char * string
   ; data: (string, Rresult.R.msg) result}
 
 let is_normalized {charset; _} =
@@ -34,16 +34,16 @@ let charset_of_uppercase_string x =
       | Some (#uutf_charset as charset) -> charset
       | _ -> `Charset x ) )
 
-let charset_of_string = function
+let charset_of_string raw = match raw with
   | "US-ASCII" | "iso-ir-6" | "ANSI_X3.4-1968" | "ANSI_X3.4-1986"
    |"ISO_646.rv:1991" | "ISO646-US" | "us" | "IBM367" | "cp367" | "csASCII" ->
-      `US_ASCII
+      raw, `US_ASCII
   | x -> (
-    try (Rosetta.encoding_of_string x :> charset)
+    try (raw, (Rosetta.encoding_of_string x :> charset))
     with Invalid_argument _ -> (
       match Uutf.encoding_of_string x with
-      | Some (#uutf_charset as charset) -> charset
-      | _ -> charset_of_uppercase_string x ) )
+      | Some (#uutf_charset as charset) -> raw, charset
+      | _ -> raw, charset_of_uppercase_string x ) )
 
 open Angstrom
 
@@ -302,13 +302,13 @@ let encoded_text = take_while1 (function '?' | ' ' -> false | _ -> true)
 let encoded_word =
   string "=?" *> token
   >>| charset_of_string
-  >>= fun charset ->
+  >>= fun (charset_raw, charset) ->
   char '?' *> satisfy (function 'Q' | 'q' | 'B' | 'b' -> true | _ -> false)
-  >>= (function
+  >>= fun encoding_raw -> (match encoding_raw with
         | 'Q' | 'q' -> return Quoted_printable
         | 'B' | 'b' -> return Base64
         | encoding -> invalid_encoding encoding)
   >>= fun encoding ->
   char '?' *> encoded_text
-  >>= fun raw -> return (normalize ~chunk:512 ~charset ~encoding raw)
-  >>= fun data -> string "?=" *> return {charset; encoding; raw; data}
+  >>= fun raw -> return (normalize ~chunk:512 ~charset:charset ~encoding raw)
+  >>= fun data -> string "?=" *> return {charset; encoding; raw= charset_raw, encoding_raw, raw; data}
