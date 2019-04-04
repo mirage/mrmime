@@ -27,16 +27,16 @@ depends: [
   "dune"     {build}
   "hmap"
   "uutf"
-  "ke"
+  "ke" {dev}
   "ptime"
   "ipaddr"
   "uutf"
   "rosetta"
-  "base64"
-  "pecu"
+  "base64" {dev}
+  "pecu" {dev}
   "rresult"
   "fmt"
-  "angstrom"
+  "angstrom" {dev}
   "alcotest" {with-test}
-  "crowbar" {with-test}
+  "crowbar" {dev} {with-test}
 ]
