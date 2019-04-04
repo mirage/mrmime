@@ -32,8 +32,8 @@ depends: [
   "ipaddr"
   "uutf"
   "rosetta"
-  "base64" {>= "3.0.0"}
-  "pecu" {>= "dev"}
+  "base64"
+  "pecu"
   "rresult"
   "fmt"
   "angstrom"
