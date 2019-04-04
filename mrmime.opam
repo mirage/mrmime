@@ -19,6 +19,7 @@ pin-depends: [
  [ "pecu.dev" "git+https://github.com/dinosaure/pecu.git"]
  [ "ke.dev" "git+https://github.com/mirage/ke.git"]
  [ "angstrom.dev" "git+https://github.com/dinosaure/angstrom.git#parse-incomplete-bigstring"]
+ [ "crowbar.dev" "git+https://github.com/stedolan/crowbar.git"] {with-test}
 ]
 
 depends: [

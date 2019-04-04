@@ -1,33 +1,32 @@
 (library
  (name common)
- (public_name mrmime.fuzz.common)
  (modules common)
  (libraries mrmime crowbar))
 
 (executable
  (name fuzz_encoder)
  (modules fuzz_encoder)
- (libraries mrmime.encoder mrmime.fuzz.common crowbar jsonm))
+ (libraries mrmime.encoder common crowbar jsonm))
 
 (executable
  (name fuzz_mailbox)
  (modules fuzz_mailbox)
- (libraries mrmime mrmime.fuzz.common crowbar))
+ (libraries mrmime common crowbar))
 
 (executable
  (name fuzz_message_id)
  (modules fuzz_message_id)
- (libraries mrmime mrmime.fuzz.common crowbar))
+ (libraries mrmime common crowbar))
 
 (executable
  (name fuzz_content_type)
  (modules fuzz_content_type)
- (libraries mrmime mrmime.fuzz.common crowbar))
+ (libraries mrmime common crowbar))
 
 (executable
  (name fuzz_date)
  (modules fuzz_date)
- (libraries mrmime mrmime.fuzz.common crowbar))
+ (libraries mrmime common crowbar))
 
 (alias
  (name runtest)
