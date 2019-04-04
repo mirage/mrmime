@@ -38,5 +38,5 @@ depends: [
   "fmt"
   "angstrom" {dev}
   "alcotest" {with-test}
-  "crowbar" {dev} {with-test}
+  "crowbar" {dev & with-test}
 ]
