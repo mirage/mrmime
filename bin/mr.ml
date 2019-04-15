@@ -2,7 +2,7 @@ let () = Printexc.record_backtrace true
 
 open Cmdliner
 
-let commands = [ Header.command; Describe.command; Extract.command ]
+let commands = [ Header.command; Extract.command ]
 
 let run = `Help (`Pager, None)
 

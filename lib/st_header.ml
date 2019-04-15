@@ -171,11 +171,18 @@ let decoder ~field value buffer =
   ; v= value
   ; cs= Angstrom.Unbuffered.parse parser }
 
-let decode : type field. field decoder -> field decode =
+let rec decode : type field. field decoder -> field decode =
   (* XXX(dinosaure): about [shift_exn], we trust on [angstrom]. *)
   fun decoder -> match decoder.cs with
-  | Angstrom.Unbuffered.Partial { committed; continue; } ->
-    Q.N.shift_exn decoder.q committed ; `Await
+    | Angstrom.Unbuffered.Partial { committed; continue; } ->
+      Q.N.shift_exn decoder.q committed ;
+      ( match Q.N.peek decoder.q with
+        | x :: _ ->
+          let len = Bigstringaf.length x in
+          let more = Angstrom.Unbuffered.(if len = 0 then Complete else Incomplete) in
+          decoder.cs <- continue ~off:0 ~len x more ;
+          decode decoder
+        | [] -> `Await )
   | Angstrom.Unbuffered.Fail (committed, _, err) ->
     Q.N.shift_exn decoder.q committed ;
     `Malformed err
@@ -193,9 +200,7 @@ let decode : type field. field decoder -> field decode =
     match to_binding v with
     | Value.L (lines, _) -> `Lines lines
     | Value.B (field, value, x, _) ->
-      let () = match Q.N.peek decoder.q with
-        | [ x ] -> decoder.cs <- Angstrom.Unbuffered.parse_incomplete_bigstring parser x
-        | _ :: _ | [] -> assert false in
+      decoder.cs <- Angstrom.Unbuffered.parse parser ;
       match Value.equal decoder.v value, Field.equal decoder.f field with
       | Some Refl.Refl, true -> `Field (field, x)
       | _ -> `Other (field, raw)

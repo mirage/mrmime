@@ -20,13 +20,13 @@ let run ~newline ic field (Mrmime.St_header.Value.V value) capacity =
     try Hashtbl.add others field (Hashtbl.find others field + 1)
     with Not_found -> Hashtbl.add others field 1 in
   let rec go () = match decode decoder with
-    | `Field v ->
+    | `Field (_, v) ->
       exists := true ; print_field value v ; go ()
     | `Other (field', _) ->
       add_other field' ; go ()
     | `Lines _ -> go ()
     | `Malformed err ->Rresult.R.error_msg err
-    | `End ->
+    | `End _ ->
       if not !exists then print_others field others ;
       Rresult.R.ok ()
     | `Await ->
