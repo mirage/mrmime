@@ -20,28 +20,11 @@ let header_of_input ~newline ic =
 
 open Mrmime
 
-let pp_field
-  : type a. a Header.field Fmt.t
-  = fun ppf field -> Fmt.of_to_string Header.field_to_string ppf field
-
 type error = [ `Not_found | Rresult.R.msg ]
-
-let get_field : Field.t -> Header.t -> (Header.Value.t list, error) result = fun field header ->
-  match Header.get field header with
-  | [] -> Error `Not_found
-  | lst -> Ok lst
-
-let get_fields fields header =
-  List.fold_left
-    (fun a field -> match a, get_field field header with
-       | Ok a, Ok l -> Ok (l @ a)
-       | Error _, _ -> a
-       | Ok _, Error e -> Error e)
-    (Ok []) fields
 
 let ( <.> ) f g = fun x -> f (g x)
 
-let extract_raw ic (Header.B (_, _, loc)) =
+let extract_raw ic loc =
   (* TODO: lie when input use LF as line-breaker. *)
   let old = pos_in ic in
   seek_in ic (Location.left_exn loc) ;
@@ -49,12 +32,14 @@ let extract_raw ic (Header.B (_, _, loc)) =
   seek_in ic old ; res
 
 let extract ~newline ~with_raw ic fields =
-  let print ~with_raw v =
-    Fmt.pr "%a@\n@\n" pp_of_binding binding ;
-    if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic binding) in
+  let print ~with_raw (field, lst) =
+    List.iter (fun (v, loc) ->
+        Fmt.pr "%a:@ %a@\n@\n" Field.pp field Header.Value.pp v ;
+        if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic loc))
+      lst in
   let open Rresult.R in
-  header_of_input ~newline ic >>= fun (_, header, _) ->
-  get_fields fields header >>| List.rev >>| List.iter (print ~with_raw)
+  header_of_input ~newline ic >>| fun (_, header, _) ->
+  List.map (fun field -> field, Header.get field header) fields |> List.iter (print ~with_raw)
 
 let run newline with_raw input fields =
   let close, ic =

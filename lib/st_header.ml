@@ -171,6 +171,11 @@ let decoder ~field value buffer =
   ; v= value
   ; cs= Angstrom.Unbuffered.parse parser }
 
+let one x ~off ~len = function
+  | Angstrom.Unbuffered.Partial { continue; _ } ->
+    continue x ~off ~len Incomplete
+  | _ -> assert false (* XXX(dinosaure): TODO! *)
+
 let decode : type field. field decoder -> field decode =
   (* XXX(dinosaure): about [shift_exn], we trust on [angstrom]. *)
   fun decoder -> match decoder.cs with
@@ -194,7 +199,7 @@ let decode : type field. field decoder -> field decode =
     | Value.L (lines, _) -> `Lines lines
     | Value.B (field, value, x, _) ->
       let () = match Q.N.peek decoder.q with
-        | [ x ] -> decoder.cs <- Angstrom.Unbuffered.parse_incomplete_bigstring parser x
+        | [ x ] -> decoder.cs <- one x ~off:0 ~len:(Bigstringaf.length x) (Angstrom.Unbuffered.parse parser)
         | _ :: _ | [] -> assert false in
       match Value.equal decoder.v value, Field.equal decoder.f field with
       | Some Refl.Refl, true -> `Field (field, x)
