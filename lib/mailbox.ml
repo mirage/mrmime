@@ -214,10 +214,12 @@ module Phrase = struct
     | [] -> None
     | x :: r -> Some (coerce (x :: r))
 
-  let make_exn l =
+  let v l =
     match make l with
     | Some v -> v
     | None -> Fmt.invalid_arg "make_exn: invalid phrase"
+
+  let to_string x = Encoder.to_string Encoder.phrase x
 end
 
 module Literal_domain = struct
@@ -260,7 +262,7 @@ module Literal_domain = struct
           Some (Rfc5321.Ext (ldh, value))
         else None
 
-  let make_exn : type a. a t -> a -> literal_domain =
+  let v : type a. a t -> a -> literal_domain =
    fun witness v ->
     match make witness v with
     | Some v -> v
@@ -324,7 +326,7 @@ module Domain = struct
   type 'a t =
     | Domain : 'a domain t
     | Literal_domain : 'a Literal_domain.t -> 'a t
-    | Literal : literal t
+    | Literal : string t
 
   let domain = Domain
   let ipv4 = Literal_domain Literal_domain.IPv4
@@ -338,15 +340,15 @@ module Domain = struct
     | Domain -> Option.(make_domain v >>| fun v -> `Domain v)
     | Literal_domain witness ->
         Option.(Literal_domain.make witness v >>| fun v -> `Addr v)
-    | Literal ->
-        let (`Literal v) = v in
-        Some (`Literal v)
+    | Literal -> literal v
 
-  let make_exn : type a. a t -> a -> Rfc5322.domain =
+  let v : type a. a t -> a -> Rfc5322.domain =
    fun witness v ->
     match make witness v with
     | Some v -> v
     | None -> Fmt.invalid_arg "make_exn: invalid domain"
+
+  let to_string x = Encoder.to_string Encoder.domain x
 end
 
 module Local = struct
@@ -371,23 +373,31 @@ module Local = struct
     | [] -> None
     | x :: r -> Some (coerce (x :: r))
 
-  let make_exn : type a. a local -> Rfc822.local =
+  let v : type a. a local -> Rfc822.local =
    fun l ->
     match make l with
     | Some v -> v
     | None -> Fmt.invalid_arg "make_exn: invalid local part"
+
+  let to_string x = Encoder.to_string Encoder.local x
 end
 
-let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox option =
+let make ?name local ?(domains= []) domain =
+  { name; local; domain= (domain, domains); }
+
+let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox =
  fun local (witness, domain) ->
   match (Local.make local, Domain.make witness domain) with
   | Some local, Some domain ->
-      Some {Rfc5322.name= None; local; domain= (domain, [])}
-  | _, _ -> None
+      {Rfc5322.name= None; local; domain= (domain, [])}
+  | None, Some _ -> Fmt.invalid_arg "Invalid local-part"
+  | Some _, None -> Fmt.invalid_arg "Invalid domain"
+  | None, None -> Fmt.invalid_arg "Invalid local-part and domain"
 
 let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
  fun name mailbox -> {mailbox with Rfc5322.name= Some name}
 
+let to_string x = Encoder.to_string Encoder.mailbox x
 
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
