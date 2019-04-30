@@ -82,6 +82,9 @@ module Parameters : sig
   type t = value Map.t
   (** Type of parameters. *)
 
+  val of_list : (key * value) list -> t
+  (** Make {!t} from an association list. *)
+
   val key : string -> key option
   (** [key v] makes a new key (according to RFC 2045). *)
 
