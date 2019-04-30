@@ -126,6 +126,70 @@ let make_word raw =
   else if is_utf8_valid_string raw then Some (`String (escape_string raw))
   else None
 
+module Encoder = struct
+  include Encoder
+
+  external id : 'a -> 'a = "%identity"
+
+  let atom = [ hov 0; !!string; close ]
+  let str = [ hov 0; char $ '"'; !!string; char $ '"'; close ]
+
+  let word ppf = function
+    | `Atom x -> keval ppf id atom x
+    | `String x ->
+      keval ppf id str (escape_string x)
+
+  let dot = using (fun () -> '.') char, ()
+  let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), ()
+
+  let local ppf lst =
+    keval ppf id [ hov 1; !!(list ~sep:dot word); close ] lst
+
+  let ipaddr_v4 = using Ipaddr.V4.to_string string
+  let ipaddr_v6 = using Ipaddr.V6.to_string string
+
+  let domain ppf = function
+    | `Domain domain ->
+      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
+      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
+    | `Literal literal ->
+      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
+    | `Addr (IPv4 ip) ->
+      keval ppf id [ hov 1; char $ '['; !!ipaddr_v4; char $ ']'; close ] ip
+    | `Addr (IPv6 ip) ->
+      keval ppf id [ hov 1; char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']'; close ] ip
+    | `Addr (Ext (ldh, v)) ->
+      keval ppf id [ hov 1; char $ '['; !!string; char $ ':'; !!string; char $ ']'; close ] ldh v
+
+  let phrase ppf lst =
+    let elt ppf = function
+      | `Dot -> char ppf '.'
+      | `Word w -> word ppf w
+      | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
+    let space ppf () = keval ppf id [ space ] in
+    keval ppf id [ hov 1; !!(list ~sep:(space, ()) elt); close ] lst
+
+  let mailbox ppf (t:Rfc5322.mailbox) =
+    match t.Rfc5322.name, t.Rfc5322.domain with
+    | Some name, (x, []) ->
+      keval ppf id [ hov 1; !!phrase ; space; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
+        name t.Rfc5322.local x
+    | None, (x, []) ->
+      keval ppf id [ hov 1; !!local ; cut; char $ '@'; cut; !!domain; close ]
+        t.Rfc5322.local x
+    | name, (x, r) ->
+      let domains ppf lst =
+        let domain ppf x = keval ppf id [ hov 1; char $ '@'; !!domain; close ] x in
+        let comma = (fun ppf () -> keval ppf id [ char $ ','; cut ]), () in
+        keval ppf id [ hov 1; !!(list ~sep:comma domain); close ] lst in
+      let phrase ppf x = keval ppf id [ hov 1; !!phrase; space; close ] x in
+
+      keval ppf id
+        [ hov 1; !!(option phrase); cut; char $ '<'; cut; !!domains; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; char $ '>'; close ]
+        name r t.Rfc5322.local x
+
+  let mailboxes = list ~sep:comma mailbox
+end
 
 module Phrase = struct
   type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]
@@ -324,70 +388,6 @@ let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox option =
 let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
  fun name mailbox -> {mailbox with Rfc5322.name= Some name}
 
-module Encoder = struct
-  open Encoder
-
-  external id : 'a -> 'a = "%identity"
-
-  let atom = [ hov 0; !!string; close ]
-  let str = [ hov 0; char $ '"'; !!string; char $ '"'; close ]
-
-  let word ppf = function
-    | `Atom x -> keval ppf id atom x
-    | `String x ->
-      keval ppf id str (escape_string x)
-
-  let dot = using (fun () -> '.') char, ()
-  let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), ()
-
-  let local ppf lst =
-    keval ppf id [ hov 1; !!(list ~sep:dot word); close ] lst
-
-  let ipaddr_v4 = using Ipaddr.V4.to_string string
-  let ipaddr_v6 = using Ipaddr.V6.to_string string
-
-  let domain ppf = function
-    | `Domain domain ->
-      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
-      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
-    | `Literal literal ->
-      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
-    | `Addr (IPv4 ip) ->
-      keval ppf id [ hov 1; char $ '['; !!ipaddr_v4; char $ ']'; close ] ip
-    | `Addr (IPv6 ip) ->
-      keval ppf id [ hov 1; char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']'; close ] ip
-    | `Addr (Ext (ldh, v)) ->
-      keval ppf id [ hov 1; char $ '['; !!string; char $ ':'; !!string; char $ ']'; close ] ldh v
-
-  let phrase ppf lst =
-    let elt ppf = function
-      | `Dot -> char ppf '.'
-      | `Word w -> word ppf w
-      | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
-    let space ppf () = keval ppf id [ space ] in
-    keval ppf id [ hov 1; !!(list ~sep:(space, ()) elt); close ] lst
-
-  let mailbox ppf (t:Rfc5322.mailbox) =
-    match t.Rfc5322.name, t.Rfc5322.domain with
-    | Some name, (x, []) ->
-      keval ppf id [ hov 1; !!phrase ; space; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
-        name t.Rfc5322.local x
-    | None, (x, []) ->
-      keval ppf id [ hov 1; !!local ; cut; char $ '@'; cut; !!domain; close ]
-        t.Rfc5322.local x
-    | name, (x, r) ->
-      let domains ppf lst =
-        let domain ppf x = keval ppf id [ hov 1; char $ '@'; !!domain; close ] x in
-        let comma = (fun ppf () -> keval ppf id [ char $ ','; cut ]), () in
-        keval ppf id [ hov 1; !!(list ~sep:comma domain); close ] lst in
-      let phrase ppf x = keval ppf id [ hov 1; !!phrase; space; close ] x in
-
-      keval ppf id
-        [ hov 1; !!(option phrase); cut; char $ '<'; cut; !!domains; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; char $ '>'; close ]
-        name r t.Rfc5322.local x
-
-  let mailboxes = list ~sep:comma mailbox
-end
 
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
