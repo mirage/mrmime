@@ -76,7 +76,7 @@ type trace =
       * date option )
       list ]
 
-type field_header =
+type field =
   [ `Date of date
   | `From of mailbox list
   | `Sender of mailbox
@@ -92,8 +92,8 @@ type field_header =
   | `Keywords of phrase list
   | `Field of Field_name.t * unstructured ]
 
+type unsafe = [`Unsafe of Field_name.t * unstructured]
 type lines = [`Lines of (string * Location.t) list]
-type field = [field_header | resent | trace | lines]
 
 (* / *)
 

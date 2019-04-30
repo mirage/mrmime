@@ -1,21 +1,21 @@
 module Field = struct
-  type mail = [ Rfc5322.field | Rfc2045.field | Rfc2045.field_version | Rfc5322.lines ]
-  type part = [ Rfc5322.field | Rfc2045.field | Rfc5322.lines ]
+  type mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
+  type part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
 end
 
 type ('discrete, 'extension) t =
   | Discrete of { content : Content.t
-                ; fields : (Number.t * Field.mail * Location.t) list
+                ; fields : Garbage.t
                 ; body : 'discrete }
   | Extension of { content : Content.t
-                 ; fields : (Number.t * Field.mail * Location.t) list
+                 ; fields : Garbage.t
                  ; body : 'extension }
   | Multipart of { content : Content.t
-                 ; fields : (Number.t * Field.mail * Location.t) list
+                 ; fields : Garbage.t
                  ; parts : ('discrete, 'extension) atom list }
   | Message of { content : Content.t
                ; header : Header.t
-               ; fields : (Number.t * Field.mail * Location.t) list
+               ; fields : Garbage.t
                ; message : ('discrete, 'extension) t }
 and ('discrete, 'extension) part =
   | Part_discrete of 'discrete
@@ -28,16 +28,40 @@ and ('discrete, 'extension) atom =
   ; fields : (Number.t * Field.part * Location.t) list
   ; part : ('discrete, 'extension) part option }
 
+type garbage =
+  [ `Unsafe of Field_name.t * Unstructured.t
+  | `Lines of (string * Location.t) list ]
+
 open Angstrom
 
-let header : (Content.t * Header.t * (Number.t * Field.mail * Location.t) list) Angstrom.t =
-  Rfc5322.header
-    (Rfc2045.message_field
-       (fun _ -> fail "Nothing to do")
-       (fun _ -> fail "Nothing to do"))
-  >>= fun fields -> return (Header.fold Number.zero fields Header.empty)
-  >>= fun (header, fields) -> return (Content.fold_as_mail fields Content.empty)
-  >>= fun (content, fields) -> return (content, header, fields)
+let rfc5322 fields =
+  let go acc = function
+    | _, #Rfc5322.resent, _ -> acc
+    | _, #Rfc5322.trace, _ -> acc
+    | _, #Rfc2045.field, _ -> acc
+    | _, #Rfc2045.field_version, _ -> acc
+    | _, #Rfc5322.field, _ as x -> x :: acc
+    | _, #garbage, _ as x -> x :: acc in
+  List.fold_left go [] fields |> List.rev
+
+let clean fields =
+  let go acc = function
+    | _, #Rfc5322.field, _ -> acc
+    | _, #garbage, _ as x -> x :: acc in
+  List.fold_left go [] fields |> List.rev
+
+let header : (Content.t * Header.t * Resent.t * Trace.t * Garbage.t) Angstrom.t =
+  let nothing_to_do _ = fail "Nothing to do" in
+  Rfc5322.header (Rfc2045.message_field nothing_to_do nothing_to_do)
+  >>| List.mapi (fun i (field, loc) -> Number.of_int_exn i, field, loc)
+  >>= fun fields -> return (Resent.reduce fields Resent.empty)
+  >>= fun (resents, _) -> return (Trace.reduce fields Trace.empty)
+  >>= fun (traces, _) -> return (Content.reduce_as_mail fields Content.empty)
+  >>= fun (content, _) -> return (Header.reduce (rfc5322 fields) Header.empty)
+  >>= fun (header, fields) -> return (clean fields)
+  >>= function
+  | [] -> return (content, header, resents, traces, Garbage.empty)
+  | rest -> return (content, header, resents, traces, Garbage.make rest)
 
 type ('valid, 'invalid) contents =
   | Contents of 'valid
@@ -88,9 +112,9 @@ let octet boundary content =
     | `Ietf_token _x | `X_token _x -> assert false
 
 let boundary content =
-  match List.assoc "boundary" (Content.parameters content) with
-  | `Token boundary | `String boundary -> Some boundary
-  | exception Not_found -> None
+  match Content_type.Parameters.find "boundary" (Content.parameters content) with
+  | Some (`Token boundary) | Some (`String boundary) -> Some boundary
+  | None -> None
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
@@ -112,7 +136,7 @@ let mail =
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, fields) ->
+    >>= fun (content, header, resents, traces, fields) ->
     match Content.ty content with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->

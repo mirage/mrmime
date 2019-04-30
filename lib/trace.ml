@@ -16,8 +16,8 @@ type mailbox = Rfc5322.mailbox =
   ; local : local
   ; domain : domain * domain list }
 
-type t =
-  { index : Number.t
+type trace =
+  { n : Number.t
   ; trace : mailbox option
   ; received : (received list * Date.t option) list
   ; location : Location.t }
@@ -25,23 +25,9 @@ and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
+and t = trace list
 
-module Value = struct
-  type t =
-    | Received : (received list * Date.t option) -> t
-    | ReturnPath : Mailbox.t -> t
-
-  let pp_received ppf = function
-    | `Addr x -> Mailbox.pp ppf x
-    | `Domain x -> Mailbox.pp_domain ppf x
-    | `Word x -> Mailbox.pp_word ppf x
-
-  let pp ppf = function
-    | ReturnPath x -> Mailbox.pp ppf x
-    | Received x -> Fmt.(Dump.pair (Dump.list pp_received) (Dump.option Date.pp)) ppf x
-end
-
-let number { index; _ } = index
+let number { n; _ } = n
 let location { location; _ } = location
 
 let pp_trace ppf (local, (x, r)) = match r with
@@ -69,7 +55,7 @@ let pp_received ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(Dump.list pp_received) received
 
-let pp ppf = function
+let pp_trace ppf = function
   | { trace= Some trace; received; _ } ->
     Fmt.pf ppf "{ @[<hov>trace = %a;@ received = %a;@] }"
       pp_trace trace
@@ -78,18 +64,16 @@ let pp ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(vbox (list ~sep:(always "@\n&@ ") pp_received)) received
 
-let get f t =
-  if Field.(equal (v "Received") f)
-  then List.map (fun x -> Value.Received x) t.received
-  else if Field.(equal (v "Return-Path") f)
-  then Option.(value ~default:[] (map (fun x -> [ Value.ReturnPath x ]) t.trace))
-  else raise Not_found (* XXX(dinosaure): or [Invalid_argument _]? *)
+let pp = Fmt.list pp_trace
 
-let fold : (Number.t * ([> field ] as 'a) * Location.t) list -> t list -> (t list * (Number.t * 'a * Location.t) list) = fun fields t ->
+let empty = []
+
+let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+  = fun fields t ->
   List.fold_left
     (fun (t, rest) -> function
-       | index, `Trace (trace, received), location -> { index; trace; received; location; } :: t, rest
-       | index, field, location -> t, (index, field, location) :: rest)
+       | n, `Trace (trace, received), location -> { n; trace; received; location; } :: t, rest
+       | n, field, location -> t, (n, field, location) :: rest)
     (t, []) fields
   |> fun (t, fields) -> t, List.rev fields
 
@@ -98,7 +82,7 @@ module Encoder = struct
 
   external id : 'a -> 'a = "%identity"
 
-  let field = Field.Encoder.field
+  let field = Field_name.Encoder.field
   let word = Mailbox.Encoder.word
   let domain = Mailbox.Encoder.domain
   let mailbox = Mailbox.Encoder.mailbox
@@ -106,7 +90,7 @@ module Encoder = struct
 
   let return_path ppf m =
     keval ppf id [ !!field; char $ ':'; space; hov 1; !!mailbox; close; string $ "\r\n" ]
-      (Field.v "Return-Path") m
+      Field_name.return_path m
 
   let received ppf = function
     | `Addr x -> mailbox ppf x
@@ -116,7 +100,7 @@ module Encoder = struct
   let received ppf (l, d) =
     let sep = (fun ppf () -> keval ppf id [ space ]), () in
     let date ppf x = keval ppf id [ char $ ';'; space; !!date ] x in
-    keval ppf id [ field $ (Field.v "Received"); char $ ':'; space; hov 1; !!(list ~sep received); !!(option date); close; string $ "\r\n" ] l d
+    keval ppf id [ field $ Field_name.received; char $ ':'; space; hov 1; !!(list ~sep received); !!(option date); close; string $ "\r\n" ] l d
 
   let trace ppf = function
     | { trace= Some r; received= rs; _ } -> keval ppf id [ !!return_path; !!(list received) ] r rs
