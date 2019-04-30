@@ -149,11 +149,17 @@ val subty : t -> Subtype.t
 val parameters : t -> (Parameters.key * Parameters.value) list
 (** Returns parameters of Content-Type value. *)
 
+(** {2 Pretty-printers.} *)
+
 val pp : t Fmt.t
 (** Pretty-printer of {!t}. *)
 
+(** {2 Equals.} *)
+
 val equal : t -> t -> bool
 (** Equal on {!t}. *)
+
+(** {2 Encoder of content-type.} *)
 
 module Encoder : sig
   val ty : Type.t Encoder.encoding
