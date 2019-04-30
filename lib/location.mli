@@ -47,11 +47,19 @@ val length_exn : t -> int
     location (see {!none}). *)
 
 val with_location : location:t -> 'a -> 'a with_location
+(** [with_location ~location x] injects [location] into [x] as a meta-data. *)
+
 val inj : location:t -> 'a -> 'a with_location
+(** Alias of {!with_location}. *)
 
 val without_location : 'a with_location -> 'a
+  (** [without_location x] extracts value without location meta-data. *)
+
 val prj : 'a with_location -> 'a
+(** Alias of {!without_location}. *)
 
 val location : 'a with_location -> t
+(** [location t] extracts location from a value. *)
 
 val union : t -> t -> t
+(** [union a b] merges two locations. *)
