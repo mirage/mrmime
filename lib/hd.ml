@@ -1,23 +1,14 @@
 module Refl = struct type ('a, 'b) t = Refl : ('a, 'a) t end
 
-let parser =
-  let open Angstrom in
-  let open Rfc5322 in
-  (* XXX(dinosaure): should be in [Rfc5322] module. *)
-  let nothing_to_do _ = fail "Nothing to do" in
-  field_name <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
-  <* char ':'
-  >>= (fun field_name -> field nothing_to_do field_name >>| fun v -> `Field (Field.v field_name, v))
-      <|> (lines >>| fun lines -> `Lines lines)
-
-let parser =
-  let open Angstrom in
-  let crlf = string "\r\n" in
-  (Rfc5322.with_location parser) <|> (Rfc5322.with_location (crlf >>= fun _ -> return `End))
-
 module Value = struct
-  type phrase_or_message_id = [`Phrase of Rfc5322.phrase | `MessageID of Rfc822.nonsense Rfc822.msg_id]
-  type trace = Rfc5322.mailbox option * ([ `Addr of Rfc5322.mailbox | `Domain of Rfc5322.domain | `Word of Rfc822.word ] list * Rfc5322.date option) list
+  type phrase_or_message_id =
+    [ `Phrase of Rfc5322.phrase
+    | `MessageID of Rfc822.nonsense Rfc822.msg_id ]
+
+  type trace =
+    Rfc5322.mailbox option * ([ `Addr of Rfc5322.mailbox
+                              | `Domain of Rfc5322.domain
+                              | `Word of Rfc822.word ] list * Rfc5322.date option) list
 
   (* XXX(dinosaure): [trace] is folded by the parser. *)
 
@@ -33,6 +24,17 @@ module Value = struct
     | Trace : trace t
 
   type value = V : 'a t -> value
+
+  let to_parser : type a. a t -> a Angstrom.t = fun k -> let open Angstrom in match k with
+    | Date -> Rfc5322.date_time <* Rfc822.crlf
+    | Mailboxes -> Rfc5322.mailbox_list <* Rfc822.crlf
+    | Mailbox -> Rfc5322.mailbox <* Rfc822.crlf
+    | Addresses -> Rfc5322.address_list <* Rfc822.crlf
+    | MessageID -> Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf
+    | Phrase_or_message_id -> Rfc5322.phrase_or_message_id <* Rfc822.crlf
+    | Unstructured -> Rfc5322.unstructured <* Rfc822.crlf
+    | Phrases -> Rfc5322.keywords <* Rfc822.crlf
+    | Trace -> Rfc5322.path <* Rfc822.crlf >>= fun v -> Rfc5322.trace (`ReturnPath v)
 
   let of_string x = match String.lowercase_ascii x with
     | "date" -> Ok (V Date)
@@ -63,13 +65,14 @@ module Value = struct
     | Mailbox -> Mailbox.pp
     | Addresses -> Fmt.(Dump.list Address.pp)
     | MessageID -> MessageID.pp
-    | Phrase_or_message_id -> Fmt.Dump.list Header.pp_phrase_or_message_id
+    | Phrase_or_message_id -> assert false
     | Unstructured -> Unstructured.pp
-    | Phrases -> Fmt.Dump.list Header.pp_phrase
-    | Trace -> assert false (* TODO *)
+    | Phrases -> assert false
+    | Trace -> assert false
 
-  type binding = B : Field.t * 'a t * 'a * Location.t -> binding
-               | L : (string * Location.t) list * Location.t -> binding
+  type binding =
+    | Field : Field_name.t * 'a t * 'a * Location.t -> binding
+    | Lines : (string * Location.t) list * Location.t -> binding
 
   let equal
     : type a b. a t -> b t -> (a, b) Refl.t option
@@ -92,84 +95,129 @@ type q = (char, Bigarray.int8_unsigned_elt) Q.t
 type 'value decoder =
   { q : q
   ; b : Bigstringaf.t
-  ; f : Field.t
+  ; f : Field_name.t
   ; v : 'value Value.t
-  ; mutable cs : ([ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list | `End ] * Location.t) Angstrom.Unbuffered.state }
+  ; mutable cs : ([ `Field of Field_name.t * [ Rfc5322.field
+                                             | Rfc5322.trace
+                                             | Rfc5322.resent
+                                             | Rfc5322.unsafe
+                                             | Rfc5322.lines
+                                             | `Normalized of Value.binding ]
+                  | `Lines of (string * Location.t) list
+                  | `End ] * Location.t) Angstrom.Unbuffered.state }
 
 type 'value decode =
-  [ `Field of Field.t * 'value
-  | `Other of Field.t * string
+  [ `Field of Field_name.t * 'value
+  | `Other of Field_name.t * string
   | `Lines of (string * Location.t) list
   | `Await
   | `End of string
   | `Malformed of string ]
 
 let to_binding
-  : ([ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list ] * Location.t) -> Value.binding
+  : ([ `Field of Field_name.t * [ Rfc5322.field
+                                | Rfc5322.trace
+                                | Rfc5322.resent
+                                | Rfc5322.unsafe
+                                | Rfc5322.lines
+                                | `Normalized of Value.binding ]
+     | `Lines of (string * Location.t) list ] * Location.t) -> Value.binding
   = fun (v, location) -> match v with
     | `Lines lines ->
-      Value.(L (lines, location))
+      Value.(Lines (lines, location))
     | `Field (field_name, v) -> match v with
+      | `Normalized (Value.Field (field_name', _, _, _) as binding)->
+        assert (Field_name.equal field_name field_name') ;
+        binding
+      | `Normalized (Value.Lines _ as binding) -> binding
       | `Date date ->
-        Value.(B (field_name, Value.Date, date, location))
+        Value.(Field (field_name, Value.Date, date, location))
       | `From mailboxes ->
-        Value.(B (field_name, Value.Mailboxes, mailboxes, location))
+        Value.(Field (field_name, Value.Mailboxes, mailboxes, location))
       | `Sender mailbox ->
-        Value.(B (field_name, Value.Mailbox, mailbox, location))
+        Value.(Field (field_name, Value.Mailbox, mailbox, location))
       | `ReplyTo addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `To addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `Cc addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `Bcc addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `MessageID message_id ->
-        Value.(B (field_name, Value.MessageID, message_id, location))
+        Value.(Field (field_name, Value.MessageID, message_id, location))
       | `Subject unstructured ->
-        Value.(B (field_name, Value.Unstructured, unstructured, location))
+        Value.(Field (field_name, Value.Unstructured, unstructured, location))
       | `Comments unstructured ->
-        Value.(B (field_name, Value.Unstructured, unstructured, location))
+        Value.(Field (field_name, Value.Unstructured, unstructured, location))
       | `Keywords phrases ->
-        Value.(B (field_name, Value.Phrases, phrases, location))
+        Value.(Field (field_name, Value.Phrases, phrases, location))
       | `Field (field, unstructured) ->
-        Value.(B (field_name, Value.Unstructured, unstructured, location))
+        Value.(Field (field_name, Value.Unstructured, unstructured, location))
       | `Trace trace ->
-        Value.(B (field_name, Value.Trace, trace, location))
+        Value.(Field (field_name, Value.Trace, trace, location))
       | `Unsafe (field, unstructured) ->
-        Value.(B (field_name, Value.Unstructured, unstructured, location))
+        Value.(Field (field_name, Value.Unstructured, unstructured, location))
       | `InReplyTo x ->
-        Value.(B (field_name, Value.Phrase_or_message_id, x, location))
+        Value.(Field (field_name, Value.Phrase_or_message_id, x, location))
       | `References x ->
-        Value.(B (field_name, Value.Phrase_or_message_id, x, location))
+        Value.(Field (field_name, Value.Phrase_or_message_id, x, location))
       | `ResentDate date ->
-        Value.(B (field_name, Value.Date, date, location))
+        Value.(Field (field_name, Value.Date, date, location))
       | `ResentFrom mailboxes ->
-        Value.(B (field_name, Value.Mailboxes, mailboxes, location))
+        Value.(Field (field_name, Value.Mailboxes, mailboxes, location))
       | `ResentSender mailbox ->
-        Value.(B (field_name, Value.Mailbox, mailbox, location))
+        Value.(Field (field_name, Value.Mailbox, mailbox, location))
       | `ResentTo addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `ResentCc addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `ResentBcc addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `ResentMessageID message_id ->
-        Value.(B (field_name, Value.MessageID, message_id, location))
+        Value.(Field (field_name, Value.MessageID, message_id, location))
       | `ResentReplyTo addresses ->
-        Value.(B (field_name, Value.Addresses, addresses, location))
+        Value.(Field (field_name, Value.Addresses, addresses, location))
       | `Lines lines ->
-        Value.(L (lines, location))
+        Value.(Lines (lines, location))
 
 type end_of_header = [ `End ]
-type value = [ `Field of Field.t * Rfc5322.field | `Lines of (string * Location.t) list ]
+type value = [ `Field of Field_name.t * [ Rfc5322.field
+                                        | Rfc5322.trace
+                                        | Rfc5322.resent
+                                        | Rfc5322.unsafe
+                                        | Rfc5322.lines
+                                        | `Normalized of Value.binding ]
+             | `Lines of (string * Location.t) list ]
 
-let decoder ~field value buffer =
+let extension (Value.V kind) field_name =
+  let parser = Value.to_parser kind in
+  let open Angstrom in
+  Rfc5322.with_location parser >>| fun (v, loc) ->
+  `Normalized (Value.Field (Field_name.v field_name, kind, v, loc))
+
+let parser kind =
+  let open Angstrom in
+  let open Rfc5322 in
+  (* XXX(dinosaure): should be in [Rfc5322] module. *)
+  field_name <* many (satisfy (function '\x09' | '\x20' -> true | _ -> false))
+  <* char ':'
+  >>= (fun field_name -> field (extension kind) field_name
+        >>| fun v -> `Field (Field_name.v field_name, v))
+      <|> (lines >>| fun lines -> `Lines lines)
+
+let parser kind =
+  let open Angstrom in
+  let crlf = string "\r\n" in
+  (Rfc5322.with_location (parser kind))
+  <|> (Rfc5322.with_location (crlf >>= fun _ -> return `End))
+
+let decoder ~field_name value buffer =
   { q= Q.from buffer
   ; b= buffer
-  ; f= field
+  ; f= field_name
   ; v= value
-  ; cs= Angstrom.Unbuffered.parse parser }
+  ; cs= Angstrom.Unbuffered.parse (parser (Value.V value)) }
 
 let one x ~off ~len = function
   | Angstrom.Unbuffered.Partial { continue; _ } ->
@@ -196,12 +244,14 @@ let decode : type field. field decoder -> field decode =
     let raw = Bigstringaf.substring x ~off ~len in
     Q.N.shift_exn decoder.q committed ;
     match to_binding v with
-    | Value.L (lines, _) -> `Lines lines
-    | Value.B (field, value, x, _) ->
+    | Value.Lines (lines, _) -> `Lines lines
+    | Value.Field (field, value, x, _) ->
       let () = match Q.N.peek decoder.q with
-        | [ x ] -> decoder.cs <- one x ~off:0 ~len:(Bigstringaf.length x) (Angstrom.Unbuffered.parse parser)
+        | [ x ] ->
+          decoder.cs <- one x ~off:0 ~len:(Bigstringaf.length x)
+              (Angstrom.Unbuffered.parse (parser (Value.V decoder.v)))
         | _ :: _ | [] -> assert false in
-      match Value.equal decoder.v value, Field.equal decoder.f field with
+      match Value.equal decoder.v value, Field_name.equal decoder.f field with
       | Some Refl.Refl, true -> `Field (field, x)
       | _ -> `Other (field, raw)
 
@@ -231,5 +281,3 @@ let src decoder source off len =
         Rresult.R.ok ()
       | Some _ -> assert false (* XXX(dinosaure): see [ke] about that. *)
       | None -> Rresult.R.error_msg "Input is too much bigger"
-
-
