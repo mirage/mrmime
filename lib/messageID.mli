@@ -4,7 +4,7 @@ type local = Rfc822.local
 type t = Rfc822.nonsense Rfc822.msg_id
 
 module Domain : sig
-  (** A RFC 822 domain can be constructed in two way.
+  (** An RFC 822 domain can be constructed in two ways.
       This construction {b differ} from {!Address.domain}.
       We are allow to construct a common domain like:
 
