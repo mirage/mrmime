@@ -126,7 +126,6 @@ let make_word raw =
   else if is_utf8_valid_string raw then Some (`String (escape_string raw))
   else None
 
-module Peano = struct type z = Z and 'a s = S end
 
 module Phrase = struct
   type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]
