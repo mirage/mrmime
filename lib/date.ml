@@ -194,6 +194,45 @@ module Zone = struct
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
+  let to_int = function
+    | UT | GMT -> 00, 00
+    | EST -> -05, 00
+    | EDT -> -04, 00
+    | CST -> -06, 00
+    | CDT -> -05, 00
+    | MST -> -07, 00
+    | MDT -> -06, 00
+    | PST -> -08, 00
+    | PDT -> -07, 00
+    | TZ (x, y) -> x, y
+    | Military_zone c -> match c with
+      | 'A' -> 01, 00
+      | 'B' -> 02, 00
+      | 'C' -> 03, 00
+      | 'D' -> 04, 00
+      | 'E' -> 05, 00
+      | 'F' -> 06, 00
+      | 'G' -> 07, 00
+      | 'H' -> 08, 00
+      | 'I' -> 09, 00
+      | 'K' -> 10, 00
+      | 'L' -> 11, 00
+      | 'M' -> 12, 00
+      | 'N' -> -01, 00
+      | 'O' -> -02, 00
+      | 'P' -> -03, 00
+      | 'Q' -> -04, 00
+      | 'R' -> -05, 00
+      | 'S' -> -06, 00
+      | 'T' -> -07, 00
+      | 'U' -> -08, 00
+      | 'V' -> -09, 00
+      | 'W' -> -10, 00
+      | 'X' -> -11, 00
+      | 'Y' -> -12, 00
+      | 'Z' -> 00, 00
+      | c -> Fmt.invalid_arg "Invalid military zone %c" c
+
   let parser_tz =
     let open Angstrom in
     let is_digit = function '0' .. '9' -> true | _ -> false in
