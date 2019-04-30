@@ -30,18 +30,18 @@ let phrase =
 let extension = map [ dynamic_bind (range 78) (string_from_alphabet ldh_str)
                     ; range (String.length let_dig)
                     ; dynamic_bind (range ~min:1 78) (string_from_alphabet dcontent) ]
-    (fun ldh idx v -> match Mrmime.Mailbox.Domain.(make extension (ldh ^ String.make 1 (let_dig.[idx]), v)) with
+    (fun ldh idx x -> match Mrmime.Mailbox.Domain.(make extension (ldh ^ String.make 1 (let_dig.[idx]), x)) with
        | Some v -> v
        | None -> bad_test ())
 
 let ipv4 = map [ bytes ]
     (fun input -> match Ipaddr.V4.of_string input with
-       | Ok v -> Mrmime.Mailbox.Domain.(make_exn ipv4 v)
+       | Ok x -> Mrmime.Mailbox.Domain.(v ipv4 x)
        | Error _ -> bad_test ())
 
 let ipv6 = map [ bytes ]
     (fun input -> match Ipaddr.V6.of_string input with
-       | Ok v -> Mrmime.Mailbox.Domain.(make_exn ipv6 v)
+       | Ok x -> Mrmime.Mailbox.Domain.(v ipv6 x)
        | Error _ -> bad_test ())
 
 let domain_atom = map [ dynamic_bind (range ~min:1 78) (string_from_alphabet dtext) ]
