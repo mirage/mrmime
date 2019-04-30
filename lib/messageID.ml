@@ -57,3 +57,5 @@ module Encoder = struct
       keval ppf id [ hov 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain; char $ '>'; close ]
         local_part domain_part
 end
+
+let to_unstructured ~field_name x = Unstructured.to_unstructured ~field_name Encoder.message_id x
