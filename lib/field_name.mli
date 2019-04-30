@@ -22,7 +22,7 @@ val of_string : string -> (t, [ `Msg of string ]) result
    respect standards. Otherwise, we return an [Error]. *)
 
 val of_string_exn : string -> t
-(** Same as {!of_string} but raises an [Invalid_argument] instead to return
+(** Same as {!of_string} but raises an {!Invalid_argument} instead of returning
    [Error]. *)
 
 val v : string -> t
