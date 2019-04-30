@@ -81,6 +81,8 @@ type t = Rfc5322.date =
 
 val pp : t Fmt.t
 val equal : t -> t -> bool
+val compare : t -> t -> int
+val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> t option
 
 module Encoder : sig
   val date : t Encoder.encoding

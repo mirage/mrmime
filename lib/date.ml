@@ -274,6 +274,67 @@ type t = Rfc5322.date =
   ; time : int * int * int option
   ; zone : Zone.t }
 
+let make ?day (y, m, d) (hh, mm, ss) zone =
+  let z =
+    let hh, mm = Zone.to_int zone in
+    hh * 3600 + mm * 60 in
+  let same_day a ptime_b = match a, ptime_b with
+    | Day.Mon, `Mon -> true
+    | Day.Thu, `Thu -> true
+    | Day.Tue, `Tue -> true
+    | Day.Wed, `Wed -> true
+    | Day.Fri, `Fri -> true
+    | Day.Sat, `Sat -> true
+    | Day.Sun, `Sun -> true
+    | _, _ -> false in
+  let m' = Month.to_int m in
+  match Ptime.of_date_time ((y, m', d), ((hh, mm, Option.value ~default:0 ss), z)) with
+  | None -> None
+  | Some t ->
+    let day' = Ptime.weekday ~tz_offset_s:z t in
+
+    match day with
+    | None -> Some { day; date= (d, m, y); time= (hh, mm, ss); zone }
+    | Some day ->
+      if same_day day day'
+      then Some { day= Some day; date= (d, m, y); time= (hh, mm, ss); zone }
+      else None
+
+let pp ppf = function
+  | { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone; } ->
+    Fmt.pf ppf "{@[<hov>day = %a;@ \
+                        date = (@[<hov>%d,@ %a,@ %d@]);@ \
+                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
+                        zone = %a@]}"
+      Day.pp day d Month.pp m y hh mm (Option.value ~default:0 ss)
+      Zone.pp zone
+  | { day = None; date = (d, m, y); time = (hh, mm, ss); zone; } ->
+    Fmt.pf ppf "{@[<hov>date = (@[<hov>%d,@ %a,@ %d@]);@ \
+                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
+                        zone = %a@]}"
+      d Month.pp m y hh mm (Option.value ~default:0 ss)
+      Zone.pp zone
+
+let to_ptime date =
+  let z =
+    let hh, mm = Zone.to_int date.zone in
+    hh * 3600 + mm * 60 in
+  let m =
+    let (_, m, _) = date.date in
+    Month.to_int m in
+  let (d, _, y) = date.date in
+  let (hh, mm, ss) = date.time in
+  let ss = Option.value ~default:0 ss in
+  match Ptime.of_date_time ((y, m, d), ((hh, mm, ss), z)) with
+  | Some ptime -> ptime
+  | None -> Fmt.failwith "Invalid date: %a" pp date
+(* XXX(dinosaure): should never fail. *)
+
+let compare a b =
+  let a = to_ptime a in
+  let b = to_ptime b in
+  Ptime.compare a b
+
 let equal_option equal a b = match a, b with
   | Some a, Some b -> equal a b
   | None, None -> true
@@ -292,21 +353,6 @@ let equal a b =
   && equal_date a.date b.date
   && equal_time a.time b.time
   && Zone.equal a.zone b.zone
-
-let pp ppf = function
-  | { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone; } ->
-    Fmt.pf ppf "{@[<hov>day = %a;@ \
-                        date = (@[<hov>%d,@ %a,@ %d@]);@ \
-                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
-                        zone = %a@]}"
-      Day.pp day d Month.pp m y hh mm (Option.value ~default:0 ss)
-      Zone.pp zone
-  | { day = None; date = (d, m, y); time = (hh, mm, ss); zone; } ->
-    Fmt.pf ppf "{@[<hov>date = (@[<hov>%d,@ %a,@ %d@]);@ \
-                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
-                        zone = %a@]}"
-      d Month.pp m y hh mm (Option.value ~default:0 ss)
-      Zone.pp zone
 
 module Encoder = struct
   include Encoder
