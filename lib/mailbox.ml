@@ -52,7 +52,9 @@ let equal_domain a b = match a, b with
 let equal_domains a b = try List.for_all2 equal_domain a b with _ -> false
 
 let equal_local a b =
-  try List.for_all2 (equal_word ~sensitive:false) a b
+  (* XXX(dinosaure): RFC 5321 (2.4) explains:
+     The local-part of a mailbox MUST BE treated as case sensitive. *)
+  try List.for_all2 (equal_word ~sensitive:true) a b
   with _ -> false
 
 let equal a b = match a, b with
