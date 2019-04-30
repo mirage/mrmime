@@ -196,6 +196,8 @@ module Phrase = struct
   type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
 
   let o : elt = `Dot
+  let q = Encoded_word.q
+  let b = Encoded_word.b
   let word x : elt option = Option.(make_word x >>| fun x -> `Word x)
 
   let word_exn x : elt =
