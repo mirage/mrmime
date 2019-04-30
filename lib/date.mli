@@ -85,3 +85,5 @@ val equal : t -> t -> bool
 module Encoder : sig
   val date : t Encoder.encoding
 end
+
+val to_unstructured : t -> Unstructured.t

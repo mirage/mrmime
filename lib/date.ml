@@ -309,7 +309,7 @@ let pp ppf = function
       Zone.pp zone
 
 module Encoder = struct
-  open Encoder
+  include Encoder
 
   external id : 'a -> 'a = "%identity"
 
@@ -338,3 +338,6 @@ module Encoder = struct
     keval ppf id [ hov 1; !!(option day); !!int; space; !!month; space; !!int; space; !!time; space; !!zone; close ]
       t.day d m y t.time t.zone
 end
+
+let to_string x = Encoder.to_string Encoder.date x
+let to_unstructured = Unstructured.to_unstructured ~field_name:Field_name.date Encoder.date
