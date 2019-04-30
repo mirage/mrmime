@@ -64,9 +64,9 @@ type field =
   | `ContentEncoding of mechanism
   | `ContentID of Rfc822.nonsense Rfc822.msg_id
   | `ContentDescription of Rfc5322.unstructured
-  | `Content of Field.t * Rfc5322.unstructured ]
+  | `Content of Field_name.t * Rfc5322.unstructured ]
 
-type unsafe = [`Unsafe of Field.t * Rfc5322.unstructured]
+type unsafe = [`Unsafe of Field_name.t * Rfc5322.unstructured]
 type lines = [`Lines of (string * Location.t) list]
 type field_version = [`MIMEVersion of version]
 
@@ -375,7 +375,7 @@ let field extend_mime extend field_name =
         extend_mime field_name
         <|> ( Rfc5322.unstructured
             <* Rfc822.crlf
-            >>| fun v -> `Content (Field.v field_name, v) )
+            >>| fun v -> `Content (Field_name.v field_name, v) )
       else extend field_name
 
 let sp = Fmt.strf
@@ -395,7 +395,7 @@ let part_field extend_mime extend field_name =
   field extend_mime extend field_name
   <|> ( Rfc5322.unstructured
       <* Rfc822.crlf
-      >>| (fun v -> `Unsafe (Field.v field_name, v))
+      >>| (fun v -> `Unsafe (Field_name.v field_name, v))
       <?> sp "Unsafe %s" field_name )
 
 let message_field extend_mime extend field_name =
