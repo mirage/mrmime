@@ -1,5 +1,5 @@
 type word = Rfc822.word
-type domain = [ `Domain of string list | `Literal of string ]
+type domain = Rfc822.nonsense Rfc822.domain
 type local = Rfc822.local
 type t = Rfc822.nonsense Rfc822.msg_id
 

@@ -1,16 +1,16 @@
 type word = [`Atom of string | `String of string]
 type local = word list
-type domain = [`Domain of string list | `Literal of string]
+type domain = Rfc822.nonsense Rfc822.domain
 type t = Rfc822.nonsense Rfc822.msg_id (* = local * domain *)
 
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
   | `String x -> Fmt.pf ppf "%S" x
 
-let pp_domain ppf = function
+let pp_domain : Rfc822.nonsense Rfc822.domain Fmt.t = fun ppf -> function
   | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
   | `Literal x -> Fmt.pf ppf "[%s]" x
-  | `Addr _ -> assert false
+  | `Addr _ -> .
 
 let pp_local : local Fmt.t = Fmt.list ~sep:Fmt.(const string ".") pp_word
 
@@ -37,19 +37,19 @@ let equal a b =
   && equal_domain (snd a) (snd b)
 
 module Encoder = struct
-  open Encoder
+  include Encoder
 
   external id : 'a -> 'a = "%identity"
 
   let dot = using (fun () -> '.') char, ()
 
-  let domain ppf = function
+  let domain : Rfc822.nonsense Rfc822.domain Encoder.encoding = fun ppf -> function
     | `Domain domain ->
       let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
       keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
     | `Literal literal ->
       keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
-    | `Addr Rfc822.Nonsense.Nonsense -> assert false
+    | `Addr _ -> .
 
   let message_id ppf (t:Rfc822.nonsense Rfc822.msg_id) =
     match t with
