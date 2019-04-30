@@ -90,8 +90,7 @@ type field_header =
   | `Subject of unstructured
   | `Comments of unstructured
   | `Keywords of phrase list
-  | `Field of Field.t * unstructured
-  | `Unsafe of Field.t * unstructured ]
+  | `Field of Field_name.t * unstructured ]
 
 type lines = [`Lines of (string * Location.t) list]
 type field = [field_header | resent | trace | lines]
@@ -1633,7 +1632,7 @@ let field extend field_name =
   | "return-path" -> path <* Rfc822.crlf >>= fun v -> trace (`ReturnPath v) >>| fun v -> `Trace v
   | _ ->
       extend field_name
-      <|> (unstructured <* Rfc822.crlf >>| fun v -> `Field (Field.v field_name, v))
+      <|> (unstructured <* Rfc822.crlf >>| fun v -> `Field (Field_name.v field_name, v))
 
 let sp = Fmt.strf
 let failf fmt = Fmt.kstrf fail fmt
@@ -1642,7 +1641,7 @@ let field extend field_name =
   field extend field_name
   <|> ( unstructured
       <* Rfc822.crlf
-      >>| (fun v -> `Unsafe (Field.v field_name, v))
+      >>| (fun v -> `Unsafe (Field_name.v field_name, v))
       <?> sp "Unsafe %s" field_name )
 
 let lines =
