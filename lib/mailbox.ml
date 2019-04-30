@@ -436,3 +436,9 @@ let pp : t Fmt.t =
     x.Rfc5322.local
     Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
     x.Rfc5322.domain
+
+let mailboxes_to_unstructured ~field_name x =
+  Unstructured.to_unstructured ~field_name Encoder.mailboxes x
+
+let to_unstructured ~field_name x =
+  Unstructured.to_unstructured ~field_name Encoder.mailbox x
