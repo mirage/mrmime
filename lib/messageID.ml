@@ -59,3 +59,107 @@ module Encoder = struct
 end
 
 let to_unstructured ~field_name x = Unstructured.to_unstructured ~field_name Encoder.message_id x
+
+let is_utf8_valid_string_with is x =
+  let exception Invalid_utf8 in
+  let exception Invalid_char in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
+        | `Uchar uchar ->
+            if Uchar.is_char uchar && not (is (Uchar.to_char uchar)) then
+              raise Invalid_char )
+      () x ;
+    true
+  with
+  | Invalid_utf8 -> false
+  | Invalid_char -> false
+
+let is_utf8_valid_string x =
+  let exception Invalid_utf8 in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8 | _ -> ())
+      () x ;
+    true
+  with Invalid_utf8 -> false
+
+let is_atext_valid_string = is_utf8_valid_string_with Rfc822.is_atext
+let is_dtext_valid_string = is_utf8_valid_string_with Rfc822.is_dtext
+let is_qtext_valid_string = is_utf8_valid_string_with Rfc822.is_qtext
+
+module Domain = struct
+  let atom x = if is_atext_valid_string x then Some (`Atom x) else None
+
+  let atom_exn x =
+    match atom x with
+    | Some v -> v
+    | None -> Fmt.invalid_arg "atom_exn: invalid atom value %S" x
+
+  let a = atom_exn
+
+  let literal x =
+    let need_to_escape, escape_char =
+      (* TODO *)
+      let bindings = [('\000', '\000')] in
+      ( (fun chr -> List.mem_assoc chr bindings)
+      , fun chr -> List.assoc chr bindings )
+    in
+    let escape_string x =
+      let len = String.length x in
+      let res = Buffer.create (len * 2) in
+      let pos = ref 0 in
+      while !pos < len do
+        if need_to_escape x.[!pos] then (
+          Buffer.add_char res '\\' ;
+          Buffer.add_char res (escape_char x.[!pos]) )
+        else Buffer.add_char res x.[!pos] ;
+        incr pos
+      done ;
+      Buffer.contents res
+    in
+    if is_dtext_valid_string x then Some (`Literal x)
+    else if is_utf8_valid_string x then Some (`Literal (escape_string x))
+    else None
+
+  let literal_exn x =
+    match literal x with
+    | Some v -> v
+    | None -> Fmt.invalid_arg "literal_exn: invalid domain literal value %S" x
+
+  type atom = [`Atom of string]
+  type literal = [`Literal of string]
+
+  type 'a domain =
+    | ( :: ) : atom * 'a domain -> 'a Peano.s domain
+    | [] : Peano.z domain
+
+  let rec coerce : type a. a Peano.s domain -> string list = function
+    | [`Atom x] -> [x]
+    | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
+
+  let make_domain : type a. a domain -> string list option = function
+    | [] -> None
+    | x :: r -> Some (coerce (x :: r))
+
+  type 'a t =
+    | Domain : 'a domain t
+    | Literal : string t
+
+  let domain = Domain
+  let default = Literal
+
+  let make : type a. a t -> a -> Rfc822.nonsense Rfc822.domain option =
+   fun witness v ->
+    match witness with
+    | Domain -> Option.(make_domain v >>| fun v -> `Domain v)
+    | Literal -> literal v
+
+  let v : type a. a t -> a -> Rfc822.nonsense Rfc822.domain =
+   fun witness v ->
+    match make witness v with
+    | Some v -> v
+    | None -> Fmt.invalid_arg "make_exn: invalid domain"
+
+  let to_string x = Encoder.to_string Encoder.domain x
+end
