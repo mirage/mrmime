@@ -300,7 +300,7 @@ module Local : sig
   (** Same as {!make} but raises an exception instead to return [None]. *)
 
   val to_string : Rfc822.local -> string
-  (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
+  (** [to_string x] returns a string which represents [x] as it is in an e-mail. *)
 end
 
 val make : ?name:phrase -> local -> ?domains:domain list -> domain -> t
