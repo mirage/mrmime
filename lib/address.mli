@@ -8,6 +8,11 @@ val group : Group.t -> t
 val mailbox : Mailbox.t -> t
 (** [mailbox m] returns an address from a {!Mailbox.t}. *)
 
+(** {2 Equals.} *)
+
+val equal : t -> t -> bool
+(** Equal function of {!t}. *)
+
 (** {2 Pretty-printers.} *)
 
 val pp : t Fmt.t
@@ -19,3 +24,6 @@ module Encoder : sig
   val address : t Encoder.encoding
   val addresses : t list Encoder.encoding
 end
+
+val addresses_to_unstructured : field_name:Field_name.t -> t list -> Unstructured.t
+val to_unstructured : field_name:Field_name.t -> t -> Unstructured.t
