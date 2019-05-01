@@ -94,14 +94,14 @@ module Phrase : sig
 
   val word : string -> (elt, [ `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
-     returns [None] if [x] does not respect standards. If contents is an UTF-8
+     returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
      control characters (see {!escape_string}).
 
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
   val word_exn : string -> elt
-  (** Same as {!word} but raises an exception instead to return [None]. *)
+  (** Same as {!word} but raises an exception instead to return [Error]. *)
 
   val coerce : 'a Peano.s t -> phrase
   (** [coerce l] returns a valid and safe {!phrase}. *)
@@ -110,7 +110,7 @@ module Phrase : sig
   (** [make l] returns a {!phrase} only if [l] is a non-empty list. *)
 
   val v : 'a t -> phrase
-  (** Same as {!make} but raises an exception instead to return [None]. *)
+  (** Same as {!make} but raises an exception instead to return [Error]. *)
 
   val to_string : phrase -> string
   (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
@@ -144,7 +144,7 @@ module Literal_domain : sig
      if [kind] is {!extension} and value does not respect standards. *)
 
   val v : 'a t -> 'a -> literal_domain
-  (** Same as {!make} but raises an exception instead to return [None]. *)
+  (** Same as {!make} but raises an exception instead to return [Error]. *)
 end
 
 module Domain : sig
@@ -196,22 +196,22 @@ module Domain : sig
 
   val atom : string -> (atom, [ `Msg of string ]) result
   (** [atom x] returns a safe {!atom} element. If [x] does not respect RFC 5322,
-     it returns [None]. It accepts any characters excepts controls, space and
+     it returns [Error]. It accepts any characters excepts controls, space and
      specials characters - for instance, brackets are not allowed. *)
 
   val atom_exn : string -> atom
-  (** Same as {!atom} but raises an [Invalid_argument] instead [None]. *)
+  (** Same as {!atom} but raises an [Invalid_argument] instead [Error]. *)
 
   val a : string -> atom
   (** Alias of {!atom_exn}. *)
 
   val literal : string -> (literal, [ `Msg of string ]) result
   (** [literal x] returns a {!literal} domain. If [x] does not respect RFC 5321,
-     it returns [None]. It will try to escape control characters
+     it returns [Error]. It will try to escape control characters
      (with {!escape_string}). *)
 
   val literal_exn : string -> literal
-  (** Same as {!literal} but raises an [Invalid_argument] instead to return [None]. *)
+  (** Same as {!literal} but raises an [Invalid_argument] instead to return [Error]. *)
 
   val domain : 'a domain t
   (** Kind of domain. *)
@@ -234,13 +234,13 @@ module Domain : sig
      {!domain} don't follow standards:
 
      {ul
-     {- for a {!Literal_domain.extension}, [make] returns [None] if
-     {!Literal_domain.make} returns [None]}
-     {- for a {!literal}, [make] returns [None] if {!literal} returns [None]}
-     {- for a {!domain}, [make] returns [None] if list of {!atom} is empty}} *)
+     {- for a {!Literal_domain.extension}, [make] returns [Error] if
+     {!Literal_domain.make} returns [Error]}
+     {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
+     {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
 
   val v : 'a t -> 'a -> Rfc5322.domain
-  (** Same as {!make} but raises an [Invalid_argument] instead [None]. *)
+  (** Same as {!make} but raises an [Invalid_argument] instead [Error]. *)
 
   val to_string : Rfc5322.domain -> string
   (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
@@ -281,14 +281,14 @@ module Local : sig
 
   val word : string -> (word, [ `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
-     returns [None] if [x] does not respect standards. If contents is an UTF-8
+     returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
      control characters (see {!escape_string}).
 
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
   val word_exn : string -> word
-  (** Same as {!word} but raises an exception instead to return [None]. *)
+  (** Same as {!word} but raises an exception instead to return [Error]. *)
 
   val coerce : 'a Peano.s local -> Rfc822.local
   (** [coerce l] returns a valid and safe {!local}. *)
@@ -297,7 +297,7 @@ module Local : sig
   (** [make l] returns a {!local} only if [l] is a non-empty list. *)
 
   val v : 'a local -> Rfc822.local
-  (** Same as {!make} but raises an exception instead to return [None]. *)
+  (** Same as {!make} but raises an exception instead to return [Error]. *)
 
   val to_string : Rfc822.local -> string
   (** [to_string x] returns a string which represents [x] as it is in an e-mail. *)
