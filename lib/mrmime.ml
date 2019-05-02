@@ -23,6 +23,7 @@ module Mailbox = Mailbox
 module Option = Option
 module Date = Date
 module Field = Field
+module Field_name = Field_name
 module Header = Header
 module Address = Address
 module Group = Group
