@@ -25,10 +25,10 @@ module Type : sig
   val multipart : t
   (** Multipart type. *)
 
-  val ietf : string -> t option
+  val ietf : string -> (t, [ `Msg of string ]) result
   (** Type defined by IETF. *)
 
-  val extension : string -> t option
+  val extension : string -> (t, [ `Msg of string ]) result
   (** User-defined type. *)
 
   val pp : t Fmt.t
@@ -48,13 +48,14 @@ module Subtype : sig
   type t = Rfc2045.subty
   (** Type of sub-type. *)
 
-  val ietf : string -> t option
+  val ietf : string -> (t, [ `Msg of string ]) result
   (** Sub-type defined by IETF. *)
 
-  val iana : Type.t -> string -> t option
-  (** Sub-type from IANA database. *)
+  val iana : Type.t -> string -> (t, [ `Msg of string ]) result
+  (** Sub-type from IANA database. Returns [Error] if sub-type
+      is not a part of the IANA database. *)
 
-  val extension : string -> t option
+  val extension : string -> (t, [ `Msg of string ]) result
   (** User-defined sub-type. *)
 
   val pp : t Fmt.t
@@ -85,11 +86,13 @@ module Parameters : sig
   val of_list : (key * value) list -> t
   (** Make {!t} from an association list. *)
 
-  val key : string -> key option
-  (** [key v] makes a new key (according to RFC 2045). *)
+  val key : string -> (key, [ `Msg of string ]) result
+  (** [key v] makes a new key (according to RFC 2045 - otherwise, it returns an
+     error). *)
 
-  val value : string -> value option
-  (** [value v] makes a new value (according to RFC 2045). *)
+  val value : string -> (value, [ `Msg of string ]) result
+  (** [value v] makes a new value (according to RFC 2045 - otherwise, it returns
+     an error). *)
 
   val empty : t
   (** Empty parameters. *)
