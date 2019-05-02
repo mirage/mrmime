@@ -25,7 +25,6 @@ pin-depends: [
 depends: [
   "ocaml"    {>= "4.03.0"}
   "dune"     {build}
-  "hmap"
   "uutf"
   "ke" {dev}
   "ptime"
@@ -38,5 +37,6 @@ depends: [
   "fmt"
   "angstrom" {dev}
   "alcotest" {with-test}
+  "jsonm" {with-test}
   "crowbar" {dev & with-test}
 ]
