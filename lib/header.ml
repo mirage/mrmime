@@ -36,4 +36,7 @@ let pp : t Fmt.t = fun ppf t ->
           (Field.pp_of_field_name k) ppf (k, v))
     ppf (Ordered.map fst t)
 
+let pp_value ppf = fun (Value (k, v)) ->
+  Field.pp_of_field_value k ppf v
+
 let empty = Ordered.empty
