@@ -6,15 +6,15 @@ open Common
 let local_word =
   map [ dynamic_bind (range ~min:1 78) (string_from_alphabet atext) ]
     (fun str -> match Mrmime.Mailbox.Local.word str with
-       | Some str -> str
-       | None -> bad_test ())
+       | Ok str -> str
+       | Error _ -> bad_test ())
 
 let local = list1 local_word
 
 let domain_atom = map [ dynamic_bind (range ~min:1 78) (string_from_alphabet dtext) ]
     (fun input -> match Mrmime.Mailbox.Domain.atom input with
-       | Some v -> v
-       | None -> bad_test ())
+       | Ok v -> v
+       | Error _ -> bad_test ())
 
 let domain = map [ list1 domain_atom ] (fun lst -> `Domain (List.map (fun (`Atom x) -> x) lst))
 

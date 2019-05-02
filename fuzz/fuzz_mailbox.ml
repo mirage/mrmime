@@ -6,16 +6,16 @@ open Common
 let local_word =
   map [ dynamic_bind (range ~min:1 78) (string_from_alphabet atext) ]
     (fun str -> match Mrmime.Mailbox.Local.word str with
-       | Some str -> str
-       | None -> bad_test ())
+       | Ok str -> str
+       | Error _ -> bad_test ())
 
 let local = list1 local_word
 
 let phrase_word =
   map [ dynamic_bind (range ~min:1 78) bytes_fixed ]
     (fun str -> match Mrmime.Mailbox.Phrase.word str with
-       | Some elt -> elt
-       | None -> bad_test ())
+       | Ok elt -> elt
+       | Error _ -> bad_test ())
 
 let encoded_word =
   map [ bool; bytes ]
@@ -30,24 +30,24 @@ let phrase =
 let extension = map [ dynamic_bind (range 78) (string_from_alphabet ldh_str)
                     ; range (String.length let_dig)
                     ; dynamic_bind (range ~min:1 78) (string_from_alphabet dcontent) ]
-    (fun ldh idx v -> match Mrmime.Mailbox.Domain.(make extension (ldh ^ String.make 1 (let_dig.[idx]), v)) with
-       | Some v -> v
-       | None -> bad_test ())
+    (fun ldh idx x -> match Mrmime.Mailbox.Domain.(make extension (ldh ^ String.make 1 (let_dig.[idx]), x)) with
+       | Ok v -> v
+       | Error _ -> bad_test ())
 
 let ipv4 = map [ bytes ]
     (fun input -> match Ipaddr.V4.of_string input with
-       | Ok v -> Mrmime.Mailbox.Domain.(make_exn ipv4 v)
+       | Ok x -> Mrmime.Mailbox.Domain.(v ipv4 x)
        | Error _ -> bad_test ())
 
 let ipv6 = map [ bytes ]
     (fun input -> match Ipaddr.V6.of_string input with
-       | Ok v -> Mrmime.Mailbox.Domain.(make_exn ipv6 v)
+       | Ok x -> Mrmime.Mailbox.Domain.(v ipv6 x)
        | Error _ -> bad_test ())
 
 let domain_atom = map [ dynamic_bind (range ~min:1 78) (string_from_alphabet dtext) ]
     (fun input -> match Mrmime.Mailbox.Domain.atom input with
-       | Some v -> v
-       | None -> bad_test ())
+       | Ok v -> v
+       | Error _ -> bad_test ())
 
 let domain = map [ list1 domain_atom ] (fun lst -> `Domain (List.map (fun (`Atom x) -> x) lst))
 let domain = choose [ extension; ipv4; ipv6; domain; ]

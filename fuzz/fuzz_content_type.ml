@@ -11,8 +11,8 @@ let token = dynamic_bind (range ~min:1 32) (string_from_alphabet token)
 let value =
   map [ token ]
     (fun v -> match Mrmime.Content_type.Parameters.value v with
-       | Some v -> v
-       | None -> bad_test ())
+       | Ok v -> v
+       | Error _ -> bad_test ())
 
 (* XXX(dinosaure): IETF token does not exists - see [Rfc2045.ty] *)
 
@@ -38,8 +38,8 @@ let iana ty =
           |> List.map const)
 
 let key = map [ token ] (fun v -> match Mrmime.Content_type.Parameters.key v with
-    | Some v -> v
-    | None -> bad_test ())
+    | Ok v -> v
+    | Error _ -> bad_test ())
 
 let subty = function
   | (#Mrmime.Rfc2045.discrete

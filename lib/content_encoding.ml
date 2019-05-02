@@ -1,5 +1,4 @@
 type t = Rfc2045.mechanism
-type field = [ `ContentEncoding of t ]
 
 let pp ppf = function
   | `Bit7 -> Fmt.string ppf "7bit"

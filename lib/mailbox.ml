@@ -52,7 +52,9 @@ let equal_domain a b = match a, b with
 let equal_domains a b = try List.for_all2 equal_domain a b with _ -> false
 
 let equal_local a b =
-  try List.for_all2 (equal_word ~sensitive:false) a b
+  (* XXX(dinosaure): RFC 5321 (2.4) explains:
+     The local-part of a mailbox MUST BE treated as case sensitive. *)
+  try List.for_all2 (equal_word ~sensitive:true) a b
   with _ -> false
 
 let equal a b = match a, b with
@@ -121,212 +123,13 @@ let escape_string x =
   Buffer.contents res
 
 let make_word raw =
-  if is_atext_valid_string raw then Some (`Atom raw)
-  else if is_qtext_valid_string raw then Some (`String raw)
-  else if is_utf8_valid_string raw then Some (`String (escape_string raw))
-  else None
-
-module Peano = struct type z = Z and 'a s = S end
-
-module Phrase = struct
-  type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]
-  type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
-
-  let o : elt = `Dot
-  let word x : elt option = Option.(make_word x >>| fun x -> `Word x)
-
-  let word_exn x : elt =
-    match word x with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "word_exn: invalid word %S" x
-
-  let w : string -> elt = word_exn
-  let e ~encoding v : elt = `Encoded (Encoded_word.make_exn ~encoding v)
-
-  let rec coerce : type a. a Peano.s t -> phrase = function
-    | [x] -> [(x :> elt)]
-    | x :: y :: r -> List.cons (x :> elt) (coerce (y :: r))
-
-  let make : type a. a t -> phrase option = function
-    | [] -> None
-    | x :: r -> Some (coerce (x :: r))
-
-  let make_exn l =
-    match make l with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "make_exn: invalid phrase"
-end
-
-module Literal_domain = struct
-  type 'a t =
-    | IPv4 : Ipaddr.V4.t t
-    | IPv6 : Ipaddr.V6.t t
-    | Ext : (string * string) t
-
-  let is_ldh_valid_string x =
-    try
-      let len = String.length x in
-      String.iteri
-        (fun pos -> function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> ()
-          | '-' -> if pos = len - 1 then raise Invalid_char (* else () *)
-          | _ -> raise Invalid_char )
-        x ;
-      true
-    with Invalid_char -> false
-
-  let is_dcontent_valid_string x =
-    try
-      String.iter
-        (fun chr -> if not (Rfc5321.is_dcontent chr) then raise Invalid_char)
-        x ;
-      true
-    with Invalid_char -> false
-
-  let ipv4 = IPv4
-  let ipv6 = IPv6
-  let extension = Ext
-
-  let make : type a. a t -> a -> literal_domain option =
-   fun witness v ->
-    match witness with
-    | IPv4 -> Some (Rfc5321.IPv4 v)
-    | IPv6 -> Some (Rfc5321.IPv6 v)
-    | Ext ->
-        let ldh, value = v in
-        if is_ldh_valid_string ldh && is_dcontent_valid_string value then
-          Some (Rfc5321.Ext (ldh, value))
-        else None
-
-  let make_exn : type a. a t -> a -> literal_domain =
-   fun witness v ->
-    match make witness v with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "make_exn: invalid literal-domain"
-end
-
-module Domain = struct
-  let atom x = if is_atext_valid_string x then Some (`Atom x) else None
-
-  let atom_exn x =
-    match atom x with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "atom_exn: invalid atom value %S" x
-
-  let a = atom_exn
-
-  let literal x =
-    let need_to_escape, escape_char =
-      (* TODO *)
-      let bindings = [('\000', '\000')] in
-      ( (fun chr -> List.mem_assoc chr bindings)
-      , fun chr -> List.assoc chr bindings )
-    in
-    let escape_string x =
-      let len = String.length x in
-      let res = Buffer.create (len * 2) in
-      let pos = ref 0 in
-      while !pos < len do
-        if need_to_escape x.[!pos] then (
-          Buffer.add_char res '\\' ;
-          Buffer.add_char res (escape_char x.[!pos]) )
-        else Buffer.add_char res x.[!pos] ;
-        incr pos
-      done ;
-      Buffer.contents res
-    in
-    if is_dtext_valid_string x then Some (`Literal x)
-    else if is_utf8_valid_string x then Some (`Literal (escape_string x))
-    else None
-
-  let literal_exn x =
-    match literal x with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "literal_exn: invalid domain literal value %S" x
-
-  type atom = [`Atom of string]
-  type literal = [`Literal of string]
-
-  type 'a domain =
-    | ( :: ) : atom * 'a domain -> 'a Peano.s domain
-    | [] : Peano.z domain
-
-  let rec coerce : type a. a Peano.s domain -> string list = function
-    | [`Atom x] -> [x]
-    | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
-
-  let make_domain : type a. a domain -> string list option = function
-    | [] -> None
-    | x :: r -> Some (coerce (x :: r))
-
-  type 'a t =
-    | Domain : 'a domain t
-    | Literal_domain : 'a Literal_domain.t -> 'a t
-    | Literal : literal t
-
-  let domain = Domain
-  let ipv4 = Literal_domain Literal_domain.IPv4
-  let ipv6 = Literal_domain Literal_domain.IPv6
-  let extension = Literal_domain Literal_domain.Ext
-  let default = Literal
-
-  let make : type a. a t -> a -> Rfc5322.domain option =
-   fun witness v ->
-    match witness with
-    | Domain -> Option.(make_domain v >>| fun v -> `Domain v)
-    | Literal_domain witness ->
-        Option.(Literal_domain.make witness v >>| fun v -> `Addr v)
-    | Literal ->
-        let (`Literal v) = v in
-        Some (`Literal v)
-
-  let make_exn : type a. a t -> a -> Rfc5322.domain =
-   fun witness v ->
-    match make witness v with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "make_exn: invalid domain"
-end
-
-module Local = struct
-  type 'a local =
-    | [] : Peano.z local
-    | ( :: ) : word * 'a local -> 'a Peano.s local
-
-  let word x = if String.length x > 0 then make_word x else None
-
-  let word_exn x =
-    match word x with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "word_exn: invalid word value %S" x
-
-  let w = word_exn
-
-  let rec coerce : type a. a Peano.s local -> Rfc822.local = function
-    | [x] -> List.cons x []
-    | x :: y :: r -> List.cons x (coerce (y :: r))
-
-  let make : type a. a local -> Rfc822.local option = function
-    | [] -> None
-    | x :: r -> Some (coerce (x :: r))
-
-  let make_exn : type a. a local -> Rfc822.local =
-   fun l ->
-    match make l with
-    | Some v -> v
-    | None -> Fmt.invalid_arg "make_exn: invalid local part"
-end
-
-let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox option =
- fun local (witness, domain) ->
-  match (Local.make local, Domain.make witness domain) with
-  | Some local, Some domain ->
-      Some {Rfc5322.name= None; local; domain= (domain, [])}
-  | _, _ -> None
-
-let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
- fun name mailbox -> {mailbox with Rfc5322.name= Some name}
+  if is_atext_valid_string raw then Ok (`Atom raw)
+  else if is_qtext_valid_string raw then Ok (`String raw)
+  else if is_utf8_valid_string raw then Ok (`String (escape_string raw))
+  else Rresult.R.error_msgf "word %S does not respect standards" raw
 
 module Encoder = struct
-  open Encoder
+  include Encoder
 
   external id : 'a -> 'a = "%identity"
 
@@ -390,6 +193,216 @@ module Encoder = struct
   let mailboxes = list ~sep:comma mailbox
 end
 
+module Phrase = struct
+  type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]
+  type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
+
+  let o : elt = `Dot
+  let q = Encoded_word.q
+  let b = Encoded_word.b
+  let word x : (elt, [ `Msg of string]) result = Rresult.R.(make_word x >>| fun x -> `Word x)
+
+  let word_exn x : elt =
+    match word x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let w : string -> elt = word_exn
+  let e ~encoding v : elt = `Encoded (Encoded_word.make_exn ~encoding v)
+
+  let rec coerce : type a. a Peano.s t -> phrase = function
+    | [x] -> [(x :> elt)]
+    | x :: y :: r -> List.cons (x :> elt) (coerce (y :: r))
+
+  let make : type a. a t -> (phrase, [ `Msg of string ]) result = function
+    | [] -> Rresult.R.error_msgf "A phrase must contain at least one element"
+    | x :: r -> Ok (coerce (x :: r))
+
+  let v l =
+    match make l with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let to_string x = Encoder.to_string Encoder.phrase x
+end
+
+module Literal_domain = struct
+  type 'a t =
+    | IPv4 : Ipaddr.V4.t t
+    | IPv6 : Ipaddr.V6.t t
+    | Ext : (string * string) t
+
+  let is_ldh_valid_string x =
+    try
+      let len = String.length x in
+      String.iteri
+        (fun pos -> function 'a' .. 'z' | 'A' .. 'Z' | '0' .. '9' -> ()
+          | '-' -> if pos = len - 1 then raise Invalid_char (* else () *)
+          | _ -> raise Invalid_char )
+        x ;
+      true
+    with Invalid_char -> false
+
+  let is_dcontent_valid_string x =
+    try
+      String.iter
+        (fun chr -> if not (Rfc5321.is_dcontent chr) then raise Invalid_char)
+        x ;
+      true
+    with Invalid_char -> false
+
+  let ipv4 = IPv4
+  let ipv6 = IPv6
+  let extension = Ext
+
+  let make : type a. a t -> a -> (literal_domain, [ `Msg of string ]) result =
+   fun witness v ->
+    match witness with
+    | IPv4 -> Ok (Rfc5321.IPv4 v)
+    | IPv6 -> Ok (Rfc5321.IPv6 v)
+    | Ext ->
+        let ldh, value = v in
+        if is_ldh_valid_string ldh && is_dcontent_valid_string value then
+          Ok (Rfc5321.Ext (ldh, value))
+        else Rresult.R.error_msgf "literal-domain %S-%S does not respect standards" ldh value
+
+  let v : type a. a t -> a -> literal_domain =
+   fun witness v ->
+    match make witness v with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+end
+
+module Domain = struct
+  let atom x = if is_atext_valid_string x then Ok (`Atom x) else Rresult.R.error_msgf "atom %S does not respect standards" x
+
+  let atom_exn x =
+    match atom x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let a = atom_exn
+
+  let literal x =
+    let need_to_escape, escape_char =
+      (* TODO *)
+      let bindings = [('\000', '\000')] in
+      ( (fun chr -> List.mem_assoc chr bindings)
+      , fun chr -> List.assoc chr bindings )
+    in
+    let escape_string x =
+      let len = String.length x in
+      let res = Buffer.create (len * 2) in
+      let pos = ref 0 in
+      while !pos < len do
+        if need_to_escape x.[!pos] then (
+          Buffer.add_char res '\\' ;
+          Buffer.add_char res (escape_char x.[!pos]) )
+        else Buffer.add_char res x.[!pos] ;
+        incr pos
+      done ;
+      Buffer.contents res
+    in
+    if is_dtext_valid_string x then Ok (`Literal x)
+    else if is_utf8_valid_string x then Ok (`Literal (escape_string x))
+    else Rresult.R.error_msgf "literal domain %S does not respect standards" x
+
+  let literal_exn x =
+    match literal x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  type atom = [`Atom of string]
+  type literal = [`Literal of string]
+
+  type 'a domain =
+    | ( :: ) : atom * 'a domain -> 'a Peano.s domain
+    | [] : Peano.z domain
+
+  let rec coerce : type a. a Peano.s domain -> string list = function
+    | [`Atom x] -> [x]
+    | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
+
+  let make_domain : type a. a domain -> (string list, [ `Msg of string ]) result = function
+    | [] -> Rresult.R.error_msg "A domain must contain at least one element"
+    | x :: r -> Ok (coerce (x :: r))
+
+  type 'a t =
+    | Domain : 'a domain t
+    | Literal_domain : 'a Literal_domain.t -> 'a t
+    | Literal : string t
+
+  let domain = Domain
+  let ipv4 = Literal_domain Literal_domain.IPv4
+  let ipv6 = Literal_domain Literal_domain.IPv6
+  let extension = Literal_domain Literal_domain.Ext
+  let default = Literal
+
+  let make : type a. a t -> a -> (Rfc5322.domain, [ `Msg of string ]) result =
+   fun witness v ->
+    match witness with
+    | Domain -> Rresult.R.(make_domain v >>| fun v -> `Domain v)
+    | Literal_domain witness ->
+        Rresult.R.(Literal_domain.make witness v >>| fun v -> `Addr v)
+    | Literal -> literal v
+
+  let v : type a. a t -> a -> Rfc5322.domain =
+   fun witness v ->
+    match make witness v with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let to_string x = Encoder.to_string Encoder.domain x
+end
+
+module Local = struct
+  type 'a local =
+    | [] : Peano.z local
+    | ( :: ) : word * 'a local -> 'a Peano.s local
+
+  let word x = if String.length x > 0 then make_word x else Rresult.R.error_msgf "A word can not be empty"
+
+  let word_exn x =
+    match word x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let w = word_exn
+
+  let rec coerce : type a. a Peano.s local -> Rfc822.local = function
+    | [x] -> List.cons x []
+    | x :: y :: r -> List.cons x (coerce (y :: r))
+
+  let make : type a. a local -> (Rfc822.local, [ `Msg of string ]) result = function
+    | [] -> Rresult.R.error_msg "A local-part must contain at least one element"
+    | x :: r -> Ok (coerce (x :: r))
+
+  let v : type a. a local -> Rfc822.local =
+   fun l ->
+    match make l with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let to_string x = Encoder.to_string Encoder.local x
+end
+
+let make ?name local ?(domains= []) domain =
+  { name; local; domain= (domain, domains); }
+
+let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox =
+ fun local (witness, domain) ->
+  match (Local.make local, Domain.make witness domain) with
+  | Ok local, Ok domain ->
+      {Rfc5322.name= None; local; domain= (domain, [])}
+  | Error (`Msg err), Ok _ -> invalid_arg err
+  | Ok _, Error (`Msg err) -> invalid_arg err
+  | Error _, Error _ -> Fmt.invalid_arg "Invalid local-part and domain"
+
+let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
+ fun name mailbox -> {mailbox with Rfc5322.name= Some name}
+
+let to_string x = Encoder.to_string Encoder.mailbox x
+
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
   | `String x -> Fmt.pf ppf "%S" x
@@ -423,3 +436,9 @@ let pp : t Fmt.t =
     x.Rfc5322.local
     Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
     x.Rfc5322.domain
+
+let mailboxes_to_unstructured ~field_name x =
+  Unstructured.to_unstructured ~field_name Encoder.mailboxes x
+
+let to_unstructured ~field_name x =
+  Unstructured.to_unstructured ~field_name Encoder.mailbox x

@@ -13,11 +13,12 @@ module Type = struct
 
   let ietf token =
     if Iana.Map.mem (String.lowercase_ascii token) Iana.database then
-      Some (`Ietf_token token)
-    else None
+      Ok (`Ietf_token token)
+    else Rresult.R.error_msgf "%S is not an IETF token" token
 
   let extension token =
-    if String.length token < 3 then None
+    if String.length token < 3
+    then Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
     else
       match (token.[0], token.[1]) with
       | ('x' | 'X'), '-' -> (
@@ -25,9 +26,10 @@ module Type = struct
           String.iter
             (fun chr -> if not (Rfc2045.is_token chr) then raise Invalid_token)
             (String.sub token 2 (String.length token - 2)) ;
-          Some (`X_token token)
-        with Invalid_token -> None )
-      | _ -> None
+          Ok (`X_token token)
+        with Invalid_token ->
+          Rresult.R.error_msgf "Extension token %S does not respect standards" token)
+      | _ -> Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
     | `Text -> Fmt.string ppf "text"
@@ -61,20 +63,22 @@ end
 module Subtype = struct
   type t = Rfc2045.subty
 
-  let ietf _token =
-    (* XXX(dinosaure): not sure how to check this value. *) None
+  let ietf token =
+    (* XXX(dinosaure): not sure how to check this value. *)
+    Ok (`Ietf_token token)
 
   let iana ty token =
     let ty = Type.to_string ty in
     match Iana.Map.find (String.lowercase_ascii ty) Iana.database with
     | database ->
         if Iana.Set.mem (String.lowercase_ascii token) database then
-          Some (`Iana_token token)
-        else None
-    | exception Not_found -> None
+          Ok (`Iana_token token)
+        else Rresult.R.error_msgf "Subtype %S does not exist" token
+    | exception Not_found -> Rresult.R.error_msgf "Type %S does not exist" ty
 
   let extension token =
-    if String.length token < 3 then None
+    if String.length token < 3
+    then Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
     else
       match (token.[0], token.[1]) with
       | ('x' | 'X'), '-' -> (
@@ -82,9 +86,10 @@ module Subtype = struct
           String.iter
             (fun chr -> if not (Rfc2045.is_token chr) then raise Invalid_token)
             (String.sub token 2 (String.length token - 2)) ;
-          Some (`X_token token)
-        with Invalid_token -> None )
-      | _ -> None
+          Ok (`X_token token)
+        with Invalid_token ->
+          Rresult.R.error_msgf "Extension token %S does not respect standards" token)
+      | _ -> Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
     | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
@@ -118,8 +123,9 @@ module Parameters = struct
       String.iter
         (fun chr -> if not (Rfc2045.is_token chr) then raise Invalid_token)
         key ;
-      Some (String.lowercase_ascii key)
-    with Invalid_token -> None
+      Ok (String.lowercase_ascii key)
+    with Invalid_token ->
+      Rresult.R.error_msgf "Key %S does not respect standards" key
 
   exception Invalid_utf8
 
@@ -129,8 +135,9 @@ module Parameters = struct
         String.iter
           (fun chr -> if not (Rfc2045.is_token chr) then raise Invalid_token)
           x ;
-        Some (`Token x)
-      with Invalid_token -> None
+        Ok (`Token x)
+      with Invalid_token ->
+        Rresult.R.error_msgf "Value %S does not respect standards" v
     in
     (* XXX(dinosaure): [is_quoted_pair] accepts characters \000-\127. UTF-8
        extends to \000-\255. However, qtext invalids some of them: \009, \010,
@@ -167,12 +174,13 @@ module Parameters = struct
           (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
             | `Uchar _ -> () )
           () x ;
-        Some x
-      with Invalid_utf8 -> None
+        Ok x
+      with Invalid_utf8 ->
+        Rresult.R.error_msgf "Value %S is not a valid UTF-8 string" x
     in
     match to_token v with
-    | Some _ as v -> v
-    | None ->
+    | Ok _ as v -> v
+    | Error _ ->
         (* UTF-8 respects an interval of values and it's possible to have an
          invalid UTF-8 string. So we need to check it. UTF-8 is a superset of
          ASCII, so we need, firstly to check if it's a valid UTF-8 string. In
@@ -187,7 +195,7 @@ module Parameters = struct
          However, order is really important semantically. UTF-8 -> escape
          expects a special process to decoder (escape -> UTF-8). About history,
          unicorn and so on, it should be the best to keep this order. *)
-        Option.(utf8 v >>| escape_characters >>| fun x -> `String x)
+        Rresult.R.(utf8 v >>| escape_characters >>| fun x -> `String x)
 
   let empty = Map.empty
 

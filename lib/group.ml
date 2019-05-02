@@ -5,6 +5,13 @@ type t = Rfc5322.group =
   { name : phrase
   ; mailboxes : Mailbox.t list }
 
+let equal a b =
+  let mailboxes =
+    try List.for_all2 Mailbox.equal a.mailboxes b.mailboxes
+    with _ -> false in
+  Mailbox.equal_phrase a.name b.name
+  && mailboxes
+
 let make ~name mailboxes =
   if List.length mailboxes = 0 then None
   else Some { name; mailboxes; }

@@ -24,7 +24,7 @@ let equal a b =
   with _ -> false
 
 module Encoder = struct
-  open Encoder
+  include Encoder
 
   external id : 'a -> 'a = "%identity"
 
@@ -39,3 +39,40 @@ module Encoder = struct
   let cut = (fun ppf () -> keval ppf id [ cut ]), ()
   let unstructured : Rfc5322.unstructured encoding = list ~sep:cut element
 end
+
+let to_unstructured ~field_name gen value =
+  let open Encoder in
+  let buf = Buffer.create 0x100 in
+  let writer_of_buffer =
+    let write a x =
+      let open Level0.IOVec in
+      let open Level0.Buffer in
+      match x with
+      | { buffer= String x; off; len; } ->
+        Buffer.add_substring buf x off len ; a + len
+      | { buffer= Bytes x; off; len; } ->
+        Buffer.add_subbytes buf x off len ; a + len
+      | { buffer= Bigstring x; off; len; } ->
+        let x = Bigstringaf.substring x ~off ~len in
+        Buffer.add_string buf x ; a + len in
+    List.fold_left write 0 in
+  let encoder = Level1.create ~margin:998 ~new_line:"\r\n" 0x100 in
+  let encoder = with_writer encoder writer_of_buffer in
+  let _ = eval encoder [ !!Field_name.Encoder.field ; char $ ':'
+                       ; space; hov 1; !!gen; close; new_line; yield ] field_name value in
+  let res = Buffer.contents buf in
+  let parser =
+    let open Angstrom in
+    let open Rfc5322 in
+    Rfc5322.field_name
+    <* many (satisfy (function '\x09' .. '\x20' -> true | _ -> false))
+    <* char ':'
+    >>= fun field_name -> unstructured
+    >>= fun value -> return (Field_name.v field_name, value) in
+  match Angstrom.parse_string parser res with
+  | Ok (field, unstructured) ->
+    assert (Field_name.equal field field_name) ;
+    unstructured
+  | Error _ ->
+    Fmt.failwith "Normalized value %S can not be considered as a unstructured value."
+      res

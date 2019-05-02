@@ -95,7 +95,7 @@ let body_part body =
   Rfc2045.mime_part_headers
     (Rfc5322.field (fun _ -> nothing_to_do))
   >>| List.mapi (fun n (field, location) -> Number.of_int_exn n, field, location)
-  >>| (fun fields -> Content.fold_as_part fields Content.empty)
+  >>| (fun fields -> Content.reduce_as_part fields Content.empty)
   >>= fun (content, fields) -> ((Rfc822.crlf *> return `CRLF) <|> (return `Nothing))
   >>= (function
       | `CRLF -> body content fields >>| Option.some

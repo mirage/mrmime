@@ -20,30 +20,33 @@ let make raw expect =
 
 let content_type_0 =
   let open Mrmime.Content_type in
-  let charset = Option.value_exn (Parameters.key "charset") in
-  let us_ascii = Option.value_exn (Parameters.value "us-ascii") in
-  make Type.text
-    Subtype.(Option.value_exn (iana Type.text "plain"))
-    Parameters.(add charset us_ascii empty)
+  let value =
+    let open Rresult.R in
+    Parameters.key "charset" >>= fun charset ->
+    Parameters.value "us-ascii" >>= fun us_ascii ->
+    Subtype.iana Type.text "plain" >>| fun subty ->
+    make Type.text subty Parameters.(add charset us_ascii empty) in
+  Rresult.R.get_ok value
 
 let content_type_1 =
   let open Mrmime.Content_type in
-  let charset = Option.value_exn (Parameters.key "charset") in
-  let us_ascii = Option.value_exn (Parameters.value "us-ascii") in
-  make Type.text
-    Subtype.(Option.value_exn (iana Type.text "plain"))
-    Parameters.(add charset us_ascii empty)
+  let value =
+    let open Rresult.R in
+    Parameters.key "charset" >>= fun charset ->
+    Parameters.value "us-ascii" >>= fun us_ascii ->
+    Subtype.iana Type.text "plain" >>| fun subty ->
+    make Type.text subty Parameters.(add charset us_ascii empty) in
+  Rresult.R.get_ok value
 
 let content_type_2 =
   let open Mrmime.Content_type in
-  let charset = Option.value_exn (Parameters.key "charset") in
-  let us_ascii =
-    Option.value_exn
-      (Parameters.value (Rosetta.encoding_to_string `ISO_8859_1))
-  in
-  make Type.text
-    Subtype.(Option.value_exn (iana Type.text "plain"))
-    Parameters.(add charset us_ascii empty)
+  let value =
+    let open Rresult.R in
+    Parameters.key "charset" >>= fun charset ->
+    Parameters.value (Rosetta.encoding_to_string `ISO_8859_1) >>= fun latin1 ->
+    Subtype.iana Type.text "plain" >>| fun subty ->
+    make Type.text subty Parameters.(add charset latin1 empty) in
+  Rresult.R.get_ok value
 
 let () =
   Alcotest.run "rfc2045"

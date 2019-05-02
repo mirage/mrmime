@@ -1,8 +1,15 @@
 module Refl : sig type ('a, 'b) t = Refl : ('a, 'a) t end
 
 module Value : sig
-  type phrase_or_message_id = [`Phrase of Rfc5322.phrase | `MessageID of Rfc822.nonsense Rfc822.msg_id]
-  type trace = Rfc5322.mailbox option * ([ `Addr of Rfc5322.mailbox | `Domain of Rfc5322.domain | `Word of Rfc822.word ] list * Rfc5322.date option) list
+  type phrase_or_message_id =
+    [ `Phrase of Rfc5322.phrase
+    | `MessageID of Rfc822.nonsense Rfc822.msg_id]
+
+  type trace =
+    Rfc5322.mailbox option
+    * ([ `Addr of Rfc5322.mailbox
+       | `Domain of Rfc5322.domain
+       | `Word of Rfc822.word ] list * Rfc5322.date option) list
 
   type 'a t =
     | Date : Rfc5322.date t
@@ -16,27 +23,28 @@ module Value : sig
     | Trace : trace t
 
   type binding =
-    | B : Field.t * 'a t * 'a * Location.t -> binding
-    | L : (string * Location.t) list * Location.t -> binding
+    | Field : Field_name.t * 'a t * 'a * Location.t -> binding
+    | Lines : (string * Location.t) list * Location.t -> binding
+
   type value = V : 'a t -> value
+  (* XXX(dinosaure): find an other name than [value], TODO! *)
 
   val of_string : string -> (value, Rresult.R.msg) result
   val pp : 'a t Fmt.t
   val pp_of_value : 'a t -> 'a Fmt.t
-
   val equal : 'a t -> 'b t -> ('a, 'b) Refl.t option
 end
 
 type 'value decoder
 
 type 'value decode =
-  [ `Field of Field.t * 'value
-  | `Other of Field.t * string
+  [ `Field of Field_name.t * 'value
+  | `Other of Field_name.t * string
   | `Lines of (string * Location.t) list
   | `Await
   | `End of string
   | `Malformed of string ]
 
-val decoder : field:Field.t -> 'value Value.t -> Bigstringaf.t -> 'value decoder
+val decoder : field_name:Field_name.t -> 'value Value.t -> Bigstringaf.t -> 'value decoder
 val decode : 'value decoder -> 'value decode
 val src : 'value decoder -> string -> int -> int -> (unit, Rresult.R.msg) result
