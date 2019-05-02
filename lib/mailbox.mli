@@ -101,7 +101,7 @@ module Phrase : sig
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
   val word_exn : string -> elt
-  (** Same as {!word} but raises an exception instead to return [Error]. *)
+  (** Same as {!word} but raises [Invalid_argument] instead to return [Error]. *)
 
   val coerce : 'a Peano.s t -> phrase
   (** [coerce l] returns a valid and safe {!phrase}. *)
