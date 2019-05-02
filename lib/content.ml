@@ -7,53 +7,41 @@ type t = (Content_field.field * Location.t) Ordered.t
 
 let empty = Ordered.empty
 
-let ty : t -> Content_type.Type.t = fun t ->
+let find ~default predicate t =
   let exception Found in
-  let res : Content_type.Type.t option ref = ref None in
+  let res : 'a option ref = ref None in
   try
-    Ordered.iter (fun _ (Content_field.Field (field_name, v), _) ->
-        match field_name with
-        | Content_field.Type -> res := Some v.ty ; raise Found
-        | _ -> ()) t ; Content_type.Type.default
+    Ordered.iter (fun _ v -> match predicate v with
+        | Some r -> res := Some r ; raise Found
+        | None -> ()) t ; default
   with Found -> match !res with
     | Some v -> v
     | None -> assert false
+
+let ty : t -> Content_type.Type.t = fun t ->
+  find ~default:Content_type.Type.default
+    (fun (Content_field.Field (field_name, v), _) -> match field_name with
+       | Content_field.Type -> Some v.ty
+       | _ -> None) t
 
 let subty : t -> Content_type.Subtype.t = fun t ->
-  let exception Found in
-  let res : Content_type.Subtype.t option ref = ref None in
-  try
-    Ordered.iter (fun _ (Content_field.Field (field_name, v), _) ->
-        match field_name with
-        | Content_field.Type -> res := Some v.subty ; raise Found
-        | _ -> ()) t ; Content_type.Subtype.default
-  with Found -> match !res with
-    | Some v -> v
-    | None -> assert false
+  find ~default:Content_type.Subtype.default
+    (fun (Content_field.Field (field_name, v), _) -> match field_name with
+       | Content_field.Type -> Some v.subty
+       | _ -> None) t
 
 let encoding : t -> Content_encoding.t = fun t ->
-  let exception Found in
-  let res : Content_encoding.t option ref = ref None in
-  try
-    Ordered.iter (fun _ (Content_field.Field (field_name, v), _) ->
-        match field_name with
-        | Content_field.Encoding -> res := Some v ; raise Found
-        | _ -> ()) t ; Content_encoding.default
-  with Found -> match !res with
-    | Some v -> v
-    | None -> assert false
+  find ~default:Content_encoding.default
+    (fun (Content_field.Field (field_name, v), _) -> match field_name with
+       | Content_field.Encoding -> Some v
+       | _ -> None) t
 
 let parameters : t -> Content_type.Parameters.t = fun t ->
-  let exception Found in
-  let res : Content_type.Parameters.t option ref = ref None in
-  try
-    Ordered.iter (fun _ (Content_field.Field (field_name, v), _) ->
-        match field_name with
-        | Content_field.Type -> res := Some (Content_type.Parameters.of_list v.parameters); raise Found
-        | _ -> ()) t ; Content_type.Parameters.default
-  with Found -> match !res with
-    | Some v -> v
-    | None -> assert false
+  find ~default:Content_type.Parameters.default
+    (fun (Content_field.Field (field_name, v), _) -> match field_name with
+       | Content_field.Type ->
+         Some (Content_type.Parameters.of_list v.parameters)
+       | _ -> None) t
 
 let pp : t Fmt.t = fun ppf t ->
   Fmt.Dump.iter_bindings
