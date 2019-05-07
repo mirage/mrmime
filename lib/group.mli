@@ -21,5 +21,5 @@ val pp : t Fmt.t
 (** {2 Encoder of group.} *)
 
 module Encoder : sig
-  val group : t Encoder.encoding
+  val group : t Encoder.t
 end

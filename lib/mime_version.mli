@@ -10,5 +10,5 @@ val default : t
 (** Default value of MIME-Version according to RFC 2045. *)
 
 module Encoder : sig
-  val mime_version : t Encoder.encoding
+  val mime_version : t Encoder.t
 end

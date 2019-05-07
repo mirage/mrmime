@@ -131,63 +131,62 @@ let make_word raw =
 module Encoder = struct
   include Encoder
 
-  external id : 'a -> 'a = "%identity"
-
-  let atom = [ hov 0; !!string; close ]
-  let str = [ hov 0; char $ '"'; !!string; char $ '"'; close ]
+  let atom = [ box; !!string; close ]
+  let str = [ box; char $ '"'; !!string; char $ '"'; close ]
 
   let word ppf = function
-    | `Atom x -> keval ppf id atom x
-    | `String x ->
-      keval ppf id str (escape_string x)
+    | `Atom x -> eval ppf atom x
+    | `String x -> eval ppf str (escape_string x)
 
-  let dot = using (fun () -> '.') char, ()
-  let comma = (fun ppf () -> keval ppf id [ char $ ','; space ]), ()
+  let dot =
+    (fun ppf () -> eval ppf [ cut; char $ '.'; cut ]), ()
+  let comma =
+    (fun ppf () -> eval ppf [ cut; char $ ','; cut ]), ()
 
   let local ppf lst =
-    keval ppf id [ hov 1; !!(list ~sep:dot word); close ] lst
+    eval ppf [ box; !!(list ~sep:dot word); close ] lst
 
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
 
   let domain ppf = function
     | `Domain domain ->
-      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
-      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
+      let boxed_string ppf x = eval ppf [ box; !!string; close ] x in
+      eval ppf [ box; !!(list ~sep:dot boxed_string); close ] domain
     | `Literal literal ->
-      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
+      eval ppf [ box; char $ '['; cut; !!string; cut; char $ ']'; close ] literal
     | `Addr (IPv4 ip) ->
-      keval ppf id [ hov 1; char $ '['; !!ipaddr_v4; char $ ']'; close ] ip
+      eval ppf [ box; char $ '['; cut; !!ipaddr_v4; cut; char $ ']'; close ] ip
     | `Addr (IPv6 ip) ->
-      keval ppf id [ hov 1; char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']'; close ] ip
+      eval ppf [ box; char $ '['; cut; string $ "IPv6:"; cut; !!ipaddr_v6; cut; char $ ']'; close ] ip
     | `Addr (Ext (ldh, v)) ->
-      keval ppf id [ hov 1; char $ '['; !!string; char $ ':'; !!string; char $ ']'; close ] ldh v
+      eval ppf [ box; char $ '['; cut; !!string; cut; char $ ':'; cut; !!string; cut; char $ ']'; close ] ldh v
 
   let phrase ppf lst =
     let elt ppf = function
       | `Dot -> char ppf '.'
       | `Word w -> word ppf w
       | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
-    let space ppf () = keval ppf id [ space ] in
-    keval ppf id [ hov 1; !!(list ~sep:(space, ()) elt); close ] lst
+    let space ppf () = eval ppf [ fws ] in
+    eval ppf [ box; !!(list ~sep:(space, ()) elt); close ] lst
 
   let mailbox ppf (t:Rfc5322.mailbox) =
     match t.Rfc5322.name, t.Rfc5322.domain with
     | Some name, (x, []) ->
-      keval ppf id [ hov 1; !!phrase ; space; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
+      eval ppf [ box; !!phrase ; spaces 1; char $ '<'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
         name t.Rfc5322.local x
     | None, (x, []) ->
-      keval ppf id [ hov 1; !!local ; cut; char $ '@'; cut; !!domain; close ]
+      eval ppf [ box; !!local ; cut; char $ '@'; cut; !!domain; close ]
         t.Rfc5322.local x
     | name, (x, r) ->
       let domains ppf lst =
-        let domain ppf x = keval ppf id [ hov 1; char $ '@'; !!domain; close ] x in
-        let comma = (fun ppf () -> keval ppf id [ char $ ','; cut ]), () in
-        keval ppf id [ hov 1; !!(list ~sep:comma domain); close ] lst in
-      let phrase ppf x = keval ppf id [ hov 1; !!phrase; space; close ] x in
+        let domain ppf x = eval ppf [ box; char $ '@'; !!domain; close ] x in
+        let comma = (fun ppf () -> eval ppf [ char $ ','; cut ]), () in
+        eval ppf [ box; !!(list ~sep:comma domain); close ] lst in
+      let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
 
-      keval ppf id
-        [ hov 1; !!(option phrase); cut; char $ '<'; cut; !!domains; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; char $ '>'; close ]
+      eval ppf
+        [ box; !!(option phrase); cut; char $ '<'; cut; !!domains; cut; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
         name r t.Rfc5322.local x
 
   let mailboxes = list ~sep:comma mailbox

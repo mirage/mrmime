@@ -12,5 +12,5 @@ module Encoder = struct
   let int = using string_of_int string
 
   let mime_version ppf (a, b) =
-    keval ppf id [ !!int; char $ '.'; !!int ] a b
+    eval ppf [ !!int; char $ '.'; !!int ] a b
 end

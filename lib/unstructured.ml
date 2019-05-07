@@ -26,8 +26,6 @@ let equal a b =
 module Encoder = struct
   include Encoder
 
-  external id : 'a -> 'a = "%identity"
-
   let element ppf = function
     | `Text x -> string ppf x
     | `WSP x -> string ppf x
@@ -36,17 +34,16 @@ module Encoder = struct
     | `CRLF -> string ppf "\r\n"
     | `Encoded x -> Encoded_word.Encoder.encoded_word ppf x
 
-  let cut = (fun ppf () -> keval ppf id [ cut ]), ()
-  let unstructured : Rfc5322.unstructured encoding = list ~sep:cut element
+  let cut = (fun ppf () -> eval ppf [ cut ]), ()
+  let unstructured : Rfc5322.unstructured t = list ~sep:cut element
 end
 
 let to_unstructured ~field_name gen value =
-  let open Encoder in
   let buf = Buffer.create 0x100 in
-  let writer_of_buffer =
+  let emitter =
     let write a x =
-      let open Level0.IOVec in
-      let open Level0.Buffer in
+      let open Encoder.IOVec in
+      let open Encoder.Buffer in
       match x with
       | { buffer= String x; off; len; } ->
         Buffer.add_substring buf x off len ; a + len

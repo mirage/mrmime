@@ -93,7 +93,7 @@ module Encoder = struct
   let mime_version = Mime_version.Encoder.mime_version
 
   let field_and_value field_value value_encoding ppf value =
-    keval ppf id [ !!field; char $ ':'; space; hov 1; !!value_encoding; close; string $ "\r\n" ] field_value value
+    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
 
   let content_type = field_and_value Field_name.content_type content_type
   let content_encoding = field_and_value Field_name.content_encoding content_encoding
@@ -111,5 +111,6 @@ module Encoder = struct
     | Content_field.Description -> content_description ppf v
     | Content_field.Field field_name -> content_field field_name ppf v
 
-  let content ppf t = (list content_as_part) ppf (Ordered.bindings t)
+  let epsilon = (fun t () -> t), ()
+  let content ppf t = (list ~sep:epsilon content_as_part) ppf (Ordered.bindings t)
 end

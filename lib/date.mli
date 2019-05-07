@@ -85,7 +85,7 @@ val compare : t -> t -> int
 val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> t option
 
 module Encoder : sig
-  val date : t Encoder.encoding
+  val date : t Encoder.t
 end
 
 val to_unstructured : t -> Unstructured.t

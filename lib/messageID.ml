@@ -39,22 +39,20 @@ let equal a b =
 module Encoder = struct
   include Encoder
 
-  external id : 'a -> 'a = "%identity"
+  let dot = (fun ppf () -> eval ppf [ fws; char $ '.'; fws ]), ()
 
-  let dot = using (fun () -> '.') char, ()
-
-  let domain : Rfc822.nonsense Rfc822.domain Encoder.encoding = fun ppf -> function
+  let domain : Rfc822.nonsense Rfc822.domain Encoder.t = fun ppf -> function
     | `Domain domain ->
-      let x ppf x = keval ppf id [ hov 0; !!string; close ] x in
-      keval ppf id [ hov 1; !!(list ~sep:dot x); close ] domain
+      let x ppf x = eval ppf [ box; !!string; close ] x in
+      eval ppf [ tbox 1; !!(list ~sep:dot x); close ] domain
     | `Literal literal ->
-      keval ppf id [ hov 1; char $ '['; !!string; char $ ']'; close ] literal
+      eval ppf [ tbox 1; char $ '['; !!string; char $ ']'; close ] literal
     | `Addr _ -> .
 
   let message_id ppf (t:Rfc822.nonsense Rfc822.msg_id) =
     match t with
     | (local_part, domain_part) ->
-      keval ppf id [ hov 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain; char $ '>'; close ]
+      eval ppf [ tbox 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain; char $ '>'; close ]
         local_part domain_part
 end
 

@@ -43,7 +43,7 @@ module Encoder = struct
   let unstructured = Unstructured.Encoder.unstructured
 
   let field_and_value field_value value_encoding ppf value =
-    keval ppf id [ !!field; char $ ':'; space; hov 1; !!value_encoding; close; string $ "\r\n" ] field_value value
+    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
 
   let resent_date = field_and_value Field_name.resent_date date
   let resent_from = field_and_value Field_name.resent_from mailboxes
@@ -67,6 +67,8 @@ module Encoder = struct
     | Resent_field.ReplyTo -> resent_reply_to ppf v
     | Resent_field.Field field_name -> resent_field field_name ppf v
 
-  let resent ppf (_, x) = (list resent) ppf (O.bindings x)
-  let resents ppf x = (list resent) ppf (O.bindings x)
+  let epsilon = (fun t () -> t), ()
+
+  let resent ppf (_, x) = (list ~sep:epsilon resent) ppf (O.bindings x)
+  let resents ppf x = (list ~sep:epsilon resent) ppf (O.bindings x)
 end

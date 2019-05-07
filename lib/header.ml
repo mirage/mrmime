@@ -40,3 +40,11 @@ let pp_value ppf = fun (Value (k, v)) ->
   Field.pp_of_field_value k ppf v
 
 let empty = Ordered.empty
+
+module Encoder = struct
+  include Encoder
+
+  let epsilon = (fun t () -> t), ()
+  let field ppf (_, (x, _)) = Field.Encoder.field ppf x
+  let header ppf x = (list ~sep:epsilon field) ppf (Ordered.bindings x)
+end

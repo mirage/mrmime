@@ -44,5 +44,5 @@ val reconstruct : t -> string
 (** [reconstruct t] reconstructs [t] as it is in the mail. *)
 
 module Encoder : sig
-  val encoded_word : t Encoder.encoding
+  val encoded_word : t Encoder.t
 end

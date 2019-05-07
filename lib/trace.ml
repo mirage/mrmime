@@ -80,8 +80,6 @@ let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Num
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
   let field = Field_name.Encoder.field
   let word = Mailbox.Encoder.word
   let domain = Mailbox.Encoder.domain
@@ -89,7 +87,7 @@ module Encoder = struct
   let date = Date.Encoder.date
 
   let return_path ppf m =
-    keval ppf id [ !!field; char $ ':'; space; hov 1; !!mailbox; close; string $ "\r\n" ]
+    eval ppf [ !!field; char $ ':'; spaces 1; tbox 1; !!mailbox; close; new_line ]
       Field_name.return_path m
 
   let received ppf = function
@@ -98,11 +96,13 @@ module Encoder = struct
     | `Word x -> word ppf x
 
   let received ppf (l, d) =
-    let sep = (fun ppf () -> keval ppf id [ space ]), () in
-    let date ppf x = keval ppf id [ char $ ';'; space; !!date ] x in
-    keval ppf id [ field $ Field_name.received; char $ ':'; space; hov 1; !!(list ~sep received); !!(option date); close; string $ "\r\n" ] l d
+    let sep = (fun ppf () -> eval ppf [ fws ]), () in
+    let date ppf x = eval ppf [ char $ ';'; fws; !!date ] x in
+    eval ppf [ field $ Field_name.received; char $ ':'; spaces 1; bbox; !!(list ~sep received); !!(option date); close; new_line ] l d
+
+  let epsilon = (fun t () -> t), ()
 
   let trace ppf = function
-    | { trace= Some r; received= rs; _ } -> keval ppf id [ !!return_path; !!(list received) ] r rs
-    | { trace= None; received= rs; _ } -> (list received) ppf rs
+    | { trace= Some r; received= rs; _ } -> eval ppf [ !!return_path; !!(list ~sep:epsilon received) ] r rs
+    | { trace= None; received= rs; _ } -> (list ~sep:epsilon received) ppf rs
 end
