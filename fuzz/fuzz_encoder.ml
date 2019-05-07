@@ -1,24 +1,22 @@
-module Format = Encoder.MakeFormat(Encoder.Level1)
-module Box = Encoder.MakeBox(Encoder.Level1)
-
 let comma =
-  Format.using (fun () -> ',') Format.char, ()
-
-external identity : 'a -> 'a = "%identity"
+  (fun t () -> Encoder.char t ','), ()
 
 let rec value t x =
-  let binding t (k, v) = Format.keval t identity Format.[ char $ '"' ; !!string ; char $ '"' ; char $ ':' ; !!value ] k v in
-  let arr = Format.list ~sep:comma value in
-  let obj = Format.list ~sep:comma binding in
-
+  let binding t (k, v) =
+    Encoder.eval t
+      Encoder.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
+      k v
+  in
+  let arr = Encoder.list ~sep:comma value in
+  let obj = Encoder.list ~sep:comma binding in
   match x with
-  | `Bool true -> Format.string t "true"
-  | `Bool false -> Format.string t "false"
-  | `Null -> Format.string t "null"
-  | `Float f -> Format.string t (Fmt.strf "%.16g" f)
-  | `String s -> Format.keval t identity Format.[ char $ '"' ; !!string ; char $ '"' ] s
-  | `A a -> Format.keval t identity Format.[ char $ '[' ; !!arr ; char $ ']' ] a
-  | `O o -> Format.keval t identity Format.[ char $ '{' ; !!obj ; char $ '}' ] o
+  | `Bool true -> Encoder.string t "true"
+  | `Bool false -> Encoder.string t "false"
+  | `Null -> Encoder.string t "null"
+  | `Float f -> Encoder.string t (Fmt.strf "%.16g" f)
+  | `String s -> Encoder.eval t Encoder.[char $ '"'; !!string; char $ '"'] s
+  | `A a -> Encoder.eval t Encoder.[char $ '['; !!arr; char $ ']'] a
+  | `O o -> Encoder.eval t Encoder.[char $ '{'; !!obj; char $ '}'] o
 
 exception Fail
 
@@ -85,7 +83,7 @@ let json_of_input refiller input =
     | #eoi as eoi -> end_of_input eoi
     | `Lexeme (#Jsonm.lexeme as lexeme) -> base k lexeme in
 
-  go identity
+  go (fun x -> x)
 
 let json_to_output flusher output json =
   let encoder = Jsonm.encoder output in
@@ -121,7 +119,7 @@ let json_to_output flusher output json =
 
   let lexemes = flat_json json in
 
-  go identity lexemes
+  go (fun x -> x) lexemes
 
 let json_of_string x = json_of_input (fun () -> assert false) (`String x)
 
@@ -179,61 +177,47 @@ let rec cmp_json a b = match a, b with
 
 let eq_json a b = cmp_json a b = 0
 
-let writer_of_buffer buf =
-  let open Encoder in
+module BBuffer = Buffer
+
+let emitter_of_buffer buf =
+  let open Mrmime.Encoder in
 
   let write a = function
-    | { Level0.IOVec.buffer= Level0.Buffer.String x; off; len; } ->
-      Buffer.add_substring buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bytes x; off; len; } ->
-      Buffer.add_subbytes buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bigstring x; off; len; } ->
-      Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
+    | { IOVec.buffer= Buffer.String x; off; len; } ->
+      BBuffer.add_substring buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bytes x; off; len; } ->
+      BBuffer.add_subbytes buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bigstring x; off; len; } ->
+      BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
 let () =
   Crowbar.add_test ~name:"encoder" [ json ] @@ fun json ->
-  let encoder = Encoder.Level1.create 0x100 in
-  let buffer = Buffer.create 0x100 in
-  let t = Format.with_writer encoder (writer_of_buffer buffer) in
+  let buf = Buffer.create 0x100 in
 
-  let _ = Format.eval t Format.[ !!value ; yield ] json in
-  let res = Buffer.contents buffer in
+  let emitter =
+    let write a x =
+      let open Encoder.IOVec in
+      let open Encoder.Buffer in
+      match x with
+      | { buffer= String x; off; len; } ->
+        Buffer.add_substring buf x off len ; a + len
+      | { buffer= Bytes x; off; len; } ->
+        Buffer.add_subbytes buf x off len ; a + len
+      | { buffer= Bigstring x; off; len; } ->
+        let x = Bigstringaf.substring x ~off ~len in
+        Buffer.add_string buf x ; a + len in
+    List.fold_left write 0 in
 
-  let res = json_of_string res in
+  let encoder = Encoder.create
+      ~emitter
+      ~margin:78
+      ~new_line:"\n" 0x100 in
+  let encoder = Encoder.eval encoder Encoder.[!!value; new_line] json in
 
-  Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res
+  Crowbar.check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
 
-let comma = (Box.Format.using (fun () -> ',') Box.Format.char, ())
-
-let rec value t x =
-  let binding t (k, v) =
-    Box.keval t identity
-      Box.(o [ fmt Format.[char $ '"'; !!string; char $ '"'; char $ ':']
-             ; space
-             ; fmt Format.[!!value] ])
-      k v
-  in
-  let arr = Box.Format.list ~sep:comma value in
-  let obj = Box.Format.list ~sep:comma binding in
-  match x with
-  | `Bool true -> Box.Format.string t "true"
-  | `Bool false -> Box.Format.string t "false"
-  | `Null -> Box.Format.string t "null"
-  | `Float f -> Box.Format.string t (Fmt.strf "%.16g" f)
-  | `String s -> Box.keval t identity Box.(o [ fmt Format.[char $ '"'; !!string; char $ '"'] ]) s
-  | `A a -> Box.keval t identity Box.(node (hov 5) (o [ fmt Format.[char $ '['; !!arr; char $ ']'] ])) a
-  | `O o -> Box.keval t identity Box.(node (hov 5) (o [ fmt Format.[char $ '{'; !!obj; char $ '}'] ])) o
-
-let () =
-  Crowbar.add_test ~name:"encoder with box" [ json ] @@ fun json ->
-  let encoder = Encoder.Level1.create ~new_line:"\n" 0x100 in
-  let buffer = Buffer.create 0x100 in
-  let t = Box.Format.with_writer encoder (writer_of_buffer buffer) in
-
-  let _ = Box.eval t Box.(o [ fmt Format.[ !!value ; yield ] ]) json in
-  let res = Buffer.contents buffer in
-
+  let res = Buffer.contents buf in
   let res = json_of_string res in
 
   Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res

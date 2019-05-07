@@ -53,10 +53,12 @@ let to_unstructured ~field_name gen value =
         let x = Bigstringaf.substring x ~off ~len in
         Buffer.add_string buf x ; a + len in
     List.fold_left write 0 in
-  let encoder = Level1.create ~margin:998 ~new_line:"\r\n" 0x100 in
-  let encoder = with_writer encoder writer_of_buffer in
-  let _ = eval encoder [ !!Field_name.Encoder.field ; char $ ':'
-                       ; space; hov 1; !!gen; close; new_line; yield ] field_name value in
+  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" ~emitter 0x100 in
+  let () =
+    let open Encoder in
+    keval (fun encoder -> assert (Encoder.is_empty encoder) ; ()) encoder
+      [ !!Field_name.Encoder.field ; char $ ':'
+      ; spaces 1; bbox; !!gen; close; new_line ] field_name value in
   let res = Buffer.contents buf in
   let parser =
     let open Angstrom in

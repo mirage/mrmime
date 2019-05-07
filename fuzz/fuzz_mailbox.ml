@@ -62,16 +62,18 @@ let mailbox =
        | x :: r -> Mrmime.Mailbox.{ name; local; domain = (x, r) }
        | [] -> bad_test ())
 
-let writer_of_buffer buf =
+module BBuffer = Buffer
+
+let emitter_of_buffer buf =
   let open Mrmime.Encoder in
 
   let write a = function
-    | { Level0.IOVec.buffer= Level0.Buffer.String x; off; len; } ->
-      Buffer.add_substring buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bytes x; off; len; } ->
-      Buffer.add_subbytes buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bigstring x; off; len; } ->
-      Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
+    | { IOVec.buffer= Buffer.String x; off; len; } ->
+      BBuffer.add_substring buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bytes x; off; len; } ->
+      BBuffer.add_subbytes buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bigstring x; off; len; } ->
+      BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
 let () =
@@ -80,9 +82,9 @@ let () =
   Crowbar.add_test ~name:"mailbox" [ mailbox ] @@ fun mailbox ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
-  let encoder = Encoder.with_writer encoder (writer_of_buffer buffer) in
-  let _ = Encoder.eval encoder Encoder.[ !!Mailbox.Encoder.mailbox; new_line; new_line ] mailbox in
+  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Mailbox.Encoder.mailbox; new_line; new_line ] mailbox in
+
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with
