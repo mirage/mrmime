@@ -40,6 +40,8 @@ type field = Field : 'a t * 'a -> field
 let make : type a. a t -> a -> field =
   fun field_name field_value -> Field (field_name, field_value)
 
+let ( $ ) = make
+
 let of_field_name : Field_name.t -> field_name =
   (* XXX(dinosaure): not really safe where [Field_name] provides theses values. *)
   fun field_name -> match String.lowercase_ascii (field_name :> string) with
