@@ -14,14 +14,9 @@
  (libraries alcotest mrmime))
 
 (executable
- (name fformat)
- (modules fformat)
+ (name test_encoder)
+ (modules test_encoder)
  (libraries fmt jsonm alcotest mrmime.encoder))
-
-(executable
- (name box)
- (modules box)
- (libraries jsonm alcotest mrmime.encoder))
 
 (executable
  (name obs_unstruct)
@@ -55,13 +50,8 @@
  
 (alias
  (name runtest)
- (deps (:fformat fformat.exe))
- (action (run %{fformat} --color=always)))
-
-(alias
- (name runtest)
- (deps (:box box.exe))
- (action (run %{box} --color=always)))
+ (deps (:test_encoder test_encoder.exe))
+ (action (run %{test_encoder} --color=always)))
 
 (alias
  (name runtest)
