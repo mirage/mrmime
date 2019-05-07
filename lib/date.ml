@@ -330,6 +330,14 @@ let to_ptime date =
   | None -> Fmt.failwith "Invalid date: %a" pp date
 (* XXX(dinosaure): should never fail. *)
 
+let of_ptime ~zone ptime =
+  let tz_offset_s =
+    let (hh, mm) = Zone.to_int zone in
+    hh * 3600 + mm * 60 in
+  let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
+  let date = (y, Option.get_exn (Month.of_int m), d) in
+  make date (hh, mm, Some ss) zone
+
 let compare a b =
   let a = to_ptime a in
   let b = to_ptime b in

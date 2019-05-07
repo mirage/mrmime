@@ -83,6 +83,8 @@ val pp : t Fmt.t
 val equal : t -> t -> bool
 val compare : t -> t -> int
 val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> t option
+val to_ptime : t -> Ptime.t
+val of_ptime : zone:Zone.t -> Ptime.t -> t option
 
 module Encoder : sig
   val date : t Encoder.t
