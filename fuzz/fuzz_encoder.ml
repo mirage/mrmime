@@ -221,4 +221,3 @@ let () =
   let res = json_of_string res in
 
   Crowbar.check_eq ~pp:pp_json ~cmp:cmp_json ~eq:eq_json json res
-

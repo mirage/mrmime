@@ -85,6 +85,8 @@ let () =
   let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
   let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Mailbox.Encoder.mailbox; new_line; new_line ] mailbox in
 
+  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with

@@ -90,6 +90,8 @@ let () =
   let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
   let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Date.Encoder.date; new_line; new_line ] date in
 
+  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc5322.date_time <* Rfc822.crlf <* Rfc822.crlf) result with
