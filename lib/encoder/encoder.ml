@@ -37,5 +37,36 @@ let to_string ?(new_line= "\r\n") gen value =
   let () = Pretty.kflush kend encoder in
   Buffer.contents buf
 
+let to_stream gen value =
+  let queue = Queue.create () in
+  let line = Buffer.create 4096 in
+  let emitter iovecs =
+    let write a x =
+      let open Enclosure.IOVec in
+      let open Enclosure.Buffer in
+      match x with
+      | { buffer= String x; off; len; } ->
+        Buffer.add_substring line x off len ; a + len
+      | { buffer= Bytes x; off; len; } ->
+        Buffer.add_subbytes line x off len ; a + len
+      | { buffer= Bigstring x; off; len; } ->
+        let x = Bigstringaf.substring x ~off ~len in
+        Buffer.add_string line x ; a + len in
+    let len = List.fold_left write 0 iovecs in
+    let res = Buffer.contents line in
+    if String.length res > 0 then Queue.add res queue ; Buffer.clear line ; len in
+  let consumer () = match Queue.pop queue with
+    | x -> Some x
+    | exception Queue.Empty -> None in
+  let encoder = Pretty.create
+      ~emitter
+      ~margin:78
+      ~new_line:"\r\n" 4096 in
+  let kend encoder =
+    if Pretty.is_empty encoder then ()
+    else Fmt.failwith "Leave with a non-empty encoder: @[<hov>%a@]" Pretty.pp encoder in
+  let () = keval (Pretty.kflush kend) encoder Fancy.[ !!gen ] value in
+  consumer
+
 module IOVec = Enclosure.IOVec
 module Buffer = Enclosure.Buffer

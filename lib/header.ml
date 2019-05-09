@@ -56,3 +56,4 @@ module Encoder = struct
 end
 
 let to_string x = Encoder.to_string Encoder.header x
+let to_stream x = Encoder.to_stream Encoder.header x
