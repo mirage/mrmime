@@ -63,6 +63,10 @@ let with_buffer end_of_body =
 
   parser ~write_data end_of_body >>| fun () -> Buffer.contents buf
 
+let with_emitter ~emitter end_of_body =
+  let write_data x = emitter (Some x) in
+  parser ~write_data end_of_body
+
 let to_end_of_input ~write_data =
   let dec = Base64_rfc2045.decoder `Manual in
 
