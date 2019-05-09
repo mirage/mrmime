@@ -17,7 +17,7 @@ build: [
 pin-depends: [
  [ "base64.dev" "git+https://github.com/mirage/ocaml-base64.git"]
  [ "pecu.dev" "git+https://github.com/dinosaure/pecu.git"]
- [ "ke.dev" "git+https://github.com/mirage/ke.git"]
+ [ "ke.dev" "git+https://github.com/mirage/ke.git#tail-exn"]
  [ "angstrom.dev" "git+https://github.com/dinosaure/angstrom.git#parse-incomplete-bigstring"]
  [ "crowbar.dev" "git+https://github.com/stedolan/crowbar.git"]
 ]

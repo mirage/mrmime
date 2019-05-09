@@ -1,29 +1,22 @@
-let () = Printexc.record_backtrace true
-
-module Box = Encoder.MakeBox(Encoder.Level1)
-
-let comma = (Box.Format.using (fun () -> ',') Box.Format.char, ())
-
-external identity : 'a -> 'a = "%identity"
+let comma =
+  (fun t () -> Encoder.char t ','), ()
 
 let rec value t x =
   let binding t (k, v) =
-    Box.keval t identity
-      Box.(o [ fmt Format.[char $ '"'; !!string; char $ '"'; char $ ':']
-             ; space
-             ; fmt Format.[!!value] ])
+    Encoder.eval t
+      Encoder.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
       k v
   in
-  let arr = Box.Format.list ~sep:comma value in
-  let obj = Box.Format.list ~sep:comma binding in
+  let arr = Encoder.list ~sep:comma value in
+  let obj = Encoder.list ~sep:comma binding in
   match x with
-  | `Bool true -> Box.Format.string t "true"
-  | `Bool false -> Box.Format.string t "false"
-  | `Null -> Box.Format.string t "null"
-  | `Float f -> Box.Format.string t (Fmt.strf "%.16g" f)
-  | `String s -> Box.keval t identity Box.(o [ fmt Format.[char $ '"'; !!string; char $ '"'] ]) s
-  | `A a -> Box.keval t identity Box.(node (hov 5) (o [ fmt Format.[char $ '['; !!arr; char $ ']'] ])) a
-  | `O o -> Box.keval t identity Box.(node (hov 5) (o [ fmt Format.[char $ '{'; !!obj; char $ '}'] ])) o
+  | `Bool true -> Encoder.string t "true"
+  | `Bool false -> Encoder.string t "false"
+  | `Null -> Encoder.string t "null"
+  | `Float f -> Encoder.string t (Fmt.strf "%.16g" f)
+  | `String s -> Encoder.eval t Encoder.[char $ '"'; !!string; char $ '"'] s
+  | `A a -> Encoder.eval t Encoder.[char $ '['; !!arr; char $ ']'] a
+  | `O o -> Encoder.eval t Encoder.[char $ '{'; !!obj; char $ '}'] o
 
 type await = [`Await]
 type error = [`Error of Jsonm.error]
@@ -69,7 +62,7 @@ let json_of_input refiller input =
     | #eoi as eoi -> end_of_input eoi
     | `Lexeme (#Jsonm.lexeme as lexeme) -> base k lexeme
   in
-  go identity
+  go (fun x -> x)
 
 let json_to_output flusher output json =
   let encoder = Jsonm.encoder output in
@@ -102,12 +95,17 @@ let json_to_output flusher output json =
         write (fun () -> go k r) (Jsonm.encode encoder (`Lexeme lexeme))
   in
   let lexemes = flat_json json in
-  go identity lexemes
+  go (fun x -> x) lexemes
 
-let json_of_string x = json_of_input (fun () -> assert false) (`String x)
+let json_of_string x =
+  (* XXX(dinosaure): [Jsonm] does not reach [`Await]/[refiller] case if input is
+     [`String]. *)
+  json_of_input (fun () -> assert false) (`String x)
 
 let json_to_string x =
   let buf = Buffer.create 0x100 in
+  (* XXX(dinosaure): [Jsonm] does not reach [`Partial]/[flusher] case if output
+     os [`Buffer]. *)
   json_to_output (fun _ -> assert false) (`Buffer buf) x ;
   Buffer.contents buf
 
@@ -116,34 +114,40 @@ let tests =
   ; `O [("a", `A [`Bool true; `Bool false])]
   ; `A [`O [("a", `Bool true); ("b", `Bool false)]] ]
 
-let writer_of_buf buf =
-  let open Encoder in
-
-  let write a = function
-    | {Level0.IOVec.buffer= Level0.Buffer.String x; off; len} ->
-        Buffer.add_substring buf x off len ;
-        a + len
-    | {Level0.IOVec.buffer= Level0.Buffer.Bytes x; off; len} ->
-        Buffer.add_subbytes buf x off len ;
-        a + len
-    | {Level0.IOVec.buffer= Level0.Buffer.Bigstring x; off; len} ->
-        Buffer.add_string buf (Bigstringaf.substring x ~off ~len) ;
-        a + len
-  in
-  List.fold_left write 0
-
 let json = Alcotest.testable (Fmt.using json_to_string Fmt.string) ( = )
 
 let make v =
   Alcotest.test_case (json_to_string v) `Quick
   @@ fun () ->
-  let encoder = Encoder.Level1.create ~new_line:"\n" 0x100 in
-  let buffer = Buffer.create 0x100 in
-  let t = Box.Format.with_writer encoder (writer_of_buf buffer) in
-  let _ = Box.eval t Box.(o [ fmt Format.[!!value; yield] ]) v in
-  let res = Buffer.contents buffer in
-  Fmt.epr "> %s.\n%!" res ;
+  let buf = Buffer.create 0x100 in
+
+  let emitter =
+    let write a x =
+      let open Encoder.IOVec in
+      let open Encoder.Buffer in
+      match x with
+      | { buffer= String x; off; len; } ->
+        Buffer.add_substring buf x off len ; a + len
+      | { buffer= Bytes x; off; len; } ->
+        Buffer.add_subbytes buf x off len ; a + len
+      | { buffer= Bigstring x; off; len; } ->
+        let x = Bigstringaf.substring x ~off ~len in
+        Buffer.add_string buf x ; a + len in
+    List.fold_left write 0 in
+
+  let encoder = Encoder.create
+      ~emitter
+      ~margin:78
+      ~new_line:"\n" 0x100 in
+
+  let kend encoder =
+    if Encoder.is_empty encoder
+    then ()
+    else Fmt.failwith "Leave a non-empty encoder" in
+
+  let () = Encoder.keval kend encoder Encoder.[!!value; new_line] v in
+  let res = Buffer.contents buf in
   let res = json_of_string res in
   Alcotest.(check json) "encode:decode:compare" v res
 
-let () = Alcotest.run "box" [("json", List.map make tests)]
+let () = Alcotest.run "format" [("json", List.map make tests)]

@@ -330,6 +330,14 @@ let to_ptime date =
   | None -> Fmt.failwith "Invalid date: %a" pp date
 (* XXX(dinosaure): should never fail. *)
 
+let of_ptime ~zone ptime =
+  let tz_offset_s =
+    let (hh, mm) = Zone.to_int zone in
+    hh * 3600 + mm * 60 in
+  let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
+  let date = (y, Option.get_exn (Month.of_int m), d) in
+  make date (hh, mm, Some ss) zone
+
 let compare a b =
   let a = to_ptime a in
   let b = to_ptime b in
@@ -357,23 +365,21 @@ let equal a b =
 module Encoder = struct
   include Encoder
 
-  external id : 'a -> 'a = "%identity"
-
   let day ppf =
     let day = using Day.to_string string in
-    keval ppf id [ !!day; char $ ','; space ]
+    eval ppf [ !!day; char $ ','; fws ]
 
   let month = using Month.to_string string
 
   let time ppf (hours, minutes, seconds) =
     let string_of_number = Fmt.strf "%02d" in
-    let number ppf x = keval ppf id [ cut; !!(using string_of_number string); cut ] x in
+    let number ppf x = eval ppf [ cut; !!(using string_of_number string); cut ] x in
     match seconds with
     | Some seconds ->
-      keval ppf id [ hov 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close ]
+      eval ppf [ tbox 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close ]
         hours minutes seconds
     | None ->
-      keval ppf id [ hov 1; !!number; char $ ':'; !!number; close ]
+      eval ppf [ tbox 1; !!number; char $ ':'; !!number; close ]
         hours minutes
 
   let zone = using Zone.to_string string
@@ -381,7 +387,7 @@ module Encoder = struct
 
   let date ppf t =
     let (d, m, y) = t.date in
-    keval ppf id [ hov 1; !!(option day); !!int; space; !!month; space; !!int; space; !!time; space; !!zone; close ]
+    eval ppf [ tbox 1; !!(option day); !!int; fws; !!month; fws; !!int; fws; !!time; fws; !!zone; close ]
       t.day d m y t.time t.zone
 end
 

@@ -25,6 +25,12 @@ let get field_name header =
     then (i, field_to_value field, loc) :: a
     else a) header []
 
+let add field t =
+  let n = Number.of_int_exn (Ordered.cardinal t) in
+  Ordered.add n (field, Location.none) t
+
+let ( & ) = add
+
 let pp : t Fmt.t = fun ppf t ->
   Fmt.Dump.iter_bindings
     Ordered.iter
@@ -40,3 +46,13 @@ let pp_value ppf = fun (Value (k, v)) ->
   Field.pp_of_field_value k ppf v
 
 let empty = Ordered.empty
+
+module Encoder = struct
+  include Encoder
+
+  let epsilon = (fun t () -> t), ()
+  let field ppf (_, (x, _)) = Field.Encoder.field ppf x
+  let header ppf x = (list ~sep:epsilon field) ppf (Ordered.bindings x)
+end
+
+let to_string x = Encoder.to_string Encoder.header x

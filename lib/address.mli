@@ -21,8 +21,8 @@ val pp : t Fmt.t
 (** {2 Encoder of address.} *)
 
 module Encoder : sig
-  val address : t Encoder.encoding
-  val addresses : t list Encoder.encoding
+  val address : t Encoder.t
+  val addresses : t list Encoder.t
 end
 
 val addresses_to_unstructured : field_name:Field_name.t -> t list -> Unstructured.t

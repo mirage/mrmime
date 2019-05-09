@@ -40,6 +40,8 @@ type field = Field : 'a t * 'a -> field
 let make : type a. a t -> a -> field =
   fun field_name field_value -> Field (field_name, field_value)
 
+let ( $ ) = make
+
 let of_field_name : Field_name.t -> field_name =
   (* XXX(dinosaure): not really safe where [Field_name] provides theses values. *)
   fun field_name -> match String.lowercase_ascii (field_name :> string) with
@@ -130,3 +132,61 @@ let of_rfc5322_field : Rfc5322.field -> field = function
   | `Comments x -> Field (Comments, x)
   | `Keywords x -> Field (Keywords, x)
   | `Field (field_name, x) -> Field (Field field_name, x)
+
+module Encoder = struct
+  include Encoder
+
+  let field_name = Field_name.Encoder.field
+  let date = Date.Encoder.date
+  let mailboxes = Mailbox.Encoder.mailboxes
+  let mailbox = Mailbox.Encoder.mailbox
+  let addresses = Address.Encoder.addresses
+  let unstructured = Unstructured.Encoder.unstructured
+  let message_id = MessageID.Encoder.message_id
+  let phrase_or_message_id ppf = function
+    | `Phrase x -> Mailbox.Encoder.phrase ppf x
+    | `MessageID x -> MessageID.Encoder.message_id ppf x
+  let phrase = Mailbox.Encoder.phrase
+  let phrases =
+    let comma = (fun ppf () -> eval ppf [ char $ ','; fws ]), () in
+    list ~sep:comma phrase
+
+  let field_and_value f value ppf v =
+    eval ppf [ !!field_name; char $ ':'; spaces 1; bbox; !!value; close; new_line ] f v
+
+  let epsilon = (fun t () -> t), ()
+
+  let date = field_and_value Field_name.date date
+  let from = field_and_value Field_name.from mailboxes
+  let sender = field_and_value Field_name.sender mailbox
+  let reply_to = field_and_value Field_name.reply_to addresses
+  let _to = field_and_value (Field_name.v "To") addresses
+  let cc = field_and_value Field_name.cc addresses
+  let bcc = field_and_value Field_name.bcc addresses
+  let subject = field_and_value Field_name.subject unstructured
+  let message_id = field_and_value Field_name.message_id message_id
+  let in_reply_to = field_and_value Field_name.in_reply_to (list ~sep:epsilon phrase_or_message_id)
+  let references = field_and_value Field_name.references (list ~sep:epsilon phrase_or_message_id)
+  let comments = field_and_value Field_name.comments unstructured
+  let keywords = field_and_value Field_name.keywords phrases
+  let field field = field_and_value field unstructured
+  let unsafe field = field_and_value field unstructured
+
+  let field ppf (Field (k, v)) = match k with
+    | Date -> date ppf v
+    | From -> from ppf v
+    | Sender -> sender ppf v
+    | ReplyTo -> reply_to ppf v
+    | To -> _to ppf v
+    | Cc -> cc ppf v
+    | Bcc -> bcc ppf v
+    | Subject -> subject ppf v
+    | MessageID -> message_id ppf v
+    | InReplyTo -> in_reply_to ppf v
+    | References -> references ppf v
+    | Comments -> comments ppf v
+    | Keywords -> keywords ppf v
+    | Field field_name -> field field_name ppf v
+
+  let field ppf v = eval ppf [ !!field  ] v
+end

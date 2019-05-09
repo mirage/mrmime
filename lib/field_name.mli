@@ -39,7 +39,7 @@ val prefixed_by : string -> t -> bool
 (** {2 Encoder of field name.} *)
 
 module Encoder : sig
-  val field : t Encoder.encoding
+  val field : t Encoder.t
 end
 
 (** {2 Helpers.} *)

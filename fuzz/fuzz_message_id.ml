@@ -25,18 +25,19 @@ let message_id =
   map [ local; domain ]
     (fun local domain -> (local, domain))
 
-let writer_of_buffer buf =
+module BBuffer = Buffer
+
+let emitter_of_buffer buf =
   let open Mrmime.Encoder in
 
   let write a = function
-    | { Level0.IOVec.buffer= Level0.Buffer.String x; off; len; } ->
-      Buffer.add_substring buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bytes x; off; len; } ->
-      Buffer.add_subbytes buf x off len; a + len
-    | { Level0.IOVec.buffer= Level0.Buffer.Bigstring x; off; len; } ->
-      Buffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
+    | { IOVec.buffer= Buffer.String x; off; len; } ->
+      BBuffer.add_substring buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bytes x; off; len; } ->
+      BBuffer.add_subbytes buf x off len; a + len
+    | { IOVec.buffer= Buffer.Bigstring x; off; len; } ->
+      BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
-
 
 let () =
   let open Mrmime in
@@ -44,9 +45,11 @@ let () =
   Crowbar.add_test ~name:"message_id" [ message_id ] @@ fun message_id ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.Level1.create ~margin:78 ~new_line:"\r\n" 0x100 in
-  let encoder = Encoder.with_writer encoder (writer_of_buffer buffer) in
-  let _ = Encoder.eval encoder Encoder.[ !!MessageID.Encoder.message_id; new_line; new_line ] message_id in
+  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!MessageID.Encoder.message_id; new_line; new_line ] message_id in
+
+  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+
   let result = Buffer.contents buffer in
 
   match Angstrom.parse_string Angstrom.(Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf <* Rfc822.crlf) result with

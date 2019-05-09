@@ -364,12 +364,12 @@ val pp : t Fmt.t
 (** {2 Encoder of mailbox.} *)
 
 module Encoder : sig
-  val word : word Encoder.encoding
-  val local : local Encoder.encoding
-  val phrase : phrase Encoder.encoding
-  val domain : domain Encoder.encoding
-  val mailbox : t Encoder.encoding
-  val mailboxes : t list Encoder.encoding
+  val word : word Encoder.t
+  val local : local Encoder.t
+  val phrase : phrase Encoder.t
+  val domain : domain Encoder.t
+  val mailbox : t Encoder.t
+  val mailboxes : t list Encoder.t
 end
 
 val mailboxes_to_unstructured : field_name:Field_name.t -> t list -> Unstructured.t

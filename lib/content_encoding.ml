@@ -14,8 +14,6 @@ let default = `Bit7
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
   let mechanism ppf = function
     | `Bit7 -> string ppf "7bit"
     | `Bit8 -> string ppf "8bit"
@@ -23,5 +21,5 @@ module Encoder = struct
     | `Quoted_printable -> string ppf "quoted-printable"
     | `Base64 -> string ppf "base64"
     | `Ietf_token x -> string ppf x
-    | `X_token x -> keval ppf id [ string $ "X-"; !!string ] x
+    | `X_token x -> eval ppf [ string $ "X-"; !!string ] x
 end

@@ -1,24 +1,21 @@
-module Level0 = Level0
-module Level1 = Level1
-
-module MakeFormat = Format.Make
-module MakeBox = Box.Make
-
-include Format.Make(Level1)
-
-type 'a state = 'a Level0.state
+include Fancy
 
 let io_buffer_size = 65536
 (* XXX(dinosaure): if [margin] is set to [io_buffer_size], we should never add
    an [FWS] token. *)
 
+let create = Pretty.create
+let is_empty = Pretty.is_empty
+let flush = Pretty.flush
+let kflush = Pretty.kflush
+
 let to_string ?(new_line= "\r\n") gen value =
   let buf = Buffer.create 0x100 in
 
-  let writer_of_buffer =
+  let emitter =
     let write a x =
-      let open Level0.IOVec in
-      let open Level0.Buffer in
+      let open Enclosure.IOVec in
+      let open Enclosure.Buffer in
       match x with
       | { buffer= String x; off; len; } ->
         Buffer.add_substring buf x off len ; a + len
@@ -28,10 +25,17 @@ let to_string ?(new_line= "\r\n") gen value =
         let x = Bigstringaf.substring x ~off ~len in
         Buffer.add_string buf x ; a + len in
     List.fold_left write 0 in
-  let encoder = Level1.create
-      ~margin:io_buffer_size
+  let encoder = Pretty.create
+      ~emitter
+      ~margin:78
       ~new_line 0x100 in
-  let encoder = with_writer encoder writer_of_buffer in
-  let _ = eval encoder [ !!gen; yield ] value in
-  (* TODO: verify if [encoder] is empty. *)
+  let kend encoder =
+    if Pretty.is_empty encoder
+    then ()
+    else Fmt.failwith "Leave a non-empty encoder" in
+  let encoder = eval encoder Fancy.[ !!gen; ] value in
+  let () = Pretty.kflush kend encoder in
   Buffer.contents buf
+
+module IOVec = Enclosure.IOVec
+module Buffer = Enclosure.Buffer

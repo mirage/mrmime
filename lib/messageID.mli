@@ -96,8 +96,8 @@ val equal : t -> t -> bool
 (** {2 Encoder of message ID.} *)
 
 module Encoder : sig
-  val domain : domain Encoder.encoding
-  val message_id : t Encoder.encoding
+  val domain : domain Encoder.t
+  val message_id : t Encoder.t
 end
 
 val to_unstructured : field_name:Field_name.t -> t -> Unstructured.t

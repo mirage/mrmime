@@ -293,8 +293,6 @@ let equal a b =
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
   let ty ppf = function
     | `Text -> string ppf "text"
     | `Image -> string ppf "image"
@@ -317,21 +315,21 @@ module Encoder = struct
       Mailbox.Encoder.word
 
   let parameter ppf (key, v) =
-    keval ppf id [ hov 0; !!string; char $ '='; !!value; close ]
+    eval ppf [ box; !!string; cut; char $ '='; cut; !!value; close ]
       key v
 
   let parameters ppf parameters =
-    let sep ppf () = keval ppf id [ char $ ';'; space ] in
-    keval ppf id [ hov 1; !!(list ~sep:(sep, ()) parameter); close ] parameters
+    let sep ppf () = eval ppf [ char $ ';'; fws ] in
+    eval ppf [ box; !!(list ~sep:(sep, ()) parameter); close ] parameters
 
   let content_type ppf t =
     match t.Rfc2045.parameters with
     | [] ->
-      keval ppf id
-        [ hov 1; !!ty; char $ '/'; !!subty; close ]
+      eval ppf
+        [ bbox; !!ty; cut; char $ '/'; cut; !!subty; close ]
         t.Rfc2045.ty t.Rfc2045.subty
     | _ ->
-      keval ppf id
-        [ hov 1; !!ty; char $ '/'; !!subty; char $ ';'; space; !!parameters; close ]
+      eval ppf
+        [ bbox; !!ty; cut; char $ '/'; cut; !!subty; cut; char $ ';'; fws; !!parameters; close ]
         t.Rfc2045.ty t.Rfc2045.subty t.Rfc2045.parameters
 end

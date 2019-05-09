@@ -228,7 +228,7 @@ let value =
 *)
 let parameter =
   attribute
-  >>= fun attribute -> char '=' *> value >>| fun value -> (attribute, value)
+  >>= fun attribute -> option () Rfc822.cfws *> char '=' *> option () Rfc822.cfws *> value >>| fun value -> (attribute, value)
 
 (* From RFC 2045
 
@@ -257,7 +257,7 @@ let content =
   >>= subty
   <* option () Rfc822.cfws
   >>= fun (ty, subty) ->
-  many (char ';' *> option () Rfc822.cfws *> parameter)
+  many (option () Rfc822.cfws *> char ';' *> option () Rfc822.cfws *> parameter)
   >>| fun parameters -> {ty; subty; parameters}
 
 (* From RFC 2045

@@ -165,7 +165,7 @@ val equal : t -> t -> bool
 (** {2 Encoder of content-type.} *)
 
 module Encoder : sig
-  val ty : Type.t Encoder.encoding
-  val subty : Subtype.t Encoder.encoding
-  val content_type : t Encoder.encoding
+  val ty : Type.t Encoder.t
+  val subty : Subtype.t Encoder.t
+  val content_type : t Encoder.t
 end

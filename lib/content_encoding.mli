@@ -9,5 +9,5 @@ val default : t
    mail-ready representation. This is the default value. *)
 
 module Encoder : sig
-  val mechanism : t Encoder.encoding
+  val mechanism : t Encoder.t
 end

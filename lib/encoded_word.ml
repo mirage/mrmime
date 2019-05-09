@@ -69,10 +69,11 @@ let equal a b =
        ~error:(fun (`Msg _) (`Msg _) -> true)
        a.Rfc2047.data b.Rfc2047.data
 
+module BBuffer = Buffer
+(* XXX(dinosaure): ... *)
+
 module Encoder = struct
   open Encoder
-
-  external id : 'a -> 'a = "%identity"
 
   let encoding ppf = function
     | Base64 -> char ppf 'B'
@@ -81,11 +82,11 @@ module Encoder = struct
   let charset = using (Fmt.to_to_string pp_charset) string
 
   let to_quoted_printable input =
-    let buffer = Buffer.create (String.length input) in
+    let buffer = BBuffer.create (String.length input) in
     let encoder = Pecu.Inline.encoder (`Buffer buffer) in
     String.iter (fun chr -> ignore @@ Pecu.Inline.encode encoder (`Char chr)) input ;
     ignore @@ Pecu.Inline.encode encoder `End ;
-    Buffer.contents buffer
+    BBuffer.contents buffer
 
   let quoted_printable = using to_quoted_printable string
   let base64 = using (fun x -> Base64.encode_exn ~pad:true x) string
@@ -96,9 +97,9 @@ module Encoder = struct
   let encoded_word ppf t =
     match t.Rfc2047.data with
     | Ok data ->
-      let format = [ hov 0; string $ "=?"; !!charset; char $ '?'; !!encoding; char $ '?'; a; string $ "?="; close ] in
-      let data_format = if is_base64 t.Rfc2047.encoding then base64 else quoted_printable in
-      keval ppf id format t.Rfc2047.charset t.Rfc2047.encoding data_format data
+      let fmt = [ bbox; string $ "=?"; !!charset; char $ '?'; !!encoding; char $ '?'; a; string $ "?="; close ] in
+      let encoder = if is_base64 t.Rfc2047.encoding then base64 else quoted_printable in
+      eval ppf fmt t.Rfc2047.charset t.Rfc2047.encoding encoder data
     | Error (`Msg err) ->
       Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
 end
