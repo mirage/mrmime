@@ -28,7 +28,7 @@ let reduce
       (resents, []) fields
     |> fun (resents, rest) -> (resents, List.rev rest)
 
-let empty = O.empty
+let pp ppf = assert false
 
 module Encoder = struct
   open Encoder
