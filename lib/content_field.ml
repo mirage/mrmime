@@ -18,6 +18,8 @@ type field = Field : 'a t * 'a -> field
 let make : type a. a t -> a -> field =
   fun field_name field_value -> Field (field_name, field_value)
 
+let ( $ ) = make
+
 let prefixed_by_content = Field_name.prefixed_by "Content"
 
 let of_field_name : Field_name.t -> field_name =
