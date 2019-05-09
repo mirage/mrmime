@@ -1,3 +1,5 @@
+open Utils
+
 type word = [`Atom of string | `String of string]
 type phrase = [`Dot | `Word of word | `Encoded of Encoded_word.t] list
 
@@ -65,30 +67,6 @@ let equal a b = match a, b with
     { name= None; local= local1; domain= head1, tail1 } ->
     equal_local local0 local1 && equal_domains (head0 :: tail0) (head1 :: tail1)
   | _, _ -> false
-
-exception Invalid_utf8
-exception Invalid_char
-
-let is_utf8_valid_string_with is x =
-  try
-    Uutf.String.fold_utf_8
-      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
-        | `Uchar uchar ->
-            if Uchar.is_char uchar && not (is (Uchar.to_char uchar)) then
-              raise Invalid_char )
-      () x ;
-    true
-  with
-  | Invalid_utf8 -> false
-  | Invalid_char -> false
-
-let is_utf8_valid_string x =
-  try
-    Uutf.String.fold_utf_8
-      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8 | _ -> ())
-      () x ;
-    true
-  with Invalid_utf8 -> false
 
 let is_atext_valid_string = is_utf8_valid_string_with Rfc822.is_atext
 let is_dtext_valid_string = is_utf8_valid_string_with Rfc822.is_dtext
