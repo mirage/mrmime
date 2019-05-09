@@ -210,6 +210,7 @@ module Literal_domain = struct
     | Ext : (string * string) t
 
   let is_ldh_valid_string x =
+    let exception Invalid_char in
     try
       let len = String.length x in
       String.iteri
@@ -221,6 +222,7 @@ module Literal_domain = struct
     with Invalid_char -> false
 
   let is_dcontent_valid_string x =
+    let exception Invalid_char in
     try
       String.iter
         (fun chr -> if not (Rfc5321.is_dcontent chr) then raise Invalid_char)
