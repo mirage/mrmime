@@ -1,4 +1,4 @@
-type field  = Rfc5322.trace
+type field = Rfc5322.trace
 
 type word = Rfc822.word
 type local = Rfc822.local
@@ -102,6 +102,8 @@ module Encoder = struct
   let epsilon = (fun t () -> t), ()
 
   let trace ppf = function
-    | { trace= Some r; received= rs; _ } -> eval ppf [ !!return_path; !!(list ~sep:epsilon received) ] r rs
-    | { trace= None; received= rs; _ } -> (list ~sep:epsilon received) ppf rs
+    | { trace= Some r; received= rs; _ } ->
+      eval ppf [ !!return_path; !!(list ~sep:epsilon received) ] r rs
+    | { trace= None; received= rs; _ } ->
+      (list ~sep:epsilon received) ppf rs
 end
