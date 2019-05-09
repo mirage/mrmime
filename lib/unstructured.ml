@@ -53,8 +53,11 @@ module Encoder = struct
   include Encoder
 
   let element ppf = function
-    | `Text x -> string ppf x
-    | `WSP x -> string ppf x
+    | `Text x -> breakable ppf x
+    | `WSP x ->
+      if only_spaces x
+      then eval ppf [ spaces (String.length x) ]
+      else string ppf x
     | `CR n -> string ppf (String.make n '\r')
     | `LF n -> string ppf (String.make n '\n')
     | `CRLF -> string ppf "\r\n"
