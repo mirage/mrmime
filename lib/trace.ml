@@ -25,7 +25,7 @@ and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
-and t = trace list
+and t = trace
 
 let number { n; _ } = n
 let location { location; _ } = location
@@ -68,7 +68,8 @@ let pp = Fmt.list pp_trace
 
 let empty = []
 
-let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t list ->
+  (t list * (Number.t * 'a * Location.t) list)
   = fun fields t ->
   List.fold_left
     (fun (t, rest) -> function
