@@ -83,9 +83,7 @@ let reduce_as_mail
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let content_type = Content_type.Encoder.content_type
   let content_encoding = Content_encoding.Encoder.mechanism
   let message_id = MessageID.Encoder.message_id
@@ -93,7 +91,8 @@ module Encoder = struct
   let mime_version = Mime_version.Encoder.mime_version
 
   let field_and_value field_value value_encoding ppf value =
-    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; bbox; !!value_encoding; close; new_line ] field_value value
 
   let content_type = field_and_value Field_name.content_type content_type
   let content_encoding = field_and_value Field_name.content_encoding content_encoding
