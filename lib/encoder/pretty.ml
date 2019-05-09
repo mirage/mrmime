@@ -205,7 +205,9 @@ let merge_indents k t =
            ; breaks= Stack.map (fun _ -> []) t.boxes }
 
 let rec kpush_breakable_value ~current_length_of_line k value t =
-  if current_length_of_line + length_of_token (TValue value) > t.margin
+  if current_length_of_line >= t.margin
+  then emit_line (merge_indents (kpush k (Breakable value))) t
+  else if current_length_of_line + length_of_token (TValue value) > t.margin
   then
     let len = t.margin - current_length_of_line in
     let value0, value1 = split_value len value in
@@ -262,7 +264,7 @@ and kpush k value t =
   | Break { len; indent; } as break ->
     match let open Option in Queue.tail t.queue >>= merge_breaks break with
     | Some (queue, len) ->
-      if current_length_of_line + length_of_token (TBreak len) > t.margin
+      if current_length_of_line + length_of_token (TBreak len) >= t.margin
       then ( emit_line (merge_indents k) { t with queue
                                                 ; breaks= append t.breaks (`Indent indent) } )
       else k { t with queue= Queue.push queue (TBreak len)
