@@ -5,8 +5,6 @@ module Ordered = Map.Make(Number)
 
 type t = (Content_field.field * Location.t) Ordered.t
 
-let empty = Ordered.empty
-
 let find ~default predicate t =
   let exception Found in
   let res : 'a option ref = ref None in
@@ -17,6 +15,33 @@ let find ~default predicate t =
   with Found -> match !res with
     | Some v -> v
     | None -> assert false
+
+let default : t =
+  let content_type = Content_field.(make Type Content_type.default) in
+  Ordered.singleton Number.zero (content_type, Location.none)
+
+let make ?encoding ?id content_type =
+  let encoding = Option.(encoding >>| Content_field.(make Encoding)) in
+  let id = Option.(id >>| Content_field.(make ID)) in
+
+  let indice = ref Number.zero in
+  let add_opt v m = match v with
+    | Some v ->
+      indice := Number.succ !indice ;
+      Ordered.add !indice (v, Location.none) m
+    | None -> m in
+
+  Ordered.singleton Number.zero (Content_field.(make Type content_type), Location.none)
+  |> add_opt encoding
+  |> add_opt id
+
+let empty = Ordered.empty
+
+let add field t =
+  let number = Number.of_int_exn (Ordered.cardinal t) in
+  Ordered.add number (field, Location.none) t
+
+let ( & ) = add
 
 let ty : t -> Content_type.Type.t = fun t ->
   find ~default:Content_type.Type.default
