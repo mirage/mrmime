@@ -55,7 +55,7 @@ let pp_received ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(Dump.list pp_received) received
 
-let pp_trace ppf = function
+let pp ppf = function
   | { trace= Some trace; received; _ } ->
     Fmt.pf ppf "{ @[<hov>trace = %a;@ received = %a;@] }"
       pp_trace trace
@@ -63,10 +63,6 @@ let pp_trace ppf = function
   | { received; _ } ->
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(vbox (list ~sep:(always "@\n&@ ") pp_received)) received
-
-let pp = Fmt.list pp_trace
-
-let empty = []
 
 let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t list ->
   (t list * (Number.t * 'a * Location.t) list)
