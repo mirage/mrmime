@@ -128,7 +128,7 @@ module Encoder = struct
   let content_unsafe field = field_and_value field unstructured
   let content_field field = field_and_value field unstructured
 
-  let content_as_part ppf (_, Content_field.Field (field_name, v)) = match field_name with
+  let content_as_part ppf (_, (Content_field.Field (field_name, v), _)) = match field_name with
     | Content_field.Type -> content_type ppf v
     | Content_field.Encoding -> content_encoding ppf v
     | Content_field.ID -> content_id ppf v
