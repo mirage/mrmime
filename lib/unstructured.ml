@@ -57,7 +57,7 @@ let to_unstructured ~field_name gen value =
   let () =
     let open Encoder in
     keval (fun encoder -> assert (Encoder.is_empty encoder) ; ()) encoder
-      [ !!Field_name.Encoder.field ; char $ ':'
+      [ !!Field_name.Encoder.field_name; char $ ':'
       ; spaces 1; bbox; !!gen; close; new_line ] field_name value in
   let res = Buffer.contents buf in
   let parser =

@@ -80,14 +80,15 @@ let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Num
 module Encoder = struct
   open Encoder
 
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let word = Mailbox.Encoder.word
   let domain = Mailbox.Encoder.domain
   let mailbox = Mailbox.Encoder.mailbox
   let date = Date.Encoder.date
 
   let return_path ppf m =
-    eval ppf [ !!field; char $ ':'; spaces 1; tbox 1; !!mailbox; close; new_line ]
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; tbox 1; !!mailbox; close; new_line ]
       Field_name.return_path m
 
   let received ppf = function
@@ -98,7 +99,8 @@ module Encoder = struct
   let received ppf (l, d) =
     let sep = (fun ppf () -> eval ppf [ fws ]), () in
     let date ppf x = eval ppf [ char $ ';'; fws; !!date ] x in
-    eval ppf [ field $ Field_name.received; char $ ':'; spaces 1; bbox; !!(list ~sep received); !!(option date); close; new_line ] l d
+    eval ppf [ field_name $ Field_name.received; char $ ':'; spaces 1
+             ; bbox; !!(list ~sep received); !!(option date); close; new_line ] l d
 
   let epsilon = (fun t () -> t), ()
 

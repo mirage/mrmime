@@ -136,7 +136,7 @@ let of_rfc5322_field : Rfc5322.field -> field = function
 module Encoder = struct
   include Encoder
 
-  let field_name = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let date = Date.Encoder.date
   let mailboxes = Mailbox.Encoder.mailboxes
   let mailbox = Mailbox.Encoder.mailbox

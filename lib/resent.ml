@@ -32,9 +32,7 @@ let empty = O.empty
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let date = Date.Encoder.date
   let mailbox = Mailbox.Encoder.mailbox
   let mailboxes = Mailbox.Encoder.mailboxes
@@ -43,7 +41,8 @@ module Encoder = struct
   let unstructured = Unstructured.Encoder.unstructured
 
   let field_and_value field_value value_encoding ppf value =
-    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; bbox; !!value_encoding; close; new_line ] field_value value
 
   let resent_date = field_and_value Field_name.resent_date date
   let resent_from = field_and_value Field_name.resent_from mailboxes
