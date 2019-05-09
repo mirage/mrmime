@@ -24,8 +24,8 @@ let is_normalized = Rfc2047.is_normalized
 
 let make ~encoding value =
   if is_utf8_valid_string value then
-    Some {Rfc2047.charset= `UTF_8; encoding; raw= "", '\000', "" (* TODO *); data= Ok value}
-  else None
+    Ok {Rfc2047.charset= `UTF_8; encoding; raw= "", '\000', "" (* TODO *); data= Ok value}
+  else Rresult.R.error_msg "%S is not a valid UTF-8 string"
 
 let reconstruct t =
   let charset, encoding, raw = t.raw in
@@ -33,8 +33,8 @@ let reconstruct t =
 
 let make_exn ~encoding value =
   match make ~encoding value with
-  | Some v -> v
-  | None -> Fmt.invalid_arg "make_exn: invalid encoded-word"
+  | Ok v -> v
+  | Error (`Msg err) -> invalid_arg err
 
 let encoding {Rfc2047.encoding; _} = encoding
 let charset {Rfc2047.charset; _} = charset

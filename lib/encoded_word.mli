@@ -19,7 +19,16 @@ type t = Rfc2047.encoded_word =
   ; data: (string, Rresult.R.msg) result }
 
 val is_normalized : t -> bool
-val make : encoding:encoding -> string -> t option
+
+val make : encoding:encoding -> string -> (t, [ `Msg of string ]) result
+(** [make ~encoding x] returns an {i encoded} word according [encoding] (Quoted
+   Printable encoding or Base64 encoding). [x] must be a valid UTF-8 string. {i
+   charset} of {i encoded} word will be, by the way, ["UTF-8"].
+
+   NOTE: If you expect to generate an {i encoded} word with something else than
+   UTF-8 (like latin1), we decided to not handle this case and just produce
+   valid UTF-8 contents in any cases. *)
+
 val make_exn : encoding:encoding -> string -> t
 
 (** Accessors. *)
