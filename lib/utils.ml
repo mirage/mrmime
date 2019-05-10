@@ -34,3 +34,29 @@ let show ~on : unit Angstrom.t =
   available >>= fun len -> Unsafe.peek len
   @@ fun ba ~off ~len ->
   Fmt.epr "@[<hov>%a:@ %a@\n@].\n%!" on () (Fmt.hvbox pp_bigstring) (Bigstringaf.sub ba ~off ~len)
+
+let is_utf8_valid_string_with is x =
+  let exception Invalid_utf8 in
+  let exception Invalid_char in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
+        | `Uchar uchar ->
+            if Uchar.is_char uchar && not (is (Uchar.to_char uchar)) then
+              raise Invalid_char )
+      () x ;
+    true
+  with
+  | Invalid_utf8 -> false
+  | Invalid_char -> false
+
+let is_utf8_valid_string x =
+  let exception Invalid_utf8 in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8 | _ -> ())
+      () x ;
+    true
+  with Invalid_utf8 -> false
+
+

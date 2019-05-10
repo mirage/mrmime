@@ -1,3 +1,5 @@
+open Utils
+
 type t = Rfc5322.unstructured
 
 let pp_atom ppf = function
@@ -23,12 +25,39 @@ let equal a b =
   try List.for_all2 equal_atom a b
   with _ -> false
 
+let is_obs_utext_valid_string = is_utf8_valid_string_with Rfc5322.is_obs_utext
+
+let make_word ?(breakable= true) s =
+  if is_obs_utext_valid_string s && breakable
+  then Ok (`Text s)
+  else
+    let open Rresult.R in
+    Encoded_word.make ~encoding:Encoded_word.q s >>| fun e -> `Encoded e
+
+let v ?breakable str = match make_word ?breakable str with
+  | Ok elt -> elt
+  | Error (`Msg err) -> invalid_arg err
+
+let cr n = `CR n
+let lf n = `LF n
+let sp n = `WSP (String.make n ' ')
+let tb n = `WSP (String.make n '\t')
+let new_line = `CRLF
+
+let only_spaces x =
+  let res = ref true in
+  String.iter (function ' ' -> () | _ -> res := false) x ;
+  !res
+
 module Encoder = struct
   include Encoder
 
   let element ppf = function
-    | `Text x -> string ppf x
-    | `WSP x -> string ppf x
+    | `Text x -> breakable ppf x
+    | `WSP x ->
+      if only_spaces x
+      then eval ppf [ spaces (String.length x) ]
+      else string ppf x
     | `CR n -> string ppf (String.make n '\r')
     | `LF n -> string ppf (String.make n '\n')
     | `CRLF -> string ppf "\r\n"
@@ -57,7 +86,7 @@ let to_unstructured ~field_name gen value =
   let () =
     let open Encoder in
     keval (fun encoder -> assert (Encoder.is_empty encoder) ; ()) encoder
-      [ !!Field_name.Encoder.field ; char $ ':'
+      [ !!Field_name.Encoder.field_name; char $ ':'
       ; spaces 1; bbox; !!gen; close; new_line ] field_name value in
   let res = Buffer.contents buf in
   let parser =

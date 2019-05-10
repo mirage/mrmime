@@ -1692,6 +1692,10 @@ let with_buffer ?(end_of_line = "\n") end_of_body =
 
   parser ~write_line end_of_body >>| fun () -> Buffer.contents buf
 
+let with_emitter ?(end_of_line = "\n") ~emitter end_of_body =
+  let write_line x = emitter (Some (x ^ end_of_line)) in
+  parser ~write_line end_of_body
+
 let to_end_of_input ~write_data =
   fix @@ fun m ->
   peek_char >>= function

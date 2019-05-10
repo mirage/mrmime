@@ -1,4 +1,4 @@
-type field  = Rfc5322.trace
+type field = Rfc5322.trace
 
 type word = Rfc822.word
 type local = Rfc822.local
@@ -25,7 +25,7 @@ and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
-and t = trace list
+and t = trace
 
 let number { n; _ } = n
 let location { location; _ } = location
@@ -55,7 +55,7 @@ let pp_received ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(Dump.list pp_received) received
 
-let pp_trace ppf = function
+let pp ppf = function
   | { trace= Some trace; received; _ } ->
     Fmt.pf ppf "{ @[<hov>trace = %a;@ received = %a;@] }"
       pp_trace trace
@@ -64,11 +64,8 @@ let pp_trace ppf = function
     Fmt.pf ppf "{ @[<hov>received = %a;@] }"
       Fmt.(vbox (list ~sep:(always "@\n&@ ") pp_received)) received
 
-let pp = Fmt.list pp_trace
-
-let empty = []
-
-let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t list ->
+  (t list * (Number.t * 'a * Location.t) list)
   = fun fields t ->
   List.fold_left
     (fun (t, rest) -> function
@@ -80,14 +77,15 @@ let reduce : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Num
 module Encoder = struct
   open Encoder
 
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let word = Mailbox.Encoder.word
   let domain = Mailbox.Encoder.domain
   let mailbox = Mailbox.Encoder.mailbox
   let date = Date.Encoder.date
 
   let return_path ppf m =
-    eval ppf [ !!field; char $ ':'; spaces 1; tbox 1; !!mailbox; close; new_line ]
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; tbox 1; !!mailbox; close; new_line ]
       Field_name.return_path m
 
   let received ppf = function
@@ -98,11 +96,14 @@ module Encoder = struct
   let received ppf (l, d) =
     let sep = (fun ppf () -> eval ppf [ fws ]), () in
     let date ppf x = eval ppf [ char $ ';'; fws; !!date ] x in
-    eval ppf [ field $ Field_name.received; char $ ':'; spaces 1; bbox; !!(list ~sep received); !!(option date); close; new_line ] l d
+    eval ppf [ field_name $ Field_name.received; char $ ':'; spaces 1
+             ; bbox; !!(list ~sep received); !!(option date); close; new_line ] l d
 
   let epsilon = (fun t () -> t), ()
 
   let trace ppf = function
-    | { trace= Some r; received= rs; _ } -> eval ppf [ !!return_path; !!(list ~sep:epsilon received) ] r rs
-    | { trace= None; received= rs; _ } -> (list ~sep:epsilon received) ppf rs
+    | { trace= Some r; received= rs; _ } ->
+      eval ppf [ !!return_path; !!(list ~sep:epsilon received) ] r rs
+    | { trace= None; received= rs; _ } ->
+      (list ~sep:epsilon received) ppf rs
 end

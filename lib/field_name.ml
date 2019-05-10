@@ -53,7 +53,7 @@ let prefixed_by prefix field =
 module Encoder = struct
   open Encoder
 
-  let field = using capitalize string
+  let field_name = using capitalize string
 end
 
 let date = v "Date"

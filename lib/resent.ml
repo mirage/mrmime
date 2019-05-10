@@ -2,39 +2,38 @@ module O = Map.Make(Number)
 module N = Map.Make(struct type t = Number.t let compare a b = Number.compare b a end)
 
 type field = Rfc5322.resent
-type t = (Resent_field.field * Location.t) O.t O.t
+type t = (Resent_field.field * Location.t) O.t
 
 let ( <.> ) f g = fun x -> f (g x)
 
 let reduce
-  : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+  : (Number.t * ([> field ] as 'a) * Location.t) list -> t list ->
+    (t list * (Number.t * 'a * Location.t) list)
   = fun fields resents ->
-    let resents = (N.of_seq <.> O.to_seq) resents in
     List.fold_left
       (fun (resents, rest) (n, field, loc) ->
          match field with
          | (`ResentFrom _ | `ResentDate _) as field ->
            let v = Resent_field.of_rfc5322_field field in
-           N.add n (O.singleton n (v, loc)) resents, rest
+           (O.singleton n (v, loc) :: resents), rest
          | #field as field ->
            let v = Resent_field.of_rfc5322_field field in
-           (match N.choose_opt resents with
-            | Some (i, last) ->
-              N.add i (O.add n (v, loc) last) resents
-            | None ->
-              N.add n (O.singleton n (v, loc)) resents), rest
+           (match resents with
+            | last :: resents->
+              (O.add n (v, loc) last) :: resents
+
+            | [] ->
+              [ O.singleton n (v, loc) ]), rest
          | _ -> resents, (n, field, loc) :: rest)
       (resents, []) fields
-    |> fun (resents, rest) -> ((O.of_seq <.> N.to_seq) resents, List.rev rest)
+    |> fun (resents, rest) -> (resents, List.rev rest)
 
-let empty = O.empty
+let pp ppf = assert false
 
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let date = Date.Encoder.date
   let mailbox = Mailbox.Encoder.mailbox
   let mailboxes = Mailbox.Encoder.mailboxes
@@ -43,7 +42,8 @@ module Encoder = struct
   let unstructured = Unstructured.Encoder.unstructured
 
   let field_and_value field_value value_encoding ppf value =
-    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; bbox; !!value_encoding; close; new_line ] field_value value
 
   let resent_date = field_and_value Field_name.resent_date date
   let resent_from = field_and_value Field_name.resent_from mailboxes
@@ -56,7 +56,7 @@ module Encoder = struct
   let resent_field field = field_and_value field unstructured
   let resent_unsafe field = field_and_value field unstructured
 
-  let resent ppf (_, Resent_field.Field (field_name, v)) = match field_name with
+  let resent ppf (_, (Resent_field.Field (field_name, v), _)) = match field_name with
     | Resent_field.Date -> resent_date ppf v
     | Resent_field.From -> resent_from ppf v
     | Resent_field.Sender -> resent_sender ppf v
@@ -69,6 +69,5 @@ module Encoder = struct
 
   let epsilon = (fun t () -> t), ()
 
-  let resent ppf (_, x) = (list ~sep:epsilon resent) ppf (O.bindings x)
-  let resents ppf x = (list ~sep:epsilon resent) ppf (O.bindings x)
+  let resent ppf x = (list ~sep:epsilon resent) ppf (O.bindings x)
 end

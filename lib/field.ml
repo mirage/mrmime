@@ -21,6 +21,9 @@ type 'a t =
   | Comments : Unstructured.t t
   | Keywords : phrase list t
   | Field : Field_name.t -> Unstructured.t t
+  | Content : Content.t t
+  | Resent : Resent.t t
+  | Trace : Trace.t t
 
 type 'a v =
   | Date : Date.t v
@@ -31,7 +34,9 @@ type 'a v =
   | Phrase_or_message_id : phrase_or_message_id list v
   | Unstructured : Unstructured.t v
   | Phrases : phrase list v
-  | Trace : trace v
+  | Content : Content.t v
+  | Resent : Resent.t v
+  | Trace : Trace.t v
 
 type field_name = Field_name : 'a t -> field_name
 type field_value = Field_value : 'a v -> field_value
@@ -75,6 +80,9 @@ let to_field_name : type a. a t -> Field_name.t = function
   | Comments -> Field_name.comments
   | Keywords -> Field_name.keywords
   | Field field_name -> field_name
+  | Content -> Fmt.invalid_arg "to_field_name: Content are folded fields"
+  | Resent -> Fmt.invalid_arg "to_field_name: Resent are folded fields"
+  | Trace -> Fmt.invalid_arg "to_field_name: Trace are folded field"
 
 let field_name
   : field -> Field_name.t
@@ -95,6 +103,9 @@ let field_value : type a. a t -> a v = function
   | Comments -> Unstructured
   | Keywords -> Phrases
   | Field _ -> Unstructured
+  | Content -> Content
+  | Resent -> Resent
+  | Trace -> Trace
 
 let pp_phrase = Mailbox.pp_phrase
 let pp_message_id = MessageID.pp
@@ -112,7 +123,9 @@ let pp_of_field_value : type a. a v -> a Fmt.t = function
   | MessageID -> MessageID.pp
   | Phrase_or_message_id -> Fmt.(Dump.list pp_phrase_or_message_id)
   | Phrases -> Fmt.(Dump.list pp_phrase)
-  | Trace -> assert false (* TODO *)
+  | Content -> Content.pp
+  | Resent -> Resent.pp
+  | Trace -> Trace.pp
 
 let pp_of_field_name : type a. a t -> a Fmt.t = fun x -> pp_of_field_value (field_value x)
 (* XXX(dinosaure): [<.>]? *)
@@ -136,7 +149,7 @@ let of_rfc5322_field : Rfc5322.field -> field = function
 module Encoder = struct
   include Encoder
 
-  let field_name = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let date = Date.Encoder.date
   let mailboxes = Mailbox.Encoder.mailboxes
   let mailbox = Mailbox.Encoder.mailbox
@@ -187,6 +200,9 @@ module Encoder = struct
     | Comments -> comments ppf v
     | Keywords -> keywords ppf v
     | Field field_name -> field field_name ppf v
+    | Content -> Content.Encoder.content ppf v
+    | Resent -> Resent.Encoder.resent ppf v
+    | Trace -> Trace.Encoder.trace ppf v
 
   let field ppf v = eval ppf [ !!field  ] v
 end

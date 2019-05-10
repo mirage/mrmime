@@ -5,8 +5,6 @@ module Ordered = Map.Make(Number)
 
 type t = (Content_field.field * Location.t) Ordered.t
 
-let empty = Ordered.empty
-
 let find ~default predicate t =
   let exception Found in
   let res : 'a option ref = ref None in
@@ -17,6 +15,33 @@ let find ~default predicate t =
   with Found -> match !res with
     | Some v -> v
     | None -> assert false
+
+let default : t =
+  let content_type = Content_field.(make Type Content_type.default) in
+  Ordered.singleton Number.zero (content_type, Location.none)
+
+let make ?encoding ?id content_type =
+  let encoding = Option.(encoding >>| Content_field.(make Encoding)) in
+  let id = Option.(id >>| Content_field.(make ID)) in
+
+  let indice = ref Number.zero in
+  let add_opt v m = match v with
+    | Some v ->
+      indice := Number.succ !indice ;
+      Ordered.add !indice (v, Location.none) m
+    | None -> m in
+
+  Ordered.singleton Number.zero (Content_field.(make Type content_type), Location.none)
+  |> add_opt encoding
+  |> add_opt id
+
+let empty = Ordered.empty
+
+let add field t =
+  let number = Number.of_int_exn (Ordered.cardinal t) in
+  Ordered.add number (field, Location.none) t
+
+let ( & ) = add
 
 let ty : t -> Content_type.Type.t = fun t ->
   find ~default:Content_type.Type.default
@@ -83,9 +108,7 @@ let reduce_as_mail
 module Encoder = struct
   open Encoder
 
-  external id : 'a -> 'a = "%identity"
-
-  let field = Field_name.Encoder.field
+  let field_name = Field_name.Encoder.field_name
   let content_type = Content_type.Encoder.content_type
   let content_encoding = Content_encoding.Encoder.mechanism
   let message_id = MessageID.Encoder.message_id
@@ -93,7 +116,8 @@ module Encoder = struct
   let mime_version = Mime_version.Encoder.mime_version
 
   let field_and_value field_value value_encoding ppf value =
-    eval ppf [ !!field; char $ ':'; spaces 1; bbox; !!value_encoding; close; new_line ] field_value value
+    eval ppf [ !!field_name; char $ ':'; spaces 1
+             ; bbox; !!value_encoding; close; new_line ] field_value value
 
   let content_type = field_and_value Field_name.content_type content_type
   let content_encoding = field_and_value Field_name.content_encoding content_encoding
@@ -104,7 +128,7 @@ module Encoder = struct
   let content_unsafe field = field_and_value field unstructured
   let content_field field = field_and_value field unstructured
 
-  let content_as_part ppf (_, Content_field.Field (field_name, v)) = match field_name with
+  let content_as_part ppf (_, (Content_field.Field (field_name, v), _)) = match field_name with
     | Content_field.Type -> content_type ppf v
     | Content_field.Encoding -> content_encoding ppf v
     | Content_field.ID -> content_id ppf v
