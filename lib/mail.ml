@@ -64,9 +64,14 @@ let header : (Content.t * Header.t * Resent.t list * Trace.t list * Garbage.t) A
   >>= fun (traces, _) -> return (Content.reduce_as_mail fields Content.empty)
   >>= fun (content, _) -> return (Header.reduce (rfc5322 fields) Header.empty)
   >>= fun (header, fields) -> return (clean fields)
-  >>= function
-  | [] -> return (content, header, resents, traces, Garbage.empty)
-  | rest -> return (content, header, resents, traces, Garbage.make rest)
+  >>= fun rest ->
+  let header = Header.add Field.(Content $ content) header in
+  let header = List.fold_left (fun header resent -> Header.add Field.(Resent $ resent) header) header resents in
+  let header = List.fold_left (fun header trace -> Header.add Field.(Trace $ trace) header) header traces in
+  match rest with
+  | [] ->
+    return (header, Garbage.empty)
+  | rest -> return (header, Garbage.make rest)
 
 let contents x = Contents x
 let invalid x = Invalid x
