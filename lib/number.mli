@@ -24,3 +24,4 @@ val of_int_exn : int -> t
 val max : t -> t -> t
 val min : t -> t -> t
 val add : t -> t -> t
+val add_int : int -> t -> (t, [ `Msg of string ]) result

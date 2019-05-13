@@ -12,3 +12,5 @@ let of_int_exn n =
 let min : t -> t -> t = min
 let max : t -> t -> t = max
 let add : t -> t -> t = (+)
+let add_int : int -> t -> (t, [ `Msg of string ]) result = fun a b ->
+  if a < 0 then Rresult.R.error_msgf "%d must be upper or equal to 0" a else Ok (a + b)
