@@ -3,6 +3,12 @@ module Ordered = Map.Make(Number)
 type field = Rfc5322.resent
 type t = (Resent_field.field * Location.t) Ordered.t
 
+let number t =
+  let open Option in
+  Ordered.choose_opt t >>| fst
+
+let length t = Ordered.cardinal t
+
 let ( <.> ) f g = fun x -> f (g x)
 
 let reduce

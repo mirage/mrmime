@@ -35,6 +35,12 @@ let make ?encoding ?id content_type =
   |> add_opt encoding
   |> add_opt id
 
+let number t =
+  let open Option in
+  Ordered.choose_opt t >>| fst
+
+let length t = Ordered.cardinal t
+
 let empty = Ordered.empty
 
 let add field t =
