@@ -382,8 +382,7 @@ let parse_header x =
   match
     Angstrom.(parse_string Mrmime.(Mail.header <* Rfc822.crlf) x)
   with
-  | Ok (content, header, _resents, _traces, _fields) ->
-    Fmt.epr "content: @[<hov>%a@].\n%!" Mrmime.Content.pp content ;
+  | Ok (header, _fields) ->
     Fmt.epr "header: @[<hov>%a@].\n%!" Mrmime.Header.pp header
   | Error _ -> raise Invalid_header
 
