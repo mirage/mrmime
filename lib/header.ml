@@ -47,6 +47,15 @@ let pp_value ppf = fun (Value (k, v)) ->
 
 let empty = Ordered.empty
 
+let content header =
+  let content : Content.t option ref = ref None in
+  Ordered.iter (fun _ -> function
+      | Field.Field (Field.Content, v), _ -> content := Some v
+      | _ -> ()) header ;
+  match !content with
+  | Some content -> content
+  | None -> Content.default
+
 module Encoder = struct
   include Encoder
 
