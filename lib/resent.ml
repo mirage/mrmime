@@ -33,7 +33,16 @@ let reduce
       (resents, []) fields
     |> fun (resents, rest) -> (resents, List.rev rest)
 
-let pp ppf = assert false
+let pp : t Fmt.t = fun ppf t ->
+  Fmt.Dump.iter_bindings
+    Ordered.iter
+    Fmt.(always "resent")
+    Fmt.nop
+    Fmt.(fun ppf (Resent_field.Field (k, v)) ->
+        Dump.pair
+          (using Resent_field.to_field_name Field_name.pp)
+          (Resent_field.pp_of_field_name k) ppf (k, v))
+    ppf (Ordered.map fst t)
 
 module Encoder = struct
   open Encoder
