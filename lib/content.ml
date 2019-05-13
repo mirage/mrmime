@@ -71,7 +71,7 @@ let parameters : t -> Content_type.Parameters.t = fun t ->
 let pp : t Fmt.t = fun ppf t ->
   Fmt.Dump.iter_bindings
     Ordered.iter
-    Fmt.(always "header")
+    Fmt.(always "content")
     Fmt.nop
     Fmt.(fun ppf (Content_field.Field (k, v)) ->
         Dump.pair
