@@ -55,7 +55,7 @@ type 'id light_t = ('id, 'id) t
 
 open Angstrom
 
-let header : (Content.t * Header.t * Resent.t list * Trace.t list * Garbage.t) Angstrom.t =
+let header : (Header.t * Garbage.t) Angstrom.t =
   let nothing_to_do _ = fail "Nothing to do" in
   Rfc5322.header (Rfc2045.message_field nothing_to_do nothing_to_do)
   >>| List.mapi (fun i (field, loc) -> Number.of_int_exn i, field, loc)
@@ -167,20 +167,25 @@ let mail : (Header.t * heavy_t) Angstrom.t =
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, resents, traces, fields) ->
-    match Content.ty content with
+    >>= fun (header, fields) ->
+    match Content.ty (Header.content header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
-      heavy_octet parent content
-      >>| fun body -> header, Discrete { content; fields; body; }
+      heavy_octet parent (Header.content header)
+      >>| fun body -> header, Discrete { content= Header.content header; fields; body; }
     | `Message ->
-      mail parent >>| fun (header', message') -> header, Message { content; fields; header= header'; message= message' }
+      mail parent
+      >>| fun (header', message') ->
+      header, Message { content= Header.content header
+                      ; fields
+                      ; header= header'
+                      ; message= message' }
     | `Multipart ->
-      match boundary content with
+      match boundary (Header.content header)with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
         >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content; fields; parts; }
+        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
       | None -> fail "expected boundary" in
 
   mail None
@@ -209,21 +214,25 @@ let light_mail
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, resents, traces, fields) ->
-    match Content.ty content with
+    >>= fun (header, fields) ->
+    match Content.ty (Header.content header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
-      let emitter, id = emitters content in
-      light_octet ~emitter parent content
-      >>| fun () -> header, Discrete { content; fields; body= id; }
+      let emitter, id = emitters (Header.content header) in
+      light_octet ~emitter parent (Header.content header)
+      >>| fun () -> header, Discrete { content= Header.content header; fields; body= id; }
     | `Message ->
-      mail parent >>| fun (header', message') -> header, Message { content; fields; header= header'; message= message' }
+      mail parent >>| fun (header', message') ->
+      header, Message { content= Header.content header
+                      ; fields
+                      ; header= header'
+                      ; message= message' }
     | `Multipart ->
-      match boundary content with
+      match boundary (Header.content header) with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
         >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content; fields; parts; }
+        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
       | None -> fail "expected boundary" in
 
   mail None
