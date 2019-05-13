@@ -16,7 +16,7 @@ type mailbox = Rfc5322.mailbox =
   ; local : local
   ; domain : domain * domain list }
 
-type trace =
+type t =
   { n : Number.t
   ; trace : mailbox option
   ; received : (received list * Date.t option) list
@@ -25,7 +25,6 @@ and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
-and t = trace
 
 let number { n; _ } = n
 let location { location; _ } = location
