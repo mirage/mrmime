@@ -1,7 +1,5 @@
-module Field = struct
-  type mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
-  type part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
-end
+type field_mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
+type field_part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
 
 type ('discrete, 'extension) t =
   | Discrete of { content : Content.t
@@ -25,7 +23,7 @@ and ('discrete, 'extension) part =
                     ; message : ('discrete, 'extension) t }
 and ('discrete, 'extension) atom =
   { content : Content.t
-  ; fields : (Number.t * Field.part * Location.t) list
+  ; fields : (Number.t * field_part * Location.t) list
   ; part : ('discrete, 'extension) part option }
 
 type garbage =
@@ -57,7 +55,7 @@ type 'id light_t = ('id, 'id) t
 
 open Angstrom
 
-let header : (Content.t * Header.t * Resent.t list * Trace.t list * Garbage.t) Angstrom.t =
+let header : (Header.t * Garbage.t) Angstrom.t =
   let nothing_to_do _ = fail "Nothing to do" in
   Rfc5322.header (Rfc2045.message_field nothing_to_do nothing_to_do)
   >>| List.mapi (fun i (field, loc) -> Number.of_int_exn i, field, loc)
@@ -66,9 +64,14 @@ let header : (Content.t * Header.t * Resent.t list * Trace.t list * Garbage.t) A
   >>= fun (traces, _) -> return (Content.reduce_as_mail fields Content.empty)
   >>= fun (content, _) -> return (Header.reduce (rfc5322 fields) Header.empty)
   >>= fun (header, fields) -> return (clean fields)
-  >>= function
-  | [] -> return (content, header, resents, traces, Garbage.empty)
-  | rest -> return (content, header, resents, traces, Garbage.make rest)
+  >>= fun rest ->
+  let header = Header.add Field.(Content $ content) header in
+  let header = List.fold_left (fun header resent -> Header.add Field.(Resent $ resent) header) header resents in
+  let header = List.fold_left (fun header trace -> Header.add Field.(Trace $ trace) header) header traces in
+  match rest with
+  | [] ->
+    return (header, Garbage.empty)
+  | rest -> return (header, Garbage.make rest)
 
 let contents x = Contents x
 let invalid x = Invalid x
@@ -164,20 +167,25 @@ let mail : (Header.t * heavy_t) Angstrom.t =
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, resents, traces, fields) ->
-    match Content.ty content with
+    >>= fun (header, fields) ->
+    match Content.ty (Header.content header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
-      heavy_octet parent content
-      >>| fun body -> header, Discrete { content; fields; body; }
+      heavy_octet parent (Header.content header)
+      >>| fun body -> header, Discrete { content= Header.content header; fields; body; }
     | `Message ->
-      mail parent >>| fun (header', message') -> header, Message { content; fields; header= header'; message= message' }
+      mail parent
+      >>| fun (header', message') ->
+      header, Message { content= Header.content header
+                      ; fields
+                      ; header= header'
+                      ; message= message' }
     | `Multipart ->
-      match boundary content with
+      match boundary (Header.content header)with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
         >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content; fields; parts; }
+        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
       | None -> fail "expected boundary" in
 
   mail None
@@ -206,21 +214,25 @@ let light_mail
 
   and mail parent =
     header <* Rfc822.crlf
-    >>= fun (content, header, resents, traces, fields) ->
-    match Content.ty content with
+    >>= fun (header, fields) ->
+    match Content.ty (Header.content header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Rfc2045.discrete ->
-      let emitter, id = emitters content in
-      light_octet ~emitter parent content
-      >>| fun () -> header, Discrete { content; fields; body= id; }
+      let emitter, id = emitters (Header.content header) in
+      light_octet ~emitter parent (Header.content header)
+      >>| fun () -> header, Discrete { content= Header.content header; fields; body= id; }
     | `Message ->
-      mail parent >>| fun (header', message') -> header, Message { content; fields; header= header'; message= message' }
+      mail parent >>| fun (header', message') ->
+      header, Message { content= Header.content header
+                      ; fields
+                      ; header= header'
+                      ; message= message' }
     | `Multipart ->
-      match boundary content with
+      match boundary (Header.content header) with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
         >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content; fields; parts; }
+        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
       | None -> fail "expected boundary" in
 
   mail None

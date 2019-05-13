@@ -16,7 +16,7 @@ type mailbox = Rfc5322.mailbox =
   ; local : local
   ; domain : domain * domain list }
 
-type trace =
+type t =
   { n : Number.t
   ; trace : mailbox option
   ; received : (received list * Date.t option) list
@@ -25,10 +25,11 @@ and received =
   [ `Addr of mailbox
   | `Domain of domain
   | `Word of word ]
-and t = trace
 
 let number { n; _ } = n
 let location { location; _ } = location
+let length : t -> int = fun t ->
+  List.length t.received + (if Option.is_some t.trace then 1 else 0)
 
 let pp_trace ppf (local, (x, r)) = match r with
   | [] ->

@@ -35,6 +35,12 @@ let make ?encoding ?id content_type =
   |> add_opt encoding
   |> add_opt id
 
+let number t =
+  let open Option in
+  Ordered.choose_opt t >>| fst
+
+let length t = Ordered.cardinal t
+
 let empty = Ordered.empty
 
 let add field t =
@@ -71,7 +77,7 @@ let parameters : t -> Content_type.Parameters.t = fun t ->
 let pp : t Fmt.t = fun ppf t ->
   Fmt.Dump.iter_bindings
     Ordered.iter
-    Fmt.(always "header")
+    Fmt.(always "content")
     Fmt.nop
     Fmt.(fun ppf (Content_field.Field (k, v)) ->
         Dump.pair

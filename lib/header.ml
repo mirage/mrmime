@@ -25,8 +25,31 @@ let get field_name header =
     then (i, field_to_value field, loc) :: a
     else a) header []
 
+let cardinal t =
+  let folder
+    : Number.t -> (Field.field * Location.t) -> (Number.t, [ `Msg of string ]) result -> (Number.t, [ `Msg of string ]) result
+    = fun _ (field, _) a ->
+    let open Rresult.R in
+    match field with
+    | Field.Field (Content, v) -> bind a (Number.add_int (Content.length v))
+    | Field.Field (Resent, v) -> bind a (Number.add_int (Resent.length v))
+    | Field.Field (Trace, v) -> bind a (Number.add_int (Trace.length v))
+    | _ -> map Number.succ a in
+  let res = Ordered.fold folder t (Ok Number.zero) in
+  match res with
+  | Ok length -> length
+  | Error (`Msg err) -> invalid_arg err (* XXX(dinosaure): should never occur. *)
+
 let add field t =
-  let n = Number.of_int_exn (Ordered.cardinal t) in
+  let n = match field with
+    | Field.Field (Resent, v) ->
+      Option.value ~default:(cardinal t)
+        (Resent.number v)
+    | Field.Field (Trace, v) -> Trace.number v
+    | Field.Field (Content, v) ->
+      Option.value ~default:(cardinal t)
+        (Content.number v)
+    | _ -> cardinal t in
   Ordered.add n (field, Location.none) t
 
 let ( & ) = add
@@ -37,15 +60,29 @@ let pp : t Fmt.t = fun ppf t ->
     Fmt.(always "header")
     Fmt.nop
     Fmt.(fun ppf (Field.Field (k, v)) ->
-        Dump.pair
-          (using Field.to_field_name Field_name.pp)
-          (Field.pp_of_field_name k) ppf (k, v))
+        match k with
+        | Resent -> Resent.pp ppf v
+        | Trace -> Trace.pp ppf v
+        | Content -> Content.pp ppf v
+        | k ->
+          Dump.pair
+            (using Field.to_field_name Field_name.pp)
+            (Field.pp_of_field_name k) ppf (k, v))
     ppf (Ordered.map fst t)
 
 let pp_value ppf = fun (Value (k, v)) ->
   Field.pp_of_field_value k ppf v
 
 let empty = Ordered.empty
+
+let content header =
+  let content : Content.t option ref = ref None in
+  Ordered.iter (fun _ -> function
+      | Field.Field (Field.Content, v), _ -> content := Some v
+      | _ -> ()) header ;
+  match !content with
+  | Some content -> content
+  | None -> Content.default
 
 module Encoder = struct
   include Encoder

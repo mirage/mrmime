@@ -1,8 +1,13 @@
-module O = Map.Make(Number)
-module N = Map.Make(struct type t = Number.t let compare a b = Number.compare b a end)
+module Ordered = Map.Make(Number)
 
 type field = Rfc5322.resent
-type t = (Resent_field.field * Location.t) O.t
+type t = (Resent_field.field * Location.t) Ordered.t
+
+let number t =
+  let open Option in
+  Ordered.choose_opt t >>| fst
+
+let length t = Ordered.cardinal t
 
 let ( <.> ) f g = fun x -> f (g x)
 
@@ -15,20 +20,29 @@ let reduce
          match field with
          | (`ResentFrom _ | `ResentDate _) as field ->
            let v = Resent_field.of_rfc5322_field field in
-           (O.singleton n (v, loc) :: resents), rest
+           (Ordered.singleton n (v, loc) :: resents), rest
          | #field as field ->
            let v = Resent_field.of_rfc5322_field field in
            (match resents with
             | last :: resents->
-              (O.add n (v, loc) last) :: resents
+              (Ordered.add n (v, loc) last) :: resents
 
             | [] ->
-              [ O.singleton n (v, loc) ]), rest
+              [ Ordered.singleton n (v, loc) ]), rest
          | _ -> resents, (n, field, loc) :: rest)
       (resents, []) fields
     |> fun (resents, rest) -> (resents, List.rev rest)
 
-let pp ppf = assert false
+let pp : t Fmt.t = fun ppf t ->
+  Fmt.Dump.iter_bindings
+    Ordered.iter
+    Fmt.(always "resent")
+    Fmt.nop
+    Fmt.(fun ppf (Resent_field.Field (k, v)) ->
+        Dump.pair
+          (using Resent_field.to_field_name Field_name.pp)
+          (Resent_field.pp_of_field_name k) ppf (k, v))
+    ppf (Ordered.map fst t)
 
 module Encoder = struct
   open Encoder
@@ -69,5 +83,5 @@ module Encoder = struct
 
   let epsilon = (fun t () -> t), ()
 
-  let resent ppf x = (list ~sep:epsilon resent) ppf (O.bindings x)
+  let resent ppf x = (list ~sep:epsilon resent) ppf (Ordered.bindings x)
 end
