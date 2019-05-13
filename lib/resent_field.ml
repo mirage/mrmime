@@ -75,3 +75,13 @@ let of_rfc5322_field : Rfc5322.resent -> field = function
   | `ResentBcc x -> Field (Bcc, x)
   | `ResentMessageID x -> Field (MessageID, x)
   | `ResentReplyTo x -> Field (ReplyTo, x)
+
+let pp_of_field_value : type a. a v -> a Fmt.t = function
+  | Date -> Date.pp
+  | Mailboxes -> Fmt.Dump.list Mailbox.pp
+  | Mailbox -> Mailbox.pp
+  | Addresses -> Fmt.Dump.list Address.pp
+  | MessageID -> MessageID.pp
+  | Unstructured -> Unstructured.pp
+
+let pp_of_field_name : type a. a t -> a Fmt.t = fun x -> pp_of_field_value (field_value x)
