@@ -1,10 +1,5 @@
 type phrase = Rfc5322.phrase
 type phrase_or_message_id = Rfc5322.phrase_or_message_id
-type trace =
-  Rfc5322.mailbox option
-  * ([ `Addr of Rfc5322.mailbox
-      | `Domain of Rfc5322.domain
-      | `Word of Rfc822.word ] list * Rfc5322.date option) list
 
 type 'a t =
   | Date : Date.t t
