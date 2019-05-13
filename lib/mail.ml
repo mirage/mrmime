@@ -1,7 +1,5 @@
-module Field = struct
-  type mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
-  type part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
-end
+type field_mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
+type field_part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
 
 type ('discrete, 'extension) t =
   | Discrete of { content : Content.t
@@ -25,7 +23,7 @@ and ('discrete, 'extension) part =
                     ; message : ('discrete, 'extension) t }
 and ('discrete, 'extension) atom =
   { content : Content.t
-  ; fields : (Number.t * Field.part * Location.t) list
+  ; fields : (Number.t * field_part * Location.t) list
   ; part : ('discrete, 'extension) part option }
 
 type garbage =
