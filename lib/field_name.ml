@@ -72,7 +72,7 @@ let received = v "Received"
 let return_path = v "Return-Path"
 
 let content_type = v "Content-Type"
-let content_encoding = v "Content-Encoding"
+let content_encoding = v "Content-Transfer-Encoding"
 let mime_version = v "MIME-Version"
 let content_id = v "Content-ID"
 let content_description = v "Content-Description"
