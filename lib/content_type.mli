@@ -55,6 +55,9 @@ module Subtype : sig
   (** Sub-type from IANA database. Returns [Error] if sub-type
       is not a part of the IANA database. *)
 
+  val iana_exn : Type.t -> string -> t
+  val v : Type.t -> string -> t
+
   val extension : string -> (t, [ `Msg of string ]) result
   (** User-defined sub-type. *)
 
@@ -90,9 +93,15 @@ module Parameters : sig
   (** [key v] makes a new key (according to RFC 2045 - otherwise, it returns an
      error). *)
 
+  val key_exn : string -> key
+  val k : string -> key
+
   val value : string -> (value, [ `Msg of string ]) result
   (** [value v] makes a new value (according to RFC 2045 - otherwise, it returns
-     an error). *)
+      an error). *)
+
+  val value_exn : string -> value
+  val v : string -> value
 
   val empty : t
   (** Empty parameters. *)
