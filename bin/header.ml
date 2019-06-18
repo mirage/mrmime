@@ -33,12 +33,12 @@ let extract_raw ic loc =
 
 let extract ~newline ~with_raw ic fields =
   let print ~with_raw (field, lst) =
-    List.iter (fun (v, loc) ->
-        Fmt.pr "%a:@ %a@\n@\n" Field.pp field Header.Value.pp v ;
+    List.iter (fun (_, v, loc) ->
+        Fmt.pr "%a:@ %a@\n@\n" Field_name.pp field Header.pp_value v ;
         if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic loc))
       lst in
   let open Rresult.R in
-  header_of_input ~newline ic >>| fun (_, header, _) ->
+  header_of_input ~newline ic >>| fun (header, _) ->
   List.map (fun field -> field, Header.get field header) fields |> List.iter (print ~with_raw)
 
 let run newline with_raw input fields =
@@ -52,8 +52,8 @@ let run newline with_raw input fields =
 open Cmdliner
 
 let field =
-  let parser = Field.of_string in
-  let pp = Field.pp in
+  let parser = Field_name.of_string in
+  let pp = Field_name.pp in
   Arg.conv ~docv:"<field>" (parser, pp)
 
 let fields =

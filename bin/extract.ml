@@ -1,19 +1,19 @@
 open Common
 
 let print_field value v =
-  Fmt.pr "Retrieve: @[<hov>%a@].\n%!" (Mrmime.St_header.Value.pp_of_value value) v
+  Fmt.pr "Retrieve: @[<hov>%a@].\n%!" (Mrmime.Hd.Value.pp_of_value value) v
 
 let print_others field others =
   let open Mrmime in
-  Fmt.pr "Your requested field %a does not exists but you can extract:@\n" Mrmime.Field.pp field ;
-  Fmt.pr "%a.\n%!" Fmt.(Dump.hashtbl Field.pp int) others
+  Fmt.pr "Your requested field %a does not exists but you can extract:@\n" Mrmime.Field_name.pp field ;
+  Fmt.pr "%a.\n%!" Fmt.(Dump.hashtbl Field_name.pp int) others
 
-let run ~newline ic field (Mrmime.St_header.Value.V value) capacity =
+let run ~newline ic field_name (Mrmime.Hd.Value.V value) capacity =
   let open Mrmime in
-  let open St_header in
+  let open Hd in
   let raw = Bytes.create capacity in
   let buffer = Bigstringaf.create (2 * capacity) in
-  let decoder = decoder ~field value buffer in
+  let decoder = decoder ~field_name value buffer in
   let exists = ref false in
   let others = Hashtbl.create 0x10 in
   let add_other field =
@@ -27,7 +27,7 @@ let run ~newline ic field (Mrmime.St_header.Value.V value) capacity =
     | `Lines _ -> go ()
     | `Malformed err ->Rresult.R.error_msg err
     | `End _ ->
-      if not !exists then print_others field others ;
+      if not !exists then print_others field_name others ;
       Rresult.R.ok ()
     | `Await ->
       let len = input ic raw 0 capacity in
@@ -49,8 +49,8 @@ open Cmdliner
 
 let field =
   let open Mrmime in
-  let parser = Field.of_string in
-  let pp = Field.pp in
+  let parser = Field_name.of_string in
+  let pp = Field_name.pp in
   Arg.conv (parser, pp)
 
 let field = Arg.(required & opt (some field) None & info [ "f"; "field" ] ~doc:"field to extract")
@@ -59,9 +59,9 @@ let source = Header.source
 
 let kind =
   let open Mrmime in
-  let parser = St_header.Value.of_string in
-  let pp = St_header.Value.pp in
-  Arg.conv (parser, (fun ppf (St_header.Value.V x) -> pp ppf x))
+  let parser = Hd.Value.of_string in
+  let pp = Hd.Value.pp in
+  Arg.conv (parser, (fun ppf (Hd.Value.V x) -> pp ppf x))
 
 let[@inline always] is_power_of_two v = v <> 0 && v land (lnot v + 1) = v
 
