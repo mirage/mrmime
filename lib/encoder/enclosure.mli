@@ -1,4 +1,4 @@
-(** [Enclosure] module follows [Faraday] implementation (thx @spiros). The main
+(** [Enclosure] module follows [Faraday] implementation (thx \@spiros). The main
    difference is: [Enclosure] uses a bounded internal [Bigstringaf.t] which can
    not be grow. Internal queue which contains [IOVec] elements can not grow too.
 
