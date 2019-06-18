@@ -76,6 +76,12 @@ module Subtype = struct
         else Rresult.R.error_msgf "Subtype %S does not exist" token
     | exception Not_found -> Rresult.R.error_msgf "Type %S does not exist" ty
 
+  let iana_exn ty token = match iana ty token with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let v ty token = iana_exn ty token
+
   let extension token =
     if String.length token < 3
     then Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
@@ -126,6 +132,12 @@ module Parameters = struct
       Ok (String.lowercase_ascii key)
     with Invalid_token ->
       Rresult.R.error_msgf "Key %S does not respect standards" key
+
+  let key_exn x = match key x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let k x = key_exn x
 
   exception Invalid_utf8
 
@@ -196,6 +208,12 @@ module Parameters = struct
          expects a special process to decoder (escape -> UTF-8). About history,
          unicorn and so on, it should be the best to keep this order. *)
         Rresult.R.(utf8 v >>| escape_characters >>| fun x -> `String x)
+
+  let value_exn x = match value x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let v x = value_exn x
 
   let empty = Map.empty
 
