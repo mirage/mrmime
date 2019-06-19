@@ -22,15 +22,22 @@ module Day = struct
     | Sun  -> Fmt.pf ppf "Sun"
 
   let to_string = Fmt.to_to_string pp
+
   let of_string = function
-    | "Mon" -> Mon
-    | "Tue" -> Tue
-    | "Wed" -> Wed
-    | "Thu" -> Thu
-    | "Fri" -> Fri
-    | "Sat" -> Sat
-    | "Sun" -> Sun
-    | x -> Fmt.invalid_arg "invalid day %s" x
+    | "Mon" -> Ok Mon
+    | "Tue" -> Ok Tue
+    | "Wed" -> Ok Wed
+    | "Thu" -> Ok Thu
+    | "Fri" -> Ok Fri
+    | "Sat" -> Ok Sat
+    | "Sun" -> Ok Sun
+    | x -> Rresult.R.error_msgf "invalid day %s" x
+
+  let of_string_exn x = match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let v x = of_string_exn x
 
   let equal a b = match a, b with
     | Mon, Mon -> true
@@ -99,35 +106,46 @@ module Month = struct
     | Nov -> 11 | Dec -> 12
 
   let of_int = function
-    | 1 -> Some Jan
-    | 2 -> Some Feb
-    | 3 -> Some Mar
-    | 4 -> Some Apr
-    | 5 -> Some May
-    | 6 -> Some Jun
-    | 7 -> Some Jul
-    | 8 -> Some Aug
-    | 9 -> Some Sep
-    | 10 -> Some Oct
-    | 11 -> Some Nov
-    | 12 -> Some Dec
-    | _ -> None
+    | 1 -> Ok Jan
+    | 2 -> Ok Feb
+    | 3 -> Ok Mar
+    | 4 -> Ok Apr
+    | 5 -> Ok May
+    | 6 -> Ok Jun
+    | 7 -> Ok Jul
+    | 8 -> Ok Aug
+    | 9 -> Ok Sep
+    | 10 -> Ok Oct
+    | 11 -> Ok Nov
+    | 12 -> Ok Dec
+    | n -> Rresult.R.error_msgf "Invalid number of month: %d" n
+
+  let of_int_exn x = match of_int x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
 
   let to_string = Fmt.to_to_string pp
+
   let of_string = function
-    | "Jan" -> Jan
-    | "Feb" -> Feb
-    | "Mar" -> Mar
-    | "Apr" -> Apr
-    | "May" -> May
-    | "Jun" -> Jun
-    | "Jul" -> Jul
-    | "Aug" -> Aug
-    | "Sep" -> Sep
-    | "Oct" -> Oct
-    | "Nov" -> Nov
-    | "Dec" -> Dec
-    | x -> Fmt.invalid_arg "invalid month %s" x
+    | "Jan" -> Ok Jan
+    | "Feb" -> Ok Feb
+    | "Mar" -> Ok Mar
+    | "Apr" -> Ok Apr
+    | "May" -> Ok May
+    | "Jun" -> Ok Jun
+    | "Jul" -> Ok Jul
+    | "Aug" -> Ok Aug
+    | "Sep" -> Ok Sep
+    | "Oct" -> Ok Oct
+    | "Nov" -> Ok Nov
+    | "Dec" -> Ok Dec
+    | x -> Rresult.R.error_msgf "Invalid month %s" x
+
+  let of_string_exn x = match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let v x = of_string_exn x
 end
 
 module Zone = struct
@@ -167,13 +185,17 @@ module Zone = struct
   let pdt = PDT
 
   let military_zone = function
-    | ('A' .. 'I' | 'K' .. 'Z') as chr -> Some (Military_zone chr)
+    | ('A' .. 'I' | 'K' .. 'Z') as chr -> Ok (Military_zone chr)
     | ('a' .. 'i' | 'k' .. 'z') as chr ->
       let chr = Char.chr (Char.code chr - 32) in
-      Some (Military_zone chr)
-    | _ -> None
+      Ok (Military_zone chr)
+    | chr -> Rresult.R.error_msgf "Invalid military zone '%c'" chr
 
-  let tz x y = Some (TZ (x, y)) (* TODO *)
+  let tz hh mm =
+    if (abs hh) >= 0 && (abs hh) < 24
+       && mm >= 0 && mm < 60
+    then Ok (TZ (hh, mm))
+    else Rresult.R.error_msgf "Invalid time-zone (hours: %d, minutes: %d)" hh mm
 
   let pp ppf = function
     | UT   -> Fmt.pf ppf "UT"
@@ -186,11 +208,11 @@ module Zone = struct
     | MDT  -> Fmt.pf ppf "MDT"
     | PST  -> Fmt.pf ppf "PST"
     | PDT  -> Fmt.pf ppf "PDT"
-    | TZ (x, y) -> Fmt.pf ppf "(TZ %02d%02d)" x y
+    | TZ (hh, mm) -> Fmt.pf ppf "(TZ %02d%02d)" hh mm
     | Military_zone c -> Fmt.pf ppf "(Military_zone %c)" c
 
   let to_string = function
-    | TZ (x, y) -> if x >= 0 then Fmt.strf "+%02d%02d" x y else Fmt.strf "-%02d%02d" (abs x) y
+    | TZ (hh, mm) -> if hh >= 0 then Fmt.strf "+%02d%02d" hh mm else Fmt.strf "-%02d%02d" (abs hh) mm
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
@@ -204,7 +226,7 @@ module Zone = struct
     | MDT -> -06, 00
     | PST -> -08, 00
     | PDT -> -07, 00
-    | TZ (x, y) -> x, y
+    | TZ (hh, mm) -> hh, mm
     | Military_zone c -> match c with
       | 'A' -> 01, 00
       | 'B' -> 02, 00
@@ -246,26 +268,35 @@ module Zone = struct
     let two = let res = Bytes.create 2 in Bytes.set res 0 z2 ; Bytes.set res 1 z3 ; Bytes.unsafe_to_string res in
     let one = if sign = '-' then - int_of_string one else int_of_string one in
     let two = int_of_string two in
-    return (one, two)
+    if (abs one) >= 0 && (abs one) < 24
+       && two >= 0 && two < 60
+    then return (one, two)
+    else fail "Invalid time-zone"
 
   let of_string = function
-    | "UT" -> UT
-    | "GMT" -> GMT
-    | "EST" -> EST
-    | "EDT" -> EDT
-    | "CST" -> CST
-    | "CDT" -> CDT
-    | "MST" -> MST
-    | "MDT" -> MDT
-    | "PST" -> PST
-    | "PDT" -> PDT
+    | "UT" -> Ok UT
+    | "GMT" -> Ok GMT
+    | "EST" -> Ok EST
+    | "EDT" -> Ok EDT
+    | "CST" -> Ok CST
+    | "CDT" -> Ok CDT
+    | "MST" -> Ok MST
+    | "MDT" -> Ok MDT
+    | "PST" -> Ok PST
+    | "PDT" -> Ok PDT
     | x ->
       match Angstrom.parse_string parser_tz x with
-      | Ok (x, y) -> TZ (x, y)
+      | Ok (hh, mm) -> Ok (TZ (hh, mm))
       | Error _ ->
         if String.length x = 1 && Rfc5322.is_military_zone x.[0]
-        then Military_zone x.[0]
-        else Fmt.invalid_arg "invalid zone %s" x
+        then Ok (Military_zone x.[0])
+        else Rresult.R.error_msgf "Invalid time-zone: %S" x
+
+  let of_string_exn x = match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg err
+
+  let v x = of_string_exn x
 end
 
 type t = Rfc5322.date =
@@ -273,6 +304,12 @@ type t = Rfc5322.date =
   ; date : int * Month.t * int
   ; time : int * int * int option
   ; zone : Zone.t }
+
+let pp_ptime_day =
+  let f = function
+    | `Mon -> Day.Mon | `Thu -> Day.Thu | `Tue -> Day.Tue
+    | `Wed -> Day.Wed | `Fri -> Day.Fri | `Sat -> Day.Sat | `Sun -> Day.Sun in
+  Fmt.using f Day.pp
 
 let make ?day (y, m, d) (hh, mm, ss) zone =
   let z =
@@ -289,16 +326,16 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
     | _, _ -> false in
   let m' = Month.to_int m in
   match Ptime.of_date_time ((y, m', d), ((hh, mm, Option.value ~default:0 ss), z)) with
-  | None -> None
+  | None -> Rresult.R.error_msgf "Invalid date"
   | Some t ->
     let day' = Ptime.weekday ~tz_offset_s:z t in
 
     match day with
-    | None -> Some { day; date= (d, m, y); time= (hh, mm, ss); zone }
+    | None -> Ok { day; date= (d, m, y); time= (hh, mm, ss); zone }
     | Some day ->
       if same_day day day'
-      then Some { day= Some day; date= (d, m, y); time= (hh, mm, ss); zone }
-      else None
+      then Ok { day= Some day; date= (d, m, y); time= (hh, mm, ss); zone }
+      else Rresult.R.error_msgf "Expected day mismatch (%a <> %a)" Day.pp day pp_ptime_day day'
 
 let pp ppf = function
   | { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone; } ->
@@ -335,7 +372,7 @@ let of_ptime ~zone ptime =
     let (hh, mm) = Zone.to_int zone in
     hh * 3600 + mm * 60 in
   let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
-  let date = (y, Option.get_exn (Month.of_int m), d) in
+  let date = (y, (Month.of_int_exn m), d) in
   make date (hh, mm, Some ss) zone
 
 let compare a b =

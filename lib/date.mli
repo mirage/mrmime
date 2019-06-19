@@ -3,6 +3,9 @@ module Day : sig
     | Mon | Tue | Wed
     | Thu | Fri | Sat
     | Sun
+    (** Type of day according RFC 822 / RFC 2822 / RFC 5322. *)
+
+  (** {3 Constructors.} *)
 
   val mon : t
   val tue : t
@@ -11,9 +14,28 @@ module Day : sig
   val fri : t
   val sat : t
   val sun : t
-  val pp : t Fmt.t
+
   val to_string : t -> string
-  val of_string : string -> t
+  (** [to_string v] returns a well-formed string from a day [v]. *)
+
+  val of_string : string -> (t, [ `Msg of string ]) result
+  (** [of_string v] returns a day from a well-formed string [v]. Process is
+     case-sensitive. Day needs to be capitalized (eg. ["Fri"]). *)
+
+  val of_string_exn : string -> t
+  (** [of_string_exn v] returns a day from a well-formed string [v]. Process is
+     case-sensitive. Day needs to be capitalized (eg. ["Fri"]).
+
+      @raise [Invalid_argument] when [v] is an invalid day. *)
+
+  val v : string -> t
+  (** Alias of {!of_string_exn}. *)
+
+  (** {3 Pretty-printers.} *)
+
+  val pp : t Fmt.t
+
+  (** {3 Equals.} *)
 
   val equal : t -> t -> bool
 end
@@ -22,6 +44,9 @@ module Month : sig
   type t = Rfc5322.month =
     | Jan | Feb | Mar | Apr | May | Jun
     | Jul | Aug | Sep | Oct | Nov | Dec
+    (** Type of month according RFC 822 / RFC 2822 / RFC 5322. *)
+
+  (** {3 Constructors.} *)
 
   val jan : t
   val feb : t
@@ -35,11 +60,39 @@ module Month : sig
   val oct : t
   val nov : t
   val dec : t
+
   val to_int : t -> int
-  val of_int : int -> t option
-  val pp : t Fmt.t
+  (** [to_int m] is the number of the month [m]. *)
+
+  val of_int : int -> (t, [ `Msg of string ]) result
+  (** [of_int n] returns month of the number [n]. If [n < 1] or [n > 12], it
+     returns an error. *)
+
+  val of_int_exn : int -> t
+  (** [of_int_exn] is an alias on {!of_int} except that if user give an invalid
+     number, we raise an exception. *)
+
   val to_string : t -> string
-  val of_string : string -> t
+  (** [to_stirng v] returns a well-formed string from a month [v]. *)
+
+  val of_string : string -> (t, [ `Msg of string ]) result
+  (** [of_string v] returns a month from a well-formed string [v]. Process is
+     case-sensitive, month needs to be capitalized (eg. ["Nov"]). *)
+
+  val of_string_exn : string -> t
+  (** [of_string v] returns a month from a well-formed string [v]. Process is
+     case-sensitive, month needs to be capitalized (eg. ["Nov"]).
+
+     @raise [Invalid_argument] when [v] is an invalid month. *)
+
+  val v : string -> t
+  (** Alias of {!of_string_exn}. *)
+
+  (** {3 Pretty-printers.} *)
+
+  val pp : t Fmt.t
+
+  (** {3 Equals.} *)
 
   val equal : t -> t -> bool
 end
@@ -53,6 +106,9 @@ module Zone : sig
     | PST | PDT
     | Military_zone of char
     | TZ of int * int
+    (** Type of zone according RFC 822 / RFC 2822 / RFC 5322. *)
+
+  (** {3 Constructors.} *)
 
   val ut : t
   val gmt : t
@@ -64,11 +120,30 @@ module Zone : sig
   val mdt : t
   val pst : t
   val pdt : t
-  val military_zone : char -> t option
-  val tz : int -> int -> t option
-  val pp : t Fmt.t
+  val military_zone : char -> (t, [ `Msg of string ]) result
+  val tz : int -> int -> (t, [ `Msg of string ]) result
+
   val to_string : t -> string
-  val of_string : string -> t
+  (** [to_string v] returns a well-formed string from a time zone [v]. *)
+
+  val of_string : string -> (t, [ `Msg of string ]) result
+  (** [of_string v] returns a time zone from a well-formed string [v]. Process is
+     case-sensitive. *)
+
+  val of_string_exn : string -> t
+  (** [of_string_exn v] returns a time zone from a well-formed string [v].
+     Process is case-sensitive.
+
+      @raise [Invalid_argument] when [v] is an invalid time zone. *)
+
+  val v : string -> t
+  (** Alias of {!of_string_exn}. *)
+
+  (** {3 Pretty-printers.} *)
+
+  val pp : t Fmt.t
+
+  (** {3 Equals.} *)
 
   val equal : t -> t -> bool
 end
@@ -78,13 +153,45 @@ type t = Rfc5322.date =
   ; date : int * Month.t * int
   ; time : int * int * int option
   ; zone : Zone.t }
+(** Type of date according RFC 822 / RFC 2822 / RFC 5322. *)
+
+(** {2 Constructors.} *)
+
+val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> (t, [ `Msg of string ]) result
+(** [make ?day (year, month, day) (hh, mm, ss) tz] returns a date corresponding
+   to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
+   the day in the 7-day week) and [day] must correspond according of timestamp
+   to [month/day/year] and time zone [tz]. If it's not the case, [make] returns
+   an error.
+
+   [(year, month, day) (hh, mm, ss)] must correspond to a valid POSIX timestamp.
+   The date-time must be in the range of [0000-01-01 00:00:00 UTC] and
+   [9999-12-31 23:59:59.99 UTC]. Otherwise, [make] returns an error.
+
+   If [ss = None], seconds are [0]. If [?day = None], it will be the day in the
+   7-day week of POSIX timestamp corresponding to date-time [(year, month, day)
+   (hh, mm, ss)] expressed in the time zone offset [tz].
+
+   [make] relies on {!Ptime.of_date_time}. To completely understand implication
+   of that, you should read basics about [ptime]. *)
+
+val to_ptime : t -> Ptime.t
+(** [to_ptime t] returns a POSIX timestamp {!Ptime.t}. *)
+
+val of_ptime : zone:Zone.t -> Ptime.t -> (t, [ `Msg of string ]) result
+(** [of_ptime ~zone t] is date-time {!t} of POSIX timestamp [t]. [zone] hints
+   the time zone offset used for the resulting daytime {!Day.t} component. *)
+
+(** {2 Pretty-printers.} *)
 
 val pp : t Fmt.t
+
+(** {2 Equals & compares.} *)
+
 val equal : t -> t -> bool
 val compare : t -> t -> int
-val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> t option
-val to_ptime : t -> Ptime.t
-val of_ptime : zone:Zone.t -> Ptime.t -> t option
+
+(** {2 Encoder of date.} *)
 
 module Encoder : sig
   val date : t Encoder.t
