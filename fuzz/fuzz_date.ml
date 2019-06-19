@@ -33,7 +33,7 @@ let military_zone =
        | _ -> assert false)
 
 let tz =
-  map [ range 100; range 100 ] (fun a b -> Mrmime.Date.Zone.TZ (a, b))
+  map [ range 24; range 60 ] (fun a b -> Mrmime.Date.Zone.TZ (a, b))
 
 let zone =
   choose
@@ -99,3 +99,23 @@ let () =
     check_eq ~pp:Date.pp ~eq:Date.equal date date'
   | Error err ->
     failf "%a can not be parsed: %s" Date.pp date err
+
+let ( <.> ) f g = fun x -> f (g x)
+
+let () =
+  let open Mrmime in
+
+  Crowbar.add_test ~name:"date & ptime" [ float; zone ] @@ fun seconds zone ->
+  (* XXX(dinosaure): according [Ptime]'s documentation, subsecond precision are
+     floored. *)
+  match Ptime.of_float_s (Pervasives.floor seconds) with
+  | None -> Crowbar.bad_test ()
+  | Some ptime ->
+    match Date.of_ptime ~zone ptime with
+    | Ok date ->
+      let ptime' = Date.to_ptime date in
+
+      check_eq ~pp:Fmt.int64 ~eq:Int64.equal
+        ((Int64.of_float <.> Ptime.to_float_s) ptime)
+        ((Int64.of_float <.> Ptime.to_float_s) ptime')
+    | Error _ -> Crowbar.failf "Can not make a date from %a" (Ptime.pp_rfc3339 ()) ptime

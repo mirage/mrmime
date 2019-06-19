@@ -26,7 +26,7 @@
 (executable
  (name fuzz_date)
  (modules fuzz_date)
- (libraries mrmime common crowbar))
+ (libraries ptime.clock.os mrmime common crowbar))
 
 (alias
  (name runtest)
@@ -48,3 +48,7 @@
  (deps (:fuzz_content_type fuzz_content_type.exe))
  (action (run %{fuzz_content_type})))
 
+(alias
+ (name runtest)
+ (deps (:fuzz_date fuzz_date.exe))
+ (action (run %{fuzz_date})))
