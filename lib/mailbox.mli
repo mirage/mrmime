@@ -352,6 +352,21 @@ val with_name : phrase -> t -> t
 val to_string : t -> string
 (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 
+val of_string : string -> (t, [ `Msg of string ]) result
+(** [of_string x] returns a {!t} from a well-formed string [x] according RFC
+   5322. A {i mailbox} can have several forms and can include [FWS] tokens. Some
+   examples of what is allowed:
+
+   {ul
+   {- [thomas@gazagnaire.org]}
+   {- [Hannesm <hannes@menhert.org>]}
+   {- [<anil@recoil.org>]}
+   {- [Romain Calascibetta <@gmail.com:romain.calascibetta@x25519.net>]}
+   {- [Daniel =?UTF-8?Q?B=C3=BCnzli?= <daniel.buenzli@erratique.ch>]}}
+
+   Any {i encoded-word} are normalized to a valid UTF-8 string (even if {i
+   charset} is something else than ["UTF-8"]). *)
+
 (** {2 Pretty-printers.} *)
 
 val pp_phrase : phrase Fmt.t
