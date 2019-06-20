@@ -382,6 +382,10 @@ let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
 
 let to_string x = Encoder.to_string Encoder.mailbox x
 
+let of_string x = match Angstrom.parse_string Rfc5322.mailbox x with
+  | Ok v -> Ok v
+  | Error _ -> Rresult.R.error_msgf "Invalid mailbox: %S" x
+
 let pp_word ppf = function
   | `Atom x -> Fmt.string ppf x
   | `String x -> Fmt.pf ppf "%S" x
