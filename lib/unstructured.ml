@@ -49,6 +49,11 @@ let only_spaces x =
   String.iter (function ' ' -> () | _ -> res := false) x ;
   !res
 
+let of_string x =
+  match Angstrom.parse_string Rfc5322.unstructured x with
+  | Ok v -> v
+  | Error _ -> Fmt.failwith "Impossible to craft an unstructured value from %S" x
+
 module Encoder = struct
   include Encoder
 
