@@ -11,6 +11,17 @@ let pp ppf = function
 
 let default = `Bit7
 
+let of_string = function
+  | "7bit" -> Ok `Bit7
+  | "8bit" -> Ok `Bit8
+  | "binary" -> Ok `Binary
+  | "quoted-printable" -> Ok `Quoted_printable
+  | "base64" -> Ok `Base64
+  | x -> Rresult.R.error_msgf "Invalid MIME encoding: %s" x
+(* TODO:
+   - let the user to craft an extension token.
+   - check IETF database *)
+
 module Encoder = struct
   open Encoder
 
