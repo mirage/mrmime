@@ -37,6 +37,7 @@ type field_name = Field_name : 'a t -> field_name
 type field_value = Field_value : 'a v -> field_value
 type field = Field : 'a t * 'a -> field
 
+val equal : 'a t -> 'b t -> ('a, 'b) Refl.t option
 val make : 'a t -> 'a -> field
 val ( $ ) : 'a t -> 'a -> field
 

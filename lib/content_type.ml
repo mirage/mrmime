@@ -11,6 +11,18 @@ module Type = struct
   let message = `Message
   let multipart = `Multipart
 
+  let is_discrete = function
+    | #Rfc2045.discrete -> true
+    | _ -> false
+
+  let is_multipart = function
+    | `Multipart -> true
+    | _ -> false
+
+  let is_message = function
+    | `Message -> true
+    | _ -> false
+
   let ietf token =
     if Iana.Map.mem (String.lowercase_ascii token) Iana.database then
       Ok (`Ietf_token token)
@@ -288,11 +300,23 @@ type t = Rfc2045.content
 let default =
   { Rfc2045.ty = Type.default
   ; subty = Subtype.default
-  ; parameters = Parameters.(to_list default) }
+  ; parameters = Parameters.to_list Parameters.default }
 
 let ty { Rfc2045.ty; _ } = ty
 let subty { Rfc2045.subty; _ } = subty
 let parameters { Rfc2045.parameters; _ } = parameters
+
+let is_discrete { Rfc2045.ty; _ } = Type.is_discrete ty
+let is_multipart { Rfc2045.ty; _ } = Type.is_multipart ty
+let is_message { Rfc2045.ty; _ } = Type.is_message ty
+
+let with_type : t -> Type.t -> t = fun t ty ->  { t with ty }
+let with_subtype : t -> Subtype.t -> t = fun t subty -> { t with subty }
+let with_parameter
+  : t -> (Parameters.key * Parameters.value) -> t
+  = fun t (k, v) ->
+    let parameters = Parameters.of_list ((k, v) :: t.parameters) in
+    { t with parameters= Parameters.to_list parameters }
 
 let make ty subty parameters =
   {Rfc2045.ty; subty; parameters= Parameters.to_list parameters}

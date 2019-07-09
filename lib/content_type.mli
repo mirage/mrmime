@@ -42,6 +42,10 @@ module Type : sig
 
   val default : t
   (** Default value of type according to RFC 2045. *)
+
+  val is_discrete : t -> bool
+  val is_multipart : t -> bool
+  val is_message : t -> bool
 end
 
 module Subtype : sig
@@ -141,6 +145,8 @@ module Parameters : sig
 
   val default : t
   (** Same as {!empty}. *)
+
+  val to_list : t -> (key * value) list
 end
 
 type t = Rfc2045.content
@@ -160,6 +166,14 @@ val subty : t -> Subtype.t
 
 val parameters : t -> (Parameters.key * Parameters.value) list
 (** Returns parameters of Content-Type value. *)
+
+val is_discrete : t -> bool
+val is_multipart : t -> bool
+val is_message : t -> bool
+
+val with_type : t -> Type.t -> t
+val with_subtype : t -> Subtype.t -> t
+val with_parameter : t -> (Parameters.key * Parameters.value) -> t
 
 (** {2 Pretty-printers.} *)
 

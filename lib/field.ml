@@ -20,6 +20,26 @@ type 'a t =
   | Resent : Resent.t t
   | Trace : Trace.t t
 
+let equal : type a b. a t -> b t -> (a, b) Refl.t option = fun a b -> match a, b with
+  | Date, Date -> Some Refl.Refl
+  | From, From -> Some Refl.Refl
+  | Sender, Sender -> Some Refl.Refl
+  | ReplyTo, ReplyTo -> Some Refl.Refl
+  | To, To -> Some Refl.Refl
+  | Cc, Cc -> Some Refl.Refl
+  | Bcc, Bcc -> Some Refl.Refl
+  | Subject, Subject -> Some Refl.Refl
+  | MessageID, MessageID -> Some Refl.Refl
+  | InReplyTo, InReplyTo -> Some Refl.Refl
+  | References, References -> Some Refl.Refl
+  | Comments, Comments -> Some Refl.Refl
+  | Keywords, Keywords -> Some Refl.Refl
+  | Field a, Field b -> if Field_name.equal a b then Some Refl.Refl else None
+  | Content, Content -> Some Refl.Refl
+  | Resent, Resent -> Some Refl.Refl
+  | Trace, Trace -> Some Refl.Refl
+  | _ -> None
+
 type 'a v =
   | Date : Date.t v
   | Mailboxes : Mailbox.t list v

@@ -14,7 +14,23 @@ let find ~default predicate t =
         | None -> ()) t ; default
   with Found -> match !res with
     | Some v -> v
-    | None -> assert false
+    | None -> default
+
+let equal a b =
+  let exception Diff in
+
+  try
+    Ordered.iter
+      (fun n (Content_field.(Field (field_name, v), _)) ->
+         match Ordered.find_opt n b with
+         | Some (Content_field.(Field (field_name', v')), _) ->
+           ( match Content_field.equal field_name field_name' with
+             | Some Refl.Refl ->
+               let eq = Content_field.equal_of_field_name field_name in
+               if eq v v' then () else raise_notrace Diff
+             | None -> raise_notrace Diff )
+         | None -> raise_notrace Diff) a ; true
+  with Diff -> false
 
 let default : t =
   let content_type = Content_field.(make Type Content_type.default) in
@@ -47,7 +63,56 @@ let add field t =
   let number = Number.of_int_exn (Ordered.cardinal t) in
   Ordered.add number (field, Location.none) t
 
+let add_or_replace (Content_field.Field (field_name, v) as field) t =
+  let exception Exists of Number.t in
+  try
+    Ordered.iter
+      (fun n Content_field.(Field (field_name', v'), _) ->
+         match Content_field.equal field_name field_name' with
+         | Some Refl.Refl -> raise_notrace (Exists n)
+         | None -> ())
+      t ; add field t
+  with Exists n ->
+    Ordered.add n (field, Location.none) t
+
+let merge f a b =
+  let a = Ordered.bindings a |> List.map snd |> List.map fst in
+  let b = ref (Ordered.bindings b |> List.map snd |> List.map fst) in
+
+  let remove x l =
+    let once = ref false in
+    let res = ref [] in
+    List.iter (fun y ->
+        if Content_field.field_equal x y && not !once
+        then ( once := true )
+        else ( res := y :: !res )) l ;
+    List.rev !res in
+
+  let r =
+    List.fold_left
+      (fun r x ->
+         match List.find_opt (Content_field.field_equal x) !b with
+         | Some y -> b := remove y !b ; f (Some x) (Some y) :: r
+         | None -> f (Some x) None :: r)
+      [] a in
+  let r = List.rev_append (List.map (fun y -> f None (Some y)) !b) r in
+  let r = List.partition Option.is_some (List.rev r) |> fun (r, _) -> List.map Option.get_exn r in
+  let r = List.mapi (fun i x -> Number.of_int_exn i, (x, Location.none)) r in
+  Ordered.of_seq (List.to_seq r)
+
+
 let ( & ) = add
+
+let content_type : t -> Content_type.t = fun t ->
+  find ~default:Content_type.default
+    (fun (Content_field.Field (field_name, v), _) -> match field_name with
+       | Content_field.Type -> Some v
+       | _ -> None) t
+
+let add_parameter ~key ~value t =
+  let content_type = content_type t in
+  let content_type = Content_type.with_parameter content_type (key, value) in
+  add_or_replace Content_field.(Field (Type, content_type)) t
 
 let ty : t -> Content_type.Type.t = fun t ->
   find ~default:Content_type.Type.default
@@ -73,6 +138,14 @@ let parameters : t -> Content_type.Parameters.t = fun t ->
        | Content_field.Type ->
          Some (Content_type.Parameters.of_list v.parameters)
        | _ -> None) t
+
+let boundary : t -> Rfc2045.value option = fun t ->
+  List.assoc_opt "boundary" (Content_type.Parameters.to_list (parameters t))
+
+let ( <.> ) f g = fun x -> f (g x)
+let is_discrete : t -> bool = Content_type.Type.is_discrete <.> ty
+let is_multipart : t -> bool = Content_type.Type.is_multipart <.> ty
+let is_message : t -> bool = Content_type.Type.is_message <.> ty
 
 let pp : t Fmt.t = fun ppf t ->
   Fmt.Dump.iter_bindings

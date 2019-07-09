@@ -50,8 +50,8 @@ type ('valid, 'invalid) contents =
   | Contents of 'valid
   | Invalid of 'invalid
 
-type heavy_t = ((string, string) contents, string) t
-type 'id light_t = ('id, 'id) t
+type mail = ((string, string) contents, string) t
+type 'id stream = ('id, 'id) t
 
 open Angstrom
 
@@ -149,7 +149,7 @@ let boundary content =
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
-let mail : (Header.t * heavy_t) Angstrom.t =
+let mail : (Header.t * mail) Angstrom.t =
   let rec body parent content _fields =
     match Content.ty content with
     | `Ietf_token _x | `X_token _x -> assert false
@@ -192,8 +192,8 @@ let mail : (Header.t * heavy_t) Angstrom.t =
 
 type 'id emitters = Content.t -> (string option -> unit) * 'id
 
-let light_mail
-  : emitters:'id emitters -> (Header.t * 'id light_t) Angstrom.t
+let stream
+  : emitters:'id emitters -> (Header.t * 'id stream) Angstrom.t
   = fun ~emitters ->
   let rec body parent content _fields =
     match Content.ty content with

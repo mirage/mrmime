@@ -52,6 +52,18 @@ let add field t =
     | _ -> cardinal t in
   Ordered.add n (field, Location.none) t
 
+let add_or_replace (Field.Field (field_name, v) as field) t =
+  let exception Exists of Number.t in
+  try
+    Ordered.iter
+      (fun n Field.(Field (field_name', v'), _) ->
+         match Field.equal field_name field_name' with
+         | Some Refl.Refl -> raise_notrace (Exists n)
+         | None -> ())
+      t ; add field t
+  with Exists n ->
+    Ordered.add n (field, Location.none) t
+
 let ( & ) = add
 
 let pp : t Fmt.t = fun ppf t ->

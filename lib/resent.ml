@@ -3,6 +3,21 @@ module Ordered = Map.Make(Number)
 type field = Rfc5322.resent
 type t = (Resent_field.field * Location.t) Ordered.t
 
+let equal a b =
+  let exception Diff in
+
+  try
+    Ordered.iter
+      (fun n (Resent_field.Field (field_name, v), _) -> match Ordered.find_opt n b with
+         | None -> raise_notrace Diff
+         | Some (Resent_field.Field (field_name', v'), _) ->
+           ( match Resent_field.equal field_name field_name' with
+             | Some Refl.Refl ->
+               let eq = Resent_field.equal_of_field_name field_name in
+               if eq v v' then () else raise_notrace Diff
+             | None -> raise_notrace Diff )) a ; true
+  with Diff -> false
+
 let number t =
   let open Option in
   Ordered.choose_opt t >>| fst
