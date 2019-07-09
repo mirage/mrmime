@@ -41,16 +41,7 @@ let cardinal t =
   | Error (`Msg err) -> invalid_arg err (* XXX(dinosaure): should never occur. *)
 
 let add field t =
-  let n = match field with
-    | Field.Field (Resent, v) ->
-      Option.value ~default:(cardinal t)
-        (Resent.number v)
-    | Field.Field (Trace, v) -> Trace.number v
-    | Field.Field (Content, v) ->
-      Option.value ~default:(cardinal t)
-        (Content.number v)
-    | _ -> cardinal t in
-  Ordered.add n (field, Location.none) t
+  Ordered.add (cardinal t) (field, Location.none) t
 
 let add_or_replace (Field.Field (field_name, v) as field) t =
   let exception Exists of Number.t in

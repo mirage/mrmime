@@ -1,8 +1,30 @@
+let () = Printexc.record_backtrace true
+
 open Mrmime
 
 let romain =
   let open Mailbox in
   Local.[ w "romain"; w "calascibetta" ] @ Domain.(domain, [ a "gmail"; a "com" ])
+
+let thomas =
+  let open Mailbox in
+  Local.[ w "thomas" ] @ Domain.(domain, [ a "gazagnaire"; a "org" ])
+
+let hannes =
+  let open Mailbox in
+  Local.[ w "hannes" ] @ Domain.(domain, [ a "mehnert"; a "org" ])
+
+let anil =
+  let open Mailbox in
+  Local.[ w "anil" ] @ Domain.(domain, [ a "recoil"; a "org" ])
+
+let gemma =
+  let open Mailbox in
+  Local.[ w "gemma"; w "t"; w "gordon" ] @ Domain.(domain, [ a "gmail"; a "com" ])
+
+let subject =
+  let open Unstructured in
+  [ v "A"; sp 1; v "Mail"; sp 1; v "with"; sp 1; v "Attachment!" ]
 
 let now =
   let open Date in
@@ -61,8 +83,10 @@ let header =
   let open Header in
   Field.(From $ [ romain ])
   & Field.(Date $ now)
-  & Field.(To $ Address.[ mailbox romain ])
+  & Field.(To $ Address.[ mailbox thomas; mailbox hannes; mailbox anil; mailbox gemma ])
+  & Field.(Cc $ (Address.[ mailbox romain ]))
   & Field.(Sender $ romain)
+  & Field.(Subject $ subject)
   & empty
 
 let mail = Mt.make header Mt.multi multipart
