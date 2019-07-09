@@ -75,7 +75,7 @@ let add_or_replace (Content_field.Field (field_name, v) as field) t =
   with Exists n ->
     Ordered.add n (field, Location.none) t
 
-let merge f a b =
+let merge merge a b =
   let a = Ordered.bindings a |> List.map snd |> List.map fst in
   let b = ref (Ordered.bindings b |> List.map snd |> List.map fst) in
 
@@ -90,12 +90,12 @@ let merge f a b =
 
   let r =
     List.fold_left
-      (fun r x ->
-         match List.find_opt (Content_field.field_equal x) !b with
-         | Some y -> b := remove y !b ; f (Some x) (Some y) :: r
-         | None -> f (Some x) None :: r)
+      (fun r (Content_field.Field (f, v) as x) ->
+         match List.find_opt (fun (Content_field.Field (f', _)) -> Option.is_some (Content_field.equal f f')) !b with
+         | Some y -> b := remove y !b ; merge (Some x) (Some y) :: r
+         | None -> merge (Some x) None :: r)
       [] a in
-  let r = List.rev_append (List.map (fun y -> f None (Some y)) !b) r in
+  let r = List.rev_append (List.map (fun y -> merge None (Some y)) !b) r in
   let r = List.partition Option.is_some (List.rev r) |> fun (r, _) -> List.map Option.get_exn r in
   let r = List.mapi (fun i x -> Number.of_int_exn i, (x, Location.none)) r in
   Ordered.of_seq (List.to_seq r)
