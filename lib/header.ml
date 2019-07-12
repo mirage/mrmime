@@ -20,10 +20,16 @@ let field_to_value : Field.field -> value =
   fun (Field (field_name, v)) -> Value (Field.field_value field_name, v)
 
 let get field_name header =
-  Ordered.fold (fun i (field, loc) a ->
+  let f i (field, loc) a =
     if Field_name.equal field_name (Field.field_name field)
     then (i, field_to_value field, loc) :: a
-    else a) header []
+    else a in
+  Ordered.fold (fun i (field, loc) a -> match field with
+      (* TODO: folded fields. *)
+      | Field.Field (Field.Content, _) -> a
+      | Field.Field (Field.Resent, _) -> a
+      | Field.Field (Field.Trace, _) -> a
+      | field -> f i (field, loc) a) header []
 
 let cardinal t =
   let folder
