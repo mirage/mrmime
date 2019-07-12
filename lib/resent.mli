@@ -1,6 +1,7 @@
 type field = Rfc5322.resent
 type t
 
+val equal : t -> t -> bool
 val number : t -> Number.t option
 val length : t -> int
 val pp : t Fmt.t

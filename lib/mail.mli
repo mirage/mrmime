@@ -33,14 +33,14 @@ type ('valid, 'invalid) contents =
   | Contents of 'valid
   | Invalid of 'invalid
 
-type heavy_t = ((string, string) contents, string) t
-type 'id light_t = ('id, 'id) t
+type mail = ((string, string) contents, string) t
+type 'id stream = ('id, 'id) t
 
 val header : (Header.t * Garbage.t) Angstrom.t
 val heavy_octet : string option -> Content.t -> (string, string) contents Angstrom.t
 val light_octet : emitter:(string option -> unit) -> string option -> Content.t -> unit Angstrom.t
-val mail : (Header.t * heavy_t) Angstrom.t
+val mail : (Header.t * mail) Angstrom.t
 
 type 'id emitters = Content.t -> (string option -> unit) * 'id
 
-val light_mail : emitters:(Content.t -> (string option -> unit) * 'id) -> (Header.t * 'id light_t) Angstrom.t
+val stream : emitters:(Content.t -> (string option -> unit) * 'id) -> (Header.t * 'id stream) Angstrom.t

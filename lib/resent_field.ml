@@ -9,6 +9,20 @@ type 'a t =
   | ReplyTo : Address.t list t
   | Field : Field_name.t -> Unstructured.t t
 
+let equal : type a b. a t -> b t -> (a, b) Refl.t option = fun a b ->
+  match a, b with
+  | Date, Date -> Some Refl.Refl
+  | From, From -> Some Refl.Refl
+  | Sender, Sender -> Some Refl.Refl
+  | To, To -> Some Refl.Refl
+  | Cc, Cc -> Some Refl.Refl
+  | Bcc, Bcc -> Some Refl.Refl
+  | MessageID, MessageID -> Some Refl.Refl
+  | ReplyTo, ReplyTo -> Some Refl.Refl
+  | Field a, Field b ->
+    if Field_name.equal a b then Some Refl.Refl else None
+  | _, _ -> None
+
 type 'a v =
   | Date : Date.t v
   | Mailboxes : Mailbox.t list v
@@ -85,3 +99,13 @@ let pp_of_field_value : type a. a v -> a Fmt.t = function
   | Unstructured -> Unstructured.pp
 
 let pp_of_field_name : type a. a t -> a Fmt.t = fun x -> pp_of_field_value (field_value x)
+
+let equal_of_field_value : type a. a v -> (a -> a -> bool) = function
+  | Date -> Date.equal
+  | Mailboxes -> ( fun a b -> try List.for_all2 Mailbox.equal a b with _ -> false)
+  | Mailbox -> Mailbox.equal
+  | Addresses -> ( fun a b -> try List.for_all2 Address.equal a b with _ -> false)
+  | MessageID -> MessageID.equal
+  | Unstructured -> Unstructured.equal
+
+let equal_of_field_name : type a. a t -> (a -> a -> bool) = fun x -> equal_of_field_value (field_value x)

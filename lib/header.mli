@@ -6,6 +6,7 @@ val pp_value : value Fmt.t
 
 val get : Field_name.t -> t -> (Number.t * value * Location.t) list
 val add : Field.field -> t -> t
+val add_or_replace : Field.field -> t -> t
 val empty : t
 val pp : t Fmt.t
 val content : t -> Content.t

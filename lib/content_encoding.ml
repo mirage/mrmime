@@ -22,6 +22,16 @@ let of_string = function
    - let the user to craft an extension token.
    - check IETF database *)
 
+let equal a b = match a, b with
+  | `Bit7, `Bit7 -> true
+  | `Bit8, `Bit8 -> true
+  | `Binary, `Binary -> true
+  | `Quoted_printable, `Quoted_printable -> true
+  | `Base64, `Base64 -> true
+  | `Ietf_token a, `Ietf_token b -> String.(equal (lowercase_ascii a) (lowercase_ascii b))
+  | `X_token a, `X_token b -> String.(equal (lowercase_ascii a) (lowercase_ascii b))
+  | _, _ -> false
+
 module Encoder = struct
   open Encoder
 

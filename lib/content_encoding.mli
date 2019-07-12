@@ -12,6 +12,8 @@ val of_string : string -> (t, [ `Msg of string ]) result
 (** [of_string x] is the standard mechanism [x]. If [x] is an invalid mechanism,
    [of_string] returns an error. *)
 
+val equal : t -> t -> bool
+
 module Encoder : sig
   val mechanism : t Encoder.t
 end
