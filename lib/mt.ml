@@ -104,7 +104,16 @@ let multipart_content_default =
   let open Content_type in
   Content.make (make `Multipart (Subtype.v `Multipart "mixed") Parameters.empty)
 
-let multipart ?(content= multipart_content_default) ?boundary ?(fields= []) parts =
+type 'g rng = ?g:'g -> int -> string
+external random_seed : unit -> int array = "caml_sys_random_seed"
+
+let rng ?(g= random_seed ()) n =
+  Random.full_init g ;
+  let res = Bytes.create n in
+  for i = 0 to n - 1 do Bytes.set res i (Random.int 256 |> Char.chr) done ;
+  Bytes.unsafe_to_string res
+
+let multipart ~rng ?(content= multipart_content_default) ?boundary ?(fields= []) parts =
   if not (Content.is_multipart content)
   then Fmt.invalid_arg "Content-type MUST be multipart" ;
   let content = match Content.boundary content, boundary with
@@ -113,8 +122,11 @@ let multipart ?(content= multipart_content_default) ?boundary ?(fields= []) part
       let boundary = Content_type.Parameters.value_exn boundary in
       Content.add_parameter ~key:"boundary" ~value:boundary content
     | None, None ->
-      let gen = assert false in
-      Content.add_parameter ~key:"boundary" ~value:gen content in
+      let boundary =
+        let raw = rng ?g:None 8 in
+        let pp = Fmt.iter ~sep:(fun _ _ -> ()) String.iter (fun ppf chr -> Fmt.pf ppf "%02x" (Char.code chr)) in
+        Fmt.strf "%a" pp raw in
+      Content.add_parameter ~key:"boundary" ~value:(Content_type.Parameters.value_exn boundary) content in
   { content; fields; parts; }
 
 let none = (fun () -> None)

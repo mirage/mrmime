@@ -5,10 +5,11 @@ type field = Field_name.t * Unstructured.t
 
 type part
 type multipart
+type 'g rng = ?g:'g -> int -> string
 
+val rng : int array rng
 val part : ?content:Content.t -> ?fields:field list -> buffer stream -> part
-val multipart : ?content:Content.t -> ?boundary:string -> ?fields:field list -> part list -> multipart
-
+val multipart : rng:'g rng -> ?content:Content.t -> ?boundary:string -> ?fields:field list -> part list -> multipart
 val multipart_as_part : multipart -> part
 
 type 'x body
