@@ -52,6 +52,9 @@ val equal : t -> t -> bool
 val reconstruct : t -> string
 (** [reconstruct t] reconstructs [t] as it is in the mail. *)
 
+val of_string : string -> (t, [ `Msg of string ]) result
+(** [of_string v] tries to parse [v] as an encoded-word (according RFC 2047). *)
+
 module Encoder : sig
   val encoded_word : t Encoder.t
 end

@@ -69,6 +69,10 @@ let equal a b =
        ~error:(fun (`Msg _) (`Msg _) -> true)
        a.Rfc2047.data b.Rfc2047.data
 
+let of_string x = match Angstrom.parse_string Rfc2047.encoded_word x with
+  | Ok v -> Ok v
+  | Error _ -> Rresult.R.error_msgf "%S is not a valid encoded-word" x
+
 module BBuffer = Buffer
 (* XXX(dinosaure): ... *)
 
