@@ -239,6 +239,10 @@ module Domain : sig
      {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
      {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
 
+  val of_list : string list -> (Rfc5322.domain, [ `Msg of string ]) result
+  (** [of_list l] returns a domain from a non-empty list of well-formed atom
+     elements. Otherwise, it returns an error. *)
+
   val v : 'a t -> 'a -> Rfc5322.domain
   (** Same as {!make} but raises an [Invalid_argument] instead [Error]. *)
 

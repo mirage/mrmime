@@ -328,6 +328,20 @@ module Domain = struct
   type atom = [`Atom of string]
   type literal = [`Literal of string]
 
+  let of_list l =
+    let l = List.map atom l in
+    let l =
+      List.fold_left
+        (fun a x -> match a, x with
+           | (Error _ as err), _ -> err
+           | _, (Error _ as err) -> err
+           | Ok a, Ok (`Atom x) -> Ok (x :: a))
+        (Ok []) l in
+    let open Rresult.R in
+    l >>| List.rev >>= function
+    | [] -> error_msgf "A domain must contain at least one element"
+    | v -> Ok (`Domain v)
+
   type 'a domain =
     | ( :: ) : atom * 'a domain -> 'a Peano.s domain
     | [] : Peano.z domain
