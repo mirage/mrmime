@@ -6,7 +6,6 @@ type field = Field_name.t * Unstructured.t
 let iter ~f buf ~off ~len = for i = off to len - 1 do f buf.[i] done
 
 let to_quoted_printable : ?length:int -> buffer stream -> buffer stream = fun ?length:(chunk_length= 4096) stream ->
-  let chunk_length = 4096 in
   let chunk = Bytes.create chunk_length in
   let encoder = Pecu.encoder `Manual in
   let queue = Ke.Rke.create ~capacity:128 Bigarray.Int in
@@ -28,10 +27,16 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream = fun ?l
       ( match Pecu.encode encoder `Await with
         | `Ok -> go ()
         | `Partial -> emit () )
-    | 257 (* End *) ->
+    | 257 (* Line_break *) ->
+      (* XXX(dinosaure): we encode, in any case, a last CRLF to ensure that any
+         line emitted by [to_quoted_printable] finish with a [CRLF]. TODO: may
+         be this behavior is strictly under [Pecu] impl. *)
       Ke.Rke.cons queue 258 ;
+      pending @@ Pecu.encode encoder `Line_break
+    | 258 (* End *) ->
+      Ke.Rke.cons queue 259 ;
       pending @@ Pecu.encode encoder `End
-    | 258 -> assert (Pecu.encode encoder `Await = `Ok) ; Ke.Rke.cons queue 258 ; None
+    | 259 -> assert (Pecu.encode encoder `Await = `Ok) ; Ke.Rke.cons queue 259 ; None
     | chr ->
       ( match Pecu.encode encoder (`Char (Char.chr chr)) with
         | `Ok -> go ()
