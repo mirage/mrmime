@@ -296,6 +296,10 @@ module Local : sig
   val make : 'a local -> (Rfc822.local, [ `Msg of string ]) result
   (** [make l] returns a {!local} only if [l] is a non-empty list. *)
 
+  val of_list : string list -> (Rfc822.local, [ `Msg of string ]) result
+  (** [of_list l] returns a local-part from a non-empty list of well-formed
+     words. Otherwise, it returns an error. *)
+
   val v : 'a local -> Rfc822.local
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 

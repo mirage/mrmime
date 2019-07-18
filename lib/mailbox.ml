@@ -16,6 +16,40 @@ type local = word list
 type t = Rfc5322.mailbox =
   {name: phrase option; local: local; domain: domain * domain list}
 
+let pp_word ppf = function
+  | `Atom x -> Fmt.string ppf x
+  | `String x -> Fmt.pf ppf "%S" x
+
+let pp_phrase : phrase Fmt.t =
+  let pp_elt ppf = function
+    | `Dot -> Fmt.string ppf "."
+    | `Word w -> pp_word ppf w
+    | `Encoded e -> Encoded_word.pp ppf e
+  in
+  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
+
+let pp_literal_domain ppf = function
+  | IPv4 v -> Ipaddr.V4.pp ppf v
+  | IPv6 v -> Ipaddr.V6.pp ppf v
+  | Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
+
+let pp_domain ppf = function
+  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
+  | `Literal s -> Fmt.pf ppf "[%s]" s
+  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
+
+let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
+
+let pp : t Fmt.t =
+ fun ppf x ->
+  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
+    Fmt.(hvbox (Dump.option pp_phrase))
+    x.Rfc5322.name
+    Fmt.(hvbox pp_local)
+    x.Rfc5322.local
+    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
+    x.Rfc5322.domain
+
 let equal_word ?(sensitive = false) a b = match a, b with
   | (`Atom a | `String a), (`Atom b | `String b) ->
     if sensitive
@@ -117,12 +151,12 @@ module Encoder = struct
     | `String x -> eval ppf str (escape_string x)
 
   let dot =
-    (fun ppf () -> eval ppf [ cut; char $ '.'; cut ]), ()
+    (fun ppf () -> eval ppf [ char $ '.' ]), ()
   let comma =
     (fun ppf () -> eval ppf [ cut; char $ ','; cut ]), ()
 
   let local ppf lst =
-    eval ppf [ box; !!(list ~sep:dot word); close ] lst
+    eval ppf [ !!(list ~sep:dot word); ] lst
 
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
@@ -151,10 +185,10 @@ module Encoder = struct
   let mailbox ppf (t:Rfc5322.mailbox) =
     match t.Rfc5322.name, t.Rfc5322.domain with
     | Some name, (x, []) ->
-      eval ppf [ box; !!phrase ; spaces 1; char $ '<'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
+      eval ppf [ box; !!phrase ; spaces 1; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
         name t.Rfc5322.local x
     | None, (x, []) ->
-      eval ppf [ box; !!local ; cut; char $ '@'; cut; !!domain; close ]
+      eval ppf [ box; !!local ; char $ '@'; !!domain; close ]
         t.Rfc5322.local x
     | name, (x, r) ->
       let domains ppf lst =
@@ -164,7 +198,7 @@ module Encoder = struct
       let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
 
       eval ppf
-        [ box; !!(option phrase); cut; char $ '<'; cut; !!domains; cut; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
+        [ box; !!(option phrase); cut; char $ '<'; !!domains; char $ ':'; !!local; char $ '@'; !!domain; char $ '>'; close ]
         name r t.Rfc5322.local x
 
   let mailboxes = list ~sep:comma mailbox
@@ -356,6 +390,20 @@ module Local = struct
     | [] -> Rresult.R.error_msg "A local-part must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
+  let of_list l =
+    let l = List.map word l in
+    let l =
+      List.fold_left
+        (fun a x -> match a, x with
+           | (Error _ as err), _ -> err
+           | _, (Error _ as err) -> err
+           | Ok a, Ok x -> Ok (List.cons x a))
+        (Ok []) l in
+    let open Rresult.R in
+    l >>| List.rev >>= function
+    | [] -> error_msgf "A local-part must contain at least one element"
+    | v -> Ok v
+
   let v : type a. a local -> Rfc822.local =
    fun l ->
     match make l with
@@ -385,40 +433,6 @@ let to_string x = Encoder.to_string Encoder.mailbox x
 let of_string x = match Angstrom.parse_string Rfc5322.mailbox x with
   | Ok v -> Ok v
   | Error _ -> Rresult.R.error_msgf "Invalid mailbox: %S" x
-
-let pp_word ppf = function
-  | `Atom x -> Fmt.string ppf x
-  | `String x -> Fmt.pf ppf "%S" x
-
-let pp_phrase : phrase Fmt.t =
-  let pp_elt ppf = function
-    | `Dot -> Fmt.string ppf "."
-    | `Word w -> pp_word ppf w
-    | `Encoded e -> Encoded_word.pp ppf e
-  in
-  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
-
-let pp_literal_domain ppf = function
-  | IPv4 v -> Ipaddr.V4.pp ppf v
-  | IPv6 v -> Ipaddr.V6.pp ppf v
-  | Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
-
-let pp_domain ppf = function
-  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
-  | `Literal s -> Fmt.pf ppf "[%s]" s
-  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
-
-let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
-
-let pp : t Fmt.t =
- fun ppf x ->
-  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
-    Fmt.(hvbox (Dump.option pp_phrase))
-    x.Rfc5322.name
-    Fmt.(hvbox pp_local)
-    x.Rfc5322.local
-    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
-    x.Rfc5322.domain
 
 let mailboxes_to_unstructured ~field_name x =
   Unstructured.to_unstructured ~field_name Encoder.mailboxes x
