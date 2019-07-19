@@ -50,7 +50,7 @@ let only_spaces x =
   !res
 
 let of_string x =
-  match Angstrom.parse_string Rfc5322.unstructured x with
+  match Angstrom.parse_string Rfc5322.unstructured (x ^"\r\n") with
   | Ok v -> v
   | Error _ -> Fmt.failwith "Impossible to craft an unstructured value from %S" x
 
