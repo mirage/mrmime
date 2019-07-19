@@ -151,12 +151,12 @@ module Encoder = struct
     | `String x -> eval ppf str (escape_string x)
 
   let dot =
-    (fun ppf () -> eval ppf [ char $ '.' ]), ()
+    (fun ppf () -> eval ppf [ cut; char $ '.'; cut ]), ()
   let comma =
     (fun ppf () -> eval ppf [ cut; char $ ','; cut ]), ()
 
   let local ppf lst =
-    eval ppf [ !!(list ~sep:dot word); ] lst
+    eval ppf [ box; !!(list ~sep:dot word); close ] lst
 
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
@@ -185,10 +185,10 @@ module Encoder = struct
   let mailbox ppf (t:Rfc5322.mailbox) =
     match t.Rfc5322.name, t.Rfc5322.domain with
     | Some name, (x, []) ->
-      eval ppf [ box; !!phrase ; spaces 1; char $ '<'; !!local; char $ '@'; !!domain; char $ '>'; close ]
+      eval ppf [ box; !!phrase ; spaces 1; char $ '<'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
         name t.Rfc5322.local x
     | None, (x, []) ->
-      eval ppf [ box; !!local ; char $ '@'; !!domain; close ]
+      eval ppf [ box; !!local ; cut; char $ '@'; cut; !!domain; close ]
         t.Rfc5322.local x
     | name, (x, r) ->
       let domains ppf lst =
@@ -198,7 +198,7 @@ module Encoder = struct
       let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
 
       eval ppf
-        [ box; !!(option phrase); cut; char $ '<'; !!domains; char $ ':'; !!local; char $ '@'; !!domain; char $ '>'; close ]
+        [ box; !!(option phrase); cut; char $ '<'; cut; !!domains; cut; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
         name r t.Rfc5322.local x
 
   let mailboxes = list ~sep:comma mailbox
