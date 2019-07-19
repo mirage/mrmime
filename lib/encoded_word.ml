@@ -11,6 +11,7 @@ exception Invalid_utf8
 
 let b = Rfc2047.Base64
 let q = Rfc2047.Quoted_printable
+let ( <.> ) f g = fun x -> f (g x)
 
 let is_utf8_valid_string x =
   try
@@ -21,6 +22,34 @@ let is_utf8_valid_string x =
   with Invalid_utf8 -> false
 
 let is_normalized = Rfc2047.is_normalized
+let charset_of_string = snd <.> Rfc2047.charset_of_string
+
+let normalize_to_utf8 ~charset raw = match charset with
+  | `US_ASCII -> Ok raw (* XXX(dinosaure): UTF-8 is a superset of US-ASCII *)
+  | #Rosetta.encoding as charset ->
+    let bf = Buffer.create (String.length raw) in
+    let decoder = Rosetta.decoder charset (`String raw) in
+    let encoder = Uutf.encoder `UTF_8 (`Buffer bf) in
+    let rec go () = match Rosetta.decode decoder with
+      | `Malformed err -> Rresult.R.error_msg err
+      | `Await -> assert false
+      | `Uchar _ as uchar -> let[@warning "-8"] `Ok : [ `Ok | `Partial ] = Uutf.encode encoder uchar in go ()
+      | `End as v -> let[@warning "-8"] `Ok : [ `Ok | `Partial ] = Uutf.encode encoder v in Ok (Buffer.contents bf) in
+    go ()
+  | `UTF_8 -> Ok raw (* XXX(dinosaure): check? *)
+  | #uutf_charset as charset ->
+    let bf = Buffer.create (String.length raw) in
+    let decoder = Uutf.decoder ~encoding:charset (`String raw) in
+    let encoder = Uutf.encoder `UTF_8 (`Buffer bf) in
+    let rec go () = match Uutf.decode decoder with
+      | `Malformed err -> Rresult.R.error_msg err
+      | `Await -> assert false
+      | `Uchar _ as uchar ->
+        let[@warning "-8"] `Ok : [ `Ok | `Partial ] = Uutf.encode encoder uchar in go ()
+      | `End as v ->
+        let[@warning "-8"] `Ok : [ `Ok | `Partial ] = Uutf.encode encoder v in Ok (Buffer.contents bf) in
+    go ()
+  | `Charset v -> Rresult.R.error_msgf "encoding %s is not supported" v
 
 let make ~encoding value =
   if is_utf8_valid_string value then

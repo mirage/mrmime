@@ -52,6 +52,9 @@ val equal : t -> t -> bool
 val reconstruct : t -> string
 (** [reconstruct t] reconstructs [t] as it is in the mail. *)
 
+val charset_of_string : string -> Rfc2047.charset
+val normalize_to_utf8 : charset:Rfc2047.charset -> string -> (string, [ `Msg of string ]) result
+
 val of_string : string -> (t, [ `Msg of string ]) result
 (** [of_string v] tries to parse [v] as an encoded-word (according RFC 2047). *)
 
