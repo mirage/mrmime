@@ -239,6 +239,10 @@ module Domain : sig
      {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
      {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
 
+  val of_list : string list -> (Rfc5322.domain, [ `Msg of string ]) result
+  (** [of_list l] returns a domain from a non-empty list of well-formed atom
+     elements. Otherwise, it returns an error. *)
+
   val v : 'a t -> 'a -> Rfc5322.domain
   (** Same as {!make} but raises an [Invalid_argument] instead [Error]. *)
 
@@ -295,6 +299,10 @@ module Local : sig
 
   val make : 'a local -> (Rfc822.local, [ `Msg of string ]) result
   (** [make l] returns a {!local} only if [l] is a non-empty list. *)
+
+  val of_list : string list -> (Rfc822.local, [ `Msg of string ]) result
+  (** [of_list l] returns a local-part from a non-empty list of well-formed
+     words. Otherwise, it returns an error. *)
 
   val v : 'a local -> Rfc822.local
   (** Same as {!make} but raises an exception instead to return [Error]. *)
