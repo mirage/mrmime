@@ -11,12 +11,12 @@
 (executable
  (name fuzz_mailbox)
  (modules fuzz_mailbox)
- (libraries mrmime common crowbar))
+ (libraries hxd.string mrmime common crowbar))
 
 (executable
  (name fuzz_message_id)
  (modules fuzz_message_id)
- (libraries mrmime common crowbar))
+ (libraries hxd.string mrmime common crowbar))
 
 (executable
  (name fuzz_content_type)

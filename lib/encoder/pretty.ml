@@ -1,10 +1,22 @@
+[@@@warning "-32"] (* pretty-printers *)
+
 type vec = { off: int; len: int; }
 type box = Box | TBox of int | BBox
+
+let pp_box ppf = function
+  | Box -> Fmt.string ppf "box"
+  | TBox tab -> Fmt.pf ppf "(TBox %d)" tab
+  | BBox -> Fmt.string ppf "bbox"
 
 type value =
   | String of vec * string
   | Bytes of vec * bytes
   | Bigstring of vec * Bigstringaf.t
+
+let pp_value ppf = function
+  | String (vec, v) -> Fmt.pf ppf "%S" (String.sub v vec.off vec.len)
+  | Bytes (vec, v) -> Fmt.pf ppf "%S" (Bytes.sub_string v vec.off vec.len)
+  | Bigstring _ -> Fmt.pf ppf "#bigstring"
 
 let split_value len x =
   assert (len > 0) ;
@@ -31,6 +43,14 @@ type atom =
   | New_line
   | Open of box
   | Close
+
+let pp_atom ppf = function
+  | Breakable v -> Fmt.pf ppf "<breakable:%a>" pp_value v
+  | Unbreakable v -> Fmt.pf ppf "<unbreakable:%a>" pp_value v
+  | Break { len; indent; } -> Fmt.pf ppf "<break:len= %d, indent= %d>" len indent
+  | New_line -> Fmt.pf ppf "<new-line>"
+  | Open box -> Fmt.pf ppf "(box %a" pp_box box
+  | Close -> Fmt.pf ppf ")"
 
 let box = Box
 let tbox indent = TBox indent
@@ -144,7 +164,7 @@ let pp_token ppf = function
   | TValue (String ({ off; len; }, x)) -> Fmt.pf ppf "%S" (String.sub x off len)
   | TValue (Bytes ({ off; len; }, x)) -> Fmt.pf ppf "%S" (Bytes.sub_string x off len)
   | TValue (Bigstring ({ off; len; }, x)) -> Fmt.pf ppf "%S" (Bigstringaf.substring x ~off ~len)
-  | TBreak len -> Fmt.pf ppf "%S" (String.make len ' ')
+  | TBreak len -> Fmt.pf ppf "<%S>" (String.make len ' ')
   | TBox `Box -> Fmt.pf ppf "["
   | TBox (`Indent n) -> Fmt.pf ppf "[<%d>" n
   | TBox `Root -> Fmt.pf ppf "[<root>"
@@ -204,26 +224,61 @@ let merge_indents k t =
            ; inner= Stack.map (fun _ -> []) t.boxes
            ; breaks= Stack.map (fun _ -> []) t.boxes }
 
+let is_in_box t =
+  let exception In in
+  try Queue.rev_iter (function TBox _ -> raise In | _ -> ()) t.queue ; false
+  with In -> true
+
+let without_last_box q =
+  let rec go q = match Queue.tail q with
+    | Some (q, TBox _) -> q
+    | Some (q, _) -> go q
+    | None -> Queue.empty in
+  go q
+
+let unroll_last_box_and_emit k value t =
+  let rec unroll acc q =
+    let q, x = Queue.tail_exn q in
+    match x with
+    | TBox _ -> List.rev (x :: acc), q
+    | x -> unroll (x :: acc) q in
+  let box, q = unroll [ TValue value ] t.queue in
+  (* assert (Queue.is_empty q = false); *)
+  let k t =
+    let rec roll acc q = match acc with
+      | [] -> q
+      | x :: r -> roll r (Queue.push q x) in
+    let q = roll (List.rev box) t.queue in
+    k { t with queue= q } in
+  emit_line (merge_indents k) { t with queue= q }
+
 let rec kpush_breakable_value ~current_length_of_line k value t =
   if current_length_of_line >= t.margin
   then emit_line (merge_indents (kpush k (Breakable value))) t
   else if current_length_of_line + length_of_token (TValue value) > t.margin
   then
-    let len = t.margin - current_length_of_line in
-    let value0, value1 = split_value len value in
-    let token0 = TValue value0 in
-    let token1 = v ~breakable:true value1 in
-    emit_line (merge_indents (kpush k token1)) { t with queue= Queue.push t.queue token0 }
+    if is_in_box t && not (Queue.is_empty (without_last_box t.queue))
+    then unroll_last_box_and_emit k value t
+    else
+      let len = t.margin - current_length_of_line in
+      let value0, value1 = split_value len value in
+      let token0 = TValue value0 in
+      let token1 = v ~breakable:true value1 in
+      emit_line (merge_indents (kpush k token1)) { t with queue= Queue.push t.queue token0 }
   else k { t with queue= Queue.push t.queue (TValue value)
                 ; inner= Stack.swap_exn (fun lenv -> length_of_value value :: lenv) t.inner }
 
 and kpush_unbreakable_value ~current_length_of_line k value t =
   if current_length_of_line + length_of_token (TValue value) > t.margin && not (Queue.is_empty t.queue)
-  then ( match Queue.pop t.queue with
-         | Some (TBreak _, queue) ->
-           emit_line (merge_indents (kpush k (Unbreakable value))) { t with queue }
-         | Some _ | None ->
-           emit_line (merge_indents (kpush k (Unbreakable value))) t )
+  then ( if is_in_box t && not (Queue.is_empty (without_last_box t.queue))
+         then unroll_last_box_and_emit k value t
+         else match Queue.tail t.queue with
+           | Some (queue, TBreak _) ->
+             emit_line (merge_indents (kpush k (Unbreakable value))) { t with queue }
+           | Some _ ->
+             emit_line (merge_indents (kpush k (Unbreakable value))) t
+           | None ->
+             emit_line (merge_indents (kpush k (Unbreakable value))) t )
   else k { t with queue= Queue.push t.queue (TValue value)
                 ; inner= Stack.swap_exn (fun lenv -> length_of_value value :: lenv) t.inner }
 
@@ -277,7 +332,20 @@ and kpush k value t =
                     ; inner= append t.inner len
                     ; breaks= append t.breaks (`Indent indent) }
 
-let kflush k t = Enclosure.flush (fun encoder -> k { t with encoder }) t.encoder
+let kflush k t =
+  let rec go queue encoder = match Queue.pop queue with
+    | Some (TValue (String ({ off; len; }, v)), queue) ->
+      Enclosure.kschedule_string (go queue) encoder ~off ~len v
+    | Some (TValue (Bytes ({ off; len; }, v)), queue) ->
+      Enclosure.kschedule_bytes (go queue) encoder ~off ~len v
+    | Some (TValue (Bigstring ({ off; len; }, v)), queue) ->
+      Enclosure.kschedule_bigstring (go queue) encoder ~off ~len v
+    | Some (TBreak len, queue) ->
+      Enclosure.kschedule_string (go queue) encoder ~len (String.make len ' ')
+    | Some (TBox _, queue) | Some (TClose, queue) -> go queue encoder
+    | None ->
+      Enclosure.flush (fun encoder -> k { t with encoder; queue= Queue.empty }) encoder in
+  go t.queue t.encoder
 
 external identity : 'a -> 'a = "%identity"
 

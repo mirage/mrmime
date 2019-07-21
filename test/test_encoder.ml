@@ -150,4 +150,12 @@ let make v =
   let res = json_of_string res in
   Alcotest.(check json) "encode:decode:compare" v res
 
-let () = Alcotest.run "format" [("json", List.map make tests)]
+let unroll_box () =
+  Alcotest.test_case "unroll" `Quick @@ fun () ->
+  let g ppf (k, x, y) = let open Encoder in eval ppf [ !!string; char $ ':'; tbox 1; !!string; cut; char $ '&'; cut; !!string; close; new_line ] k x y in
+  let result = Encoder.to_string ~margin:14 g ("AAAAAA", "BBBBBB", "CCCCCC") in
+  Alcotest.(check string) "result" result "AAAAAA:\r\n  BBBBBB&CCCCCC\r\n"
+    (* XXX(dinosaure): instead to cut at [&], it unroll the [tbox] and print elements to the new line. *)
+
+let () = Alcotest.run "format" [ "json", List.map make tests
+                               ; "unroll", [ unroll_box () ] ]

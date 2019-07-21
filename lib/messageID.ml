@@ -15,7 +15,8 @@ let pp_domain : Rfc822.nonsense Rfc822.domain Fmt.t = fun ppf -> function
 let pp_local : local Fmt.t = Fmt.list ~sep:Fmt.(const string ".") pp_word
 
 let pp ppf (local, domain) =
-  Fmt.pf ppf "@[<hov>%a@%a@]"
+  Fmt.pf ppf "{ @[<hov>local= @[<hov>%a@];@ \
+                       domain= @[<hov>%a@]@] }"
     pp_local local
     pp_domain domain
 
