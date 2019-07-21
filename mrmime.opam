@@ -35,6 +35,7 @@ depends: [
   "pecu" {dev}
   "rresult"
   "fmt"
+  "hxd" {with-test}
   "angstrom" {dev}
   "alcotest" {with-test}
   "jsonm" {with-test}
