@@ -143,8 +143,8 @@ let make_word raw =
 module Encoder = struct
   include Encoder
 
-  let atom = [ box; !!string; close ]
-  let str = [ box; char $ '"'; !!string; char $ '"'; close ]
+  let atom = [ !!string; ]
+  let str = [ char $ '"'; !!string; char $ '"'; ]
 
   let word ppf = function
     | `Atom x -> eval ppf atom x
@@ -193,7 +193,8 @@ module Encoder = struct
     | name, (x, r) ->
       let domains ppf lst =
         let domain ppf x = eval ppf [ box; char $ '@'; !!domain; close ] x in
-        let comma = (fun ppf () -> eval ppf [ char $ ','; cut ]), () in
+        (* XXX(dinosaure): according RFC, comma is surrounded by CFWS. *)
+        let comma = (fun ppf () -> eval ppf [ fws; char $ ','; fws ]), () in
         eval ppf [ box; !!(list ~sep:comma domain); close ] lst in
       let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
 

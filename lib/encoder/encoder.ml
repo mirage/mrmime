@@ -9,7 +9,7 @@ let is_empty = Pretty.is_empty
 let flush = Pretty.flush
 let kflush = Pretty.kflush
 
-let to_string ?(new_line= "\r\n") gen value =
+let to_string ?(margin= 78) ?(new_line= "\r\n") gen value =
   let buf = Buffer.create 0x100 in
 
   let emitter =
@@ -27,7 +27,7 @@ let to_string ?(new_line= "\r\n") gen value =
     List.fold_left write 0 in
   let encoder = Pretty.create
       ~emitter
-      ~margin:78
+      ~margin
       ~new_line 0x100 in
   let kend encoder =
     if Pretty.is_empty encoder
@@ -37,7 +37,7 @@ let to_string ?(new_line= "\r\n") gen value =
   let () = Pretty.kflush kend encoder in
   Buffer.contents buf
 
-let to_stream gen value =
+let to_stream ?(margin= 78) ?(new_line= "\r\n") gen value =
   let queue = Queue.create () in
   let line = Buffer.create 4096 in
   let emitter iovecs =
@@ -60,11 +60,11 @@ let to_stream gen value =
     | exception Queue.Empty -> None in
   let encoder = Pretty.create
       ~emitter
-      ~margin:78
-      ~new_line:"\r\n" 4096 in
+      ~margin
+      ~new_line 4096 in
   let kend encoder =
     if Pretty.is_empty encoder then ()
-    else Fmt.failwith "Leave with a non-empty encoder: @[<hov>%a@]" Pretty.pp encoder in
+    else Fmt.failwith "Leave with a non-empty encoder" in
   let () = keval (Pretty.kflush kend) encoder Fancy.[ !!gen ] value in
   consumer
 

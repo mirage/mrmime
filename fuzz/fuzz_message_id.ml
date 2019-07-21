@@ -56,4 +56,6 @@ let () =
   | Ok message_id' ->
     check_eq ~pp:MessageID.pp ~eq:MessageID.equal message_id message_id'
   | Error err ->
+    Fmt.epr "message-id: @[<hov>%a@]\n%!" MessageID.pp message_id ;
+    Fmt.epr "output: @[<hov>%a@]\n%!" (Hxd_string.pp Hxd.O.default) result ;
     failf "%a can not be parsed: %s" MessageID.pp message_id err

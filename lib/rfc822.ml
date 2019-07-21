@@ -678,8 +678,11 @@ let word =
    From RFC 5322
 
      dot-atom-text   =   1*atext *("." 1*atext)
+
+   XXX(dinosaure): no CFWS here!
 *)
-let dot_atom_text = sep_by1 (char '.') (Rfc6532.with_uutf1_without_raw is_atext)
+let dot_atom_text =
+  sep_by1 (char '.') (Rfc6532.with_uutf1_without_raw is_atext)
 
 (* From RFC 2822
 
@@ -741,10 +744,14 @@ let dot_atom = option () cfws *> dot_atom_text <* option () cfws
 
    XXX(dinosaure): local-part MUST not be empty.
 *)
-let obs_local_part = sep_by1 (char '.') word
+let obs_local_part =
+  word >>= fun fst ->
+  let p = char '.' *> option () cfws *> word in
+  many p >>= fun rst ->
+  return (fst :: rst)
 
 let local_part =
-  obs_local_part
+  obs_local_part <?> "obs-local-part"
   <|> (dot_atom >>| List.map (fun x -> `Atom x))
   <|> (quoted_string >>| fun s -> [`String s])
 
@@ -1076,7 +1083,6 @@ let id_right ~address_literal =
      characters.
 *)
 let msg_id ~address_literal =
-  option () cfws *> char '<' *> id_left
-  >>= fun left ->
-  char '@' *> id_right ~address_literal
+  option () cfws *> char '<' *> (id_left <?> "id-left")
+  >>= fun left -> char '@' *> id_right ~address_literal
   >>= fun right -> char '>' *> option () cfws >>| fun () -> (left, right)

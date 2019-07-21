@@ -93,4 +93,5 @@ let () =
   | Ok mailbox' ->
     check_eq ~pp:Mailbox.pp ~eq:Mailbox.equal mailbox mailbox'
   | Error err ->
+    Fmt.epr "output: @[<hov>%a@]\n%!" (Hxd_string.pp Hxd.O.default) result ;
     failf "%a can not be parsed: %s" Mailbox.pp mailbox err
