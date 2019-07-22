@@ -197,4 +197,5 @@ module Encoder : sig
   val date : t Encoder.t
 end
 
+val to_string : t -> string
 val to_unstructured : t -> Unstructured.t
