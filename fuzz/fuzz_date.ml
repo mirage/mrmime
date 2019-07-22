@@ -111,11 +111,11 @@ let () =
   match Ptime.of_float_s (Pervasives.floor seconds) with
   | None -> Crowbar.bad_test ()
   | Some ptime ->
-    match Date.of_ptime ~zone ptime with
-    | Ok date ->
-      let ptime' = Date.to_ptime date in
-
+    let date = Date.of_ptime ~zone ptime in
+    match Date.to_ptime date with
+    | Ok ptime' ->
       check_eq ~pp:Fmt.int64 ~eq:Int64.equal
         ((Int64.of_float <.> Ptime.to_float_s) ptime)
         ((Int64.of_float <.> Ptime.to_float_s) ptime')
-    | Error _ -> Crowbar.failf "Can not make a date from %a" (Ptime.pp_rfc3339 ()) ptime
+    | Error (`Msg err) ->
+      failf "isormisphm was not respected on %a: %s" Mrmime.Date.pp date err

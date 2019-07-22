@@ -363,9 +363,8 @@ let to_ptime date =
   let (hh, mm, ss) = date.time in
   let ss = Option.value ~default:0 ss in
   match Ptime.of_date_time ((y, m, d), ((hh, mm, ss), z)) with
-  | Some ptime -> ptime
-  | None -> Fmt.failwith "Invalid date: %a" pp date
-(* XXX(dinosaure): should never fail. *)
+  | Some ptime -> Ok ptime
+  | None -> Rresult.R.error_msgf "Invalid date: %a" pp date
 
 let of_ptime ~zone ptime =
   let tz_offset_s =
@@ -373,12 +372,18 @@ let of_ptime ~zone ptime =
     hh * 3600 + mm * 60 in
   let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
   let date = (y, (Month.of_int_exn m), d) in
-  make date (hh, mm, Some ss) zone
+  match make date (hh, mm, Some ss) zone with
+  | Ok date_time -> date_time
+  | Error _ -> assert false
+(* XXX(dinosaure): error can reach if [Ptime.of_date_time] fails (but values
+   come from [Ptime.to_date_time]), so this should not fail. Then, an other path
+   is when we define a [?day] and it does not correspond to what [Ptime] expecs.
+   Of course, this call, we did not notice [?day]. *)
 
-let compare a b =
-  let a = to_ptime a in
-  let b = to_ptime b in
-  Ptime.compare a b
+let compare a b = match to_ptime a, to_ptime b with
+  | Ok a, Ok b -> Ptime.compare a b
+  | Error (`Msg err), _ -> failwith err
+  | _, Error (`Msg err) -> failwith err
 
 let equal_option equal a b = match a, b with
   | Some a, Some b -> equal a b

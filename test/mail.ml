@@ -47,10 +47,7 @@ let example0 =
     let open Unstructured in
     [ v "First"; sp 1; v "email" ] in
 
-  let now =
-    Date.of_ptime ~zone:Date.Zone.GMT (Ptime_clock.now ())
-    |> Rresult.R.get_ok in
-
+  let now = Date.of_ptime ~zone:Date.Zone.GMT (Ptime_clock.now ()) in
   let part0 = Mt.part ~content:content0 (stream_of_random 4096) in
   let part1 = Mt.part ~content:content1 (stream_of_string "Hello World!") in
   let multipart = Mt.multipart ~rng:Mt.rng [ part0; part1 ] in
@@ -84,10 +81,7 @@ let example1 =
     let open Unstructured in
     [ v "Second"; sp 1; v "email" ] in
 
-  let now =
-    Date.of_ptime ~zone:Date.Zone.GMT (Ptime_clock.now ())
-    |> Rresult.R.get_ok in
-
+  let now = Date.of_ptime ~zone:Date.Zone.GMT (Ptime_clock.now ()) in
   let part = Mt.part ~content:content0 (stream_of_string "Hello World!") in
 
   let header =

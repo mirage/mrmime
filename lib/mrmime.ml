@@ -18,6 +18,7 @@ module Content_encoding = Content_encoding
 module MessageID = MessageID
 module Content_type = Content_type
 module Content = Content
+module Content_field = Content_field
 module Encoded_word = Encoded_word
 module Mailbox = Mailbox
 module Option = Option
