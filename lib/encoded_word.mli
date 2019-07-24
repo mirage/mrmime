@@ -10,7 +10,10 @@ type charset =
 type encoding = Rfc2047.encoding = Quoted_printable | Base64
 
 val b : encoding
+(** Base64 encoding. *)
+
 val q : encoding
+(** Inline quoted-printable encoding. *)
 
 type t = Rfc2047.encoded_word =
   { charset: charset
@@ -30,6 +33,7 @@ val make : encoding:encoding -> string -> (t, [ `Msg of string ]) result
    valid UTF-8 contents in any cases. *)
 
 val make_exn : encoding:encoding -> string -> t
+(** Alias of {!make} but raises an [Invalid_argument] if it fails. *)
 
 (** Accessors. *)
 
@@ -53,10 +57,17 @@ val reconstruct : t -> string
 (** [reconstruct t] reconstructs [t] as it is in the mail. *)
 
 val charset_of_string : string -> Rfc2047.charset
+(** [charset_of_string s] returns {i charset} of well-formed charset identifier
+   [s] (according IANA). *)
+
 val normalize_to_utf8 : charset:Rfc2047.charset -> string -> (string, [ `Msg of string ]) result
+(** [normalize_to_utf8 ~charset s] maps a source [s] which is encoded with the
+   charset {!charset} and try to map/normalize it to UTF-8. *)
 
 val of_string : string -> (t, [ `Msg of string ]) result
 (** [of_string v] tries to parse [v] as an encoded-word (according RFC 2047). *)
+
+(** {2 Encoders.} *)
 
 module Encoder : sig
   val encoded_word : t Encoder.t

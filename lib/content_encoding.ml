@@ -10,6 +10,11 @@ let pp ppf = function
   | `X_token token -> Fmt.pf ppf "x:%s" token
 
 let default = `Bit7
+let bit8 = `Bit8
+let bit7 = `Bit7
+let binary = `Binary
+let quoted_printable = `Quoted_printable
+let base64 = `Base64
 
 let of_string = function
   | "7bit" -> Ok `Bit7

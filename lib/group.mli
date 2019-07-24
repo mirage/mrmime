@@ -8,12 +8,12 @@ val make : name:phrase -> Mailbox.t list -> t option
 val v : name:phrase -> Mailbox.t list -> t
 (** Same as {!make} but raises an exception if list of mailboxes is empty. *)
 
-(** {2 Equals.} *)
+(** {2 Equal.} *)
 
 val equal : t -> t -> bool
 (** Equal function of {!t}. *)
 
-(** {2 Pretty-printers.} *)
+(** {2 Pretty-printer.} *)
 
 val pp : t Fmt.t
 (** Pretty-printer of {!t}. *)

@@ -46,5 +46,28 @@ type 'value decode =
   | `Malformed of string ]
 
 val decoder : field_name:Field_name.t -> 'value Value.t -> Bigstringaf.t -> 'value decoder
+(** [decoder ~field_name witness queue] make a new header decoder which will
+   record any [field_name] which contains a ['v] correspoding to the type
+   witness [witness]. Length of [queue] must be a power of two. *)
+
 val decode : 'value decoder -> 'value decode
+(** [decode decoder] decodes given inputs and returns:
+
+    {ul
+    {- [`Await] if we expect more inputs (then, a call to {!src} is needed).}
+    {- [`End] when we reach end of the header (signaled by two [CRLF] tokens)
+   with epilogue ([string] which is not a part of the header - and should be a
+   part of the body).}
+    {- [`Lines (line, location)] when we can not parse inputs as a binding of a
+   field name and a value separated by a colon.}
+    {- [`Field (field_name, value)] when we reach expected [field_name] (see
+   {!decoder}) with a well-formed already {i parsed} value (see type witness of
+   {!decoder}).}
+    {- [`Other (field_name, value)] when we reach a binding of a field-name with
+   a {i non-parsed} value. [field_name] can be equal to expected field-name
+   notified to {!decoder} but we are not able to parse value correctly according
+   to type witness expected.}} *)
+
 val src : 'value decoder -> string -> int -> int -> (unit, Rresult.R.msg) result
+(** [src decoder v off len] refills [decoder] with [v] starting at [off] with
+   [len] bytes. inputs must be smaller than the given space in {!decoder}. *)
