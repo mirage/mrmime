@@ -3,16 +3,14 @@ name:         "mrmime"
 version:      "dev"
 maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
-homepage:     "https://github.com/oklm-wsh/MrMime"
-bug-reports:  "https://github.com/oklm-wsh/MrMime/issues"
-dev-repo:     "git+https://github.com/oklm-wsh/MrMime.git"
+homepage:     "https://github.com/mirage/mrmime"
+bug-reports:  "https://github.com/mirage/mrmime/issues"
+dev-repo:     "git+https://github.com/mirage/mrmime.git"
 license:      "MIT"
 synopsis:     "Mr. MIME"
 
-build: [
-  ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
-]
+build: ["dune" "build" "-p" name "-j" jobs]
+run-test: ["dune" "runtest" "-p" name "-j" jobs]
 
 pin-depends: [
  [ "base64.dev" "git+https://github.com/mirage/ocaml-base64.git"]
