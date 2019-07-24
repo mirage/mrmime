@@ -25,5 +25,14 @@ module Encoder : sig
   val addresses : t list Encoder.t
 end
 
+(** {2 Unstructured cast.} *)
+
 val addresses_to_unstructured : field_name:Field_name.t -> t list -> Unstructured.t
+(** [addresses_to_unstructured ~field_name addresses] map a list of addresses to
+   an {!Unstructured.t} value. Should never fail - in this case, it raises a
+   [Failure]. *)
+
 val to_unstructured : field_name:Field_name.t -> t -> Unstructured.t
+(** [to_unstructured ~field_name t] map an {i address} (eg. {!t}) to an
+   {!Unstructured.t} value. Should never fail - in this case, it raises a
+   [Failure]. *)

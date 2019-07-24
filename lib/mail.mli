@@ -37,10 +37,19 @@ type mail = ((string, string) contents, string) t
 type 'id stream = ('id, 'id) t
 
 val header : (Header.t * Garbage.t) Angstrom.t
+(** Angstrom parser of a RFC 5322 header. *)
+
 val heavy_octet : string option -> Content.t -> (string, string) contents Angstrom.t
+(** {i Heavy} parser of a body - it will stores bodies into [string]. *)
+
 val light_octet : emitter:(string option -> unit) -> string option -> Content.t -> unit Angstrom.t
+(** {i Light} parser of body - it sends contents to given [emitter]. *)
+
 val mail : (Header.t * mail) Angstrom.t
+(** Angstrom parser of an entire RFC 5322 mail (including header). *)
 
 type 'id emitters = Content.t -> (string option -> unit) * 'id
 
 val stream : emitters:(Content.t -> (string option -> unit) * 'id) -> (Header.t * 'id stream) Angstrom.t
+(** [stream ~emitters] is an Angstrom parser of an entire RFC 5322 mail which
+   will use given emitters by [emitters] to store bodies. *)

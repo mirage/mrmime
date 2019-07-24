@@ -183,7 +183,7 @@ val pp : t Fmt.t
 (** {2 Equals.} *)
 
 val equal : t -> t -> bool
-(** Equal on {!t}. *)
+(** Equal of {!t}. *)
 
 (** {2 Encoder of content-type.} *)
 
