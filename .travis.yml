@@ -11,3 +11,4 @@ env:
    - PINS="crowbar:https://github.com/stedolan/crowbar.git"
  matrix:
    - OCAML_VERSION=4.07 TESTS=true
+   - OCAML_VERSION=4.08 TESTS=true
