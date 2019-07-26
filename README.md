@@ -1,4 +1,4 @@
-# Mr. MIME (MuGltipurpose Internet Mail Extensions)
+# Mr. MIME (Multipurpose Internet Mail Extensions)
 
 `mrmime` is a library to parse and generate mail according several RFCs:
 - [RFC822][rfc822]: Standard For The Format of ARPA Internet Text Messages
