@@ -16,7 +16,7 @@ run-test: ["dune" "runtest" "-p" name "-j" jobs]
 
 depends: [
   "ocaml" {>= "4.03.0"}
-  "dune" {build}
+  "dune"
   "uutf"
   "ke" {>= "0.4"}
   "ptime"
