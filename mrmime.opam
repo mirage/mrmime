@@ -27,6 +27,7 @@ depends: [
   "pecu" {>= "0.3"}
   "rresult"
   "fmt"
+  "bigarray-compat"
   "hxd" {with-test}
   "angstrom" {>= "0.11.0"}
   "alcotest" {with-test}
