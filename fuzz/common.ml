@@ -29,9 +29,28 @@ let alphabet_from_predicate predicate =
       go idx (n - 1) in
   go 0 255 ; Bytes.unsafe_to_string res
 
-let atext = alphabet_from_predicate Mrmime.Rfc822.is_atext
-let dtext = alphabet_from_predicate Mrmime.Rfc822.is_dtext
+let is_dcontent = function
+  | '\033' .. '\090' | '\094' .. '\126' -> true
+  | _ -> false
+
+let is_atext = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '!' | '#' | '$' | '%' | '&' | '\'' | '*' | '+' | '-' | '/' | '=' | '?'
+  | '^' | '_' | '`' | '{' | '}' | '|' | '~' -> true
+  | _ -> false
+
+let is_obs_no_ws_ctl = function
+  | '\001' .. '\008' | '\011' | '\012' | '\014' .. '\031' | '\127' -> true
+  | _ -> false
+
+let is_dtext = function
+  | '\033' .. '\090' | '\094' .. '\126' -> true
+  | c -> is_obs_no_ws_ctl c
+
+let atext = alphabet_from_predicate is_atext
+let dtext = alphabet_from_predicate is_dtext
 let ldh_str = alphabet_from_predicate (function 'a' .. 'z' | 'A'.. 'Z' | '0' .. '9' | '-' -> true | _ -> false)
 let let_dig = alphabet_from_predicate (function 'a' .. 'z' | 'A'.. 'Z' | '0' .. '9' -> true | _ -> false)
-(* XXX(dinosaure): see [Rfc5321.ldh_str] and [Rfc5321.let_dig]. *)
-let dcontent = alphabet_from_predicate Mrmime.Rfc5321.is_dcontent
+let dcontent = alphabet_from_predicate is_dcontent

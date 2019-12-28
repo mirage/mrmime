@@ -3,8 +3,8 @@ open Common
 
 (* XXX(dinosaure): we did not generate UTF-8 valid string - we refer only on RFC 822. *)
 
-let token = alphabet_from_predicate Mrmime.Rfc2045.is_token
-let qtext = alphabet_from_predicate Mrmime.Rfc822.is_qtext
+let token = alphabet_from_predicate Mrmime.Content_type.is_token
+let qtext = alphabet_from_predicate Mrmime.Content_type.is_qtext
 
 let token = dynamic_bind (range ~min:1 32) (string_from_alphabet token)
 
@@ -33,7 +33,7 @@ let ty =
     ; map [ x_token ] (fun v -> `X_token v) ]
 
 let iana ty =
-  choose (Mrmime.Iana.Map.find (Mrmime.Rfc2045.ty_to_string ty) Mrmime.Iana.database
+  choose (Mrmime.Iana.Map.find (Mrmime.Content_type.Type.to_string ty) Mrmime.Iana.database
           |> Mrmime.Iana.Set.elements
           |> List.map const)
 
@@ -42,8 +42,8 @@ let key = map [ token ] (fun v -> match Mrmime.Content_type.Parameters.key v wit
     | Error _ -> bad_test ())
 
 let subty = function
-  | (#Mrmime.Rfc2045.discrete
-    | #Mrmime.Rfc2045.composite) as ty -> map [ iana ty ] (fun v -> ty, `Iana_token v)
+  | (#Mrmime.Content_type.Type.discrete
+    | #Mrmime.Content_type.Type.composite) as ty -> map [ iana ty ] (fun v -> ty, `Iana_token v)
   | ty -> map [ x_token ] (fun v -> ty, `X_token v)
 
 let parameter = map [ key; value] (fun key value -> (key, value))
@@ -52,12 +52,12 @@ let parameters = list parameter
 
 let content_type =
   map [ dynamic_bind ty subty; parameters; ]
-    (fun (ty_, subty_) parameters -> Mrmime.Rfc2045.{ ty= ty_; subty= subty_; parameters })
+    (fun (ty_, subty_) parameters_ -> Mrmime.Content_type.{ ty= ty_; subty= subty_; parameters= parameters_; })
 
 module BBuffer = Buffer
 
 let emitter_of_buffer buf =
-  let open Mrmime.Encoder in
+  let open Prettym in
 
   let write a = function
     | { IOVec.buffer= Buffer.String x; off; len; } ->
@@ -68,20 +68,36 @@ let emitter_of_buffer buf =
       BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
+let ( <.> ) f g = fun x -> f (g x)
+
+let parser buf =
+  let open Angstrom in
+  Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+  let res =
+    let open Rresult in
+    Unstrctrd.without_comments v
+    >>| Unstrctrd.fold_fws
+    >>| Unstrctrd.to_utf_8_string
+    >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Content_type.Decoder.content ) in
+  match res with
+  | Ok v -> return v
+  | Error (`Msg err) -> fail err
+
 let () =
   let open Mrmime in
 
   Crowbar.add_test ~name:"content-type" [ content_type ] @@ fun content_type ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
-  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Content_type.Encoder.content_type; new_line; new_line; ] content_type in
+  let encoder = Prettym.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Prettym.keval Prettym.flush encoder Prettym.[ !!Content_type.Encoder.content_type; new_line; ] content_type in
 
-  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+  check_eq ~pp:Fmt.bool ~eq:(=) (Prettym.is_empty encoder) true ;
 
   let result = Buffer.contents buffer in
+  let buf = Bytes.create 0x7f in
 
-  match Angstrom.parse_string Angstrom.(Rfc2045.content <* Rfc822.crlf <* Rfc822.crlf) result with
+  match Angstrom.parse_string (parser buf) result with
   | Ok content_type' ->
     check_eq ~pp:Content_type.pp ~eq:Content_type.equal content_type content_type'
   | Error err ->

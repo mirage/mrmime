@@ -25,26 +25,26 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream = fun ?l
     | 256 (* Await *) ->
       Pecu.dst encoder chunk 0 chunk_length ;
       ( match Pecu.encode encoder `Await with
-        | `Ok -> go ()
-        | `Partial -> emit () )
+        | `Ok -> (go[@tailcall]) ()
+        | `Partial -> (emit[@tailcall]) () )
     | 257 (* Line_break *) ->
       (* XXX(dinosaure): we encode, in any case, a last CRLF to ensure that any
          line emitted by [to_quoted_printable] finish with a [CRLF]. TODO: may
          be this behavior is strictly under [Pecu] impl. *)
       Ke.Rke.cons queue 258 ;
-      pending @@ Pecu.encode encoder `Line_break
+      (pending[@tailcall]) (Pecu.encode encoder `Line_break)
     | 258 (* End *) ->
       Ke.Rke.cons queue 259 ;
-      pending @@ Pecu.encode encoder `End
+      (pending[@tailcall]) (Pecu.encode encoder `End)
     | 259 -> assert (Pecu.encode encoder `Await = `Ok) ; Ke.Rke.cons queue 259 ; None
     | chr ->
       ( match Pecu.encode encoder (`Char (Char.chr chr)) with
-        | `Ok -> go ()
-        | `Partial -> emit () )
+        | `Ok -> (go[@tailcall]) ()
+        | `Partial -> (emit[@tailcall]) () )
     | exception Ke.Rke.Empty ->
       match stream () with
-      | Some (buf, off, len) -> iter ~f:(fun chr -> Ke.Rke.push queue (Char.code chr)) buf ~off ~len ; go ()
-      | None -> Ke.Rke.push queue 257 ; go () in
+      | Some (buf, off, len) -> iter ~f:(fun chr -> Ke.Rke.push queue (Char.code chr)) buf ~off ~len ; (go[@tailcall]) ()
+      | None -> Ke.Rke.push queue 257 ; (go[@tailcall]) () in
 
   Pecu.dst encoder chunk 0 chunk_length ; go
 
@@ -59,7 +59,7 @@ let to_base64 : ?length:int -> buffer stream -> buffer stream = fun ?length:(chu
     Some (Bytes.unsafe_to_string chunk, 0, len)
 
   and pending = function
-    | `Ok -> go ()
+    | `Ok -> (go[@tailcall]) ()
     | `Partial ->
       let len = chunk_length - Base64_rfc2045.dst_rem encoder in
       Some (Bytes.unsafe_to_string chunk, 0, len)
@@ -68,46 +68,46 @@ let to_base64 : ?length:int -> buffer stream -> buffer stream = fun ?length:(chu
     | 256 (* Await *) ->
       Base64_rfc2045.dst encoder chunk 0 chunk_length ;
       ( match Base64_rfc2045.encode encoder `Await with
-        | `Ok -> go ()
-        | `Partial -> emit () )
+        | `Ok -> (go[@tailcall]) ()
+        | `Partial -> (emit[@tailcall]) () )
     | 257 (* End *) ->
       Ke.Rke.cons queue 258 ;
-      pending @@ Base64_rfc2045.encode encoder `End
+      (pending[@tailcall]) (Base64_rfc2045.encode encoder `End)
     | 258 -> assert (Base64_rfc2045.encode encoder `Await = `Ok) ; Ke.Rke.cons queue 258 ; None
     | chr ->
       ( match Base64_rfc2045.encode encoder (`Char (Char.chr chr)) with
-        | `Ok -> go ()
-        | `Partial -> emit () )
+        | `Ok -> (go[@tailcall]) ()
+        | `Partial -> (emit[@tailcall]) () )
     | exception Ke.Rke.Empty ->
       match stream () with
-      | Some (buf, off, len) -> iter ~f:(fun chr -> Ke.Rke.push queue (Char.code chr)) buf ~off ~len ; go ()
-      | None -> Ke.Rke.push queue 257 ; go () in
+      | Some (buf, off, len) -> iter ~f:(fun chr -> Ke.Rke.push queue (Char.code chr)) buf ~off ~len ; (go[@tailcall]) ()
+      | None -> Ke.Rke.push queue 257 ; (go[@tailcall]) () in
 
   Base64_rfc2045.dst encoder chunk 0 chunk_length ; go
 
 type part =
-  { content : Content.t
-  ; fields : field list
+  { header : Header.t
   ; body : buffer stream }
 
 type multipart =
-  { content : Content.t
-  ; fields : field list
+  { header : Header.t
   ; parts : part list }
 
-let part ?(content= Content.default) ?(fields= []) stream =
-  if not (Content.is_discrete content)
+let part ?(header= Header.empty) stream =
+  let content_type = Header.content_type header in
+  let content_encoding = Header.content_encoding header in
+  if not (Content_type.is_discrete content_type)
   then Fmt.invalid_arg "Content-type MUST be discrete type to make a part" ;
-  let stream = match Content.encoding content with
+  let stream = match content_encoding with
     | `Quoted_printable -> to_quoted_printable stream
     | `Base64 -> to_base64 stream
     | `Bit8 | `Binary | `Bit7 -> stream
     | `Ietf_token _ | `X_token _ -> assert false in (* XXX(dinosaure): TODO [`Bit7], IETF and extension encoding. *)
-  { content; fields; body= stream; }
+  { header; body= stream; }
 
 let multipart_content_default =
   let open Content_type in
-  Content.make (make `Multipart (Subtype.v `Multipart "mixed") Parameters.empty)
+  Content_type.make `Multipart (Subtype.v `Multipart "mixed") Parameters.empty
 
 type 'g rng = ?g:'g -> int -> string
 external random_seed : unit -> int array = "caml_sys_random_seed"
@@ -116,23 +116,18 @@ let rng ?(g= random_seed ()) n =
   Random.full_init g ;
   let res = Bytes.create n in
   for i = 0 to n - 1 do Bytes.set res i (Random.int 256 |> Char.chr) done ;
-  Bytes.unsafe_to_string res
+  Bytes.unsafe_to_string res |> Base64.encode_exn
 
-let multipart ~rng ?(content= multipart_content_default) ?boundary ?(fields= []) parts =
-  if not (Content.is_multipart content)
-  then Fmt.invalid_arg "Content-type MUST be multipart" ;
-  let content = match Content.boundary content, boundary with
-    | Some _, None -> content
-    | (None | Some _), Some boundary ->
-      let boundary = Content_type.Parameters.value_exn boundary in
-      Content.add_parameter ~key:"boundary" ~value:boundary content
-    | None, None ->
-      let boundary =
-        let raw = rng ?g:None 8 in
-        let pp = Fmt.iter ~sep:(fun _ _ -> ()) String.iter (fun ppf chr -> Fmt.pf ppf "%02x" (Char.code chr)) in
-        Fmt.strf "%a" pp raw in
-      Content.add_parameter ~key:"boundary" ~value:(Content_type.Parameters.value_exn boundary) content in
-  { content; fields; parts; }
+let multipart ~rng ?(header= Header.empty) ?boundary parts =
+  let boundary = match boundary with Some boundary -> boundary | None -> rng ?g:None 8 in
+  let boundary = Content_type.Parameters.v boundary in
+  let content_type =
+    if Header.exists Field_name.content_type header
+    then Header.content_type header
+    else multipart_content_default in
+  let content_type = Content_type.with_parameter content_type ("boundary", boundary) in
+  let header = Header.replace Field_name.content_type (Field.Content, content_type) header in
+  { header; parts; }
 
 let none = (fun () -> None)
 
@@ -157,15 +152,16 @@ let map f stream =
     | None -> None in
   go
 
-let stream_of_part { content; fields= _; body; } =
-  let content_stream = map (fun s -> s, 0, String.length s) (Encoder.to_stream Content.Encoder.content content) in
+let stream_of_part { header; body; } =
+  let content_stream = map (fun s -> s, 0, String.length s) (Prettym.to_stream Header.Encoder.header header) in
   content_stream @ crlf () @ body
 
 (* XXX(dinosaure): hard part to compile multiple parts under one. *)
-let multipart_as_part : multipart -> part = fun { content; fields; parts; } ->
-  let boundary = match Content.boundary content with
-    | Some (`String v) | Some (`Token v) -> v
-    | None -> Fmt.failwith "Multipart MUST have a boundary" (* XXX(dinosaure): should never occur! *)in
+let multipart_as_part : multipart -> part = fun { header; parts; } ->
+  let boundary = match Content_type.boundary (Header.content_type header) with
+    | Some v -> v
+    | None -> Fmt.failwith "Multipart MUST have a boundary"
+    (* XXX(dinosaure): should never occur! *) in
   let beginner = Rfc2046.make_dash_boundary boundary ^ "\r\n" in
   let inner = Rfc2046.make_delimiter boundary ^ "\r\n" in
   let closer = Rfc2046.make_close_delimiter boundary ^ "\r\n" in
@@ -177,7 +173,7 @@ let multipart_as_part : multipart -> part = fun { content; fields; parts; } ->
       let stream = stream @ (stream_of_part x) @ (stream_of_string inner) in
       go stream r in
 
-  { content; fields; body= go (stream_of_string beginner) parts }
+  { header; body= go (stream_of_string beginner) parts }
 
 type 'x body = Simple : part body | Multi : multipart body
 
@@ -192,15 +188,8 @@ let rec make
   : type a. Header.t -> a body -> a -> t
   = fun header kind v -> match kind with
     | Simple ->
-      let merge n o = match n, o with
-        | Some n, Some o -> Some n
-        | Some x, None | None, Some x -> Some x
-        | None, None -> None in
-      let { content= c; fields; body; } = v in
-      let c = Content.merge merge c (Header.content header) in
-      let header = Header.add_or_replace Field.(Content $ c) header in
-      let header = List.fold_left (fun t (f, v) -> Header.add Field.(Field f $ v) t) header fields in
-      { header; body; }
+      let { header= header'; body; } : part = v in
+      { header= Header.concat header header'; body; }
     | Multi ->
       let part = multipart_as_part v in
       make header Simple part

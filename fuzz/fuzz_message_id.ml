@@ -28,7 +28,7 @@ let message_id =
 module BBuffer = Buffer
 
 let emitter_of_buffer buf =
-  let open Mrmime.Encoder in
+  let open Prettym in
 
   let write a = function
     | { IOVec.buffer= Buffer.String x; off; len; } ->
@@ -39,20 +39,36 @@ let emitter_of_buffer buf =
       BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
+let ( <.> ) f g = fun x -> f (g x)
+
+let parser buf =
+  let open Angstrom in
+  Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+  let res =
+    let open Rresult in
+    Unstrctrd.without_comments v
+    >>| Unstrctrd.fold_fws
+    >>| Unstrctrd.to_utf_8_string
+    >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.MessageID.Decoder.message_id ) in
+  match res with
+  | Ok v -> return v
+  | Error (`Msg err) -> fail err
+
 let () =
   let open Mrmime in
 
   Crowbar.add_test ~name:"message_id" [ message_id ] @@ fun message_id ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
-  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!MessageID.Encoder.message_id; new_line; new_line ] message_id in
+  let encoder = Prettym.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Prettym.keval Prettym.flush encoder Prettym.[ !!MessageID.Encoder.message_id; new_line; ] message_id in
 
-  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+  check_eq ~pp:Fmt.bool ~eq:(=) (Prettym.is_empty encoder) true ;
 
   let result = Buffer.contents buffer in
+  let buf = Bytes.create 0x7f in
 
-  match Angstrom.parse_string Angstrom.(Rfc822.msg_id ~address_literal:(fail "Invalid domain") <* Rfc822.crlf <* Rfc822.crlf) result with
+  match Angstrom.parse_string (parser buf) result with
   | Ok message_id' ->
     check_eq ~pp:MessageID.pp ~eq:MessageID.equal message_id message_id'
   | Error err ->

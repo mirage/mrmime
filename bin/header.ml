@@ -1,8 +1,6 @@
-module Option = Opt
 open Common
 
-let parser = Mrmime.Mail.header
-
+let parser = Mrmime.Mail.mail
 let header_of_string = Angstrom.parse_string parser
 
 let header_of_input ~newline ic =
@@ -31,15 +29,13 @@ let extract_raw ic loc =
   let res = really_input_string ic (Location.length_exn loc) in
   seek_in ic old ; res
 
-let extract ~newline ~with_raw ic fields =
-  let print ~with_raw (field, lst) =
-    List.iter (fun (_, v, loc) ->
-        Fmt.pr "%a:@ %a@\n@\n" Field_name.pp field Header.pp_value v ;
-        if with_raw then Fmt.pr "%a@\n" Utils.pp_string (extract_raw ic loc))
-      lst in
+let extract ~newline ~with_raw:_ ic fields =
+  let p lst =
+    List.iter (fun field -> Fmt.pr "%a@\n%!" Field.pp field) lst in
   let open Rresult.R in
   header_of_input ~newline ic >>| fun (header, _) ->
-  List.map (fun field -> field, Header.get field header) fields |> List.iter (print ~with_raw)
+  List.map (fun field_name -> Header.assoc field_name header) fields
+  |> List.iter p
 
 let run newline with_raw input fields =
   let close, ic =

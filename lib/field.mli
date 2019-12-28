@@ -1,57 +1,51 @@
-type phrase = Rfc5322.phrase
-type phrase_or_message_id = Rfc5322.phrase_or_message_id
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
 
 type 'a t =
-  | Date : Date.t t
-  | From : Mailbox.t list t
-  | Sender : Mailbox.t t
-  | ReplyTo : Address.t list t
-  | To : Address.t list t
-  | Cc : Address.t list t
-  | Bcc : Address.t list t
-  | Subject : Unstructured.t t
-  | MessageID : MessageID.t t
-  | InReplyTo : phrase_or_message_id list t
-  | References : phrase_or_message_id list t
-  | Comments : Unstructured.t t
-  | Keywords : phrase list t
-  | Field : Field_name.t -> Unstructured.t t
-  | Content : Content.t t
-  | Resent : Resent.t t
-  | Trace : Trace.t t
+  | Date         : Date.t t
+  | Mailboxes    : Mailbox.t list t
+  | Mailbox      : Mailbox.t t
+  | Addresses    : Address.t list t
+  | MessageID    : MessageID.t t
+  | Unstructured : Unstructured.t t
+  | Phrases      : Emile.phrase list t
+  | Content      : Content_type.t t
+  | Encoding     : Content_encoding.t t
+(** Type of kind of values according RFC2045/RFC5322. *)
 
-type 'a v =
-  | Date : Date.t v
-  | Mailboxes : Mailbox.t list v
-  | Mailbox : Mailbox.t v
-  | Addresses : Address.t list v
-  | MessageID : Rfc822.nonsense Rfc822.msg_id v
-  | Phrase_or_message_id : phrase_or_message_id list v
-  | Unstructured : Unstructured.t v
-  | Phrases : phrase list v
-  | Content : Content.t v
-  | Resent : Resent.t v
-  | Trace : Trace.t v
+type witness = Witness : 'a t -> witness
+(** Witness type to be able to manipulate {!t}. *)
 
-type field_name = Field_name : 'a t -> field_name
-type field_value = Field_value : 'a v -> field_value
-type field = Field : 'a t * 'a -> field
+type field = Field : Field_name.t * 'a t * 'a -> field
+(** Type of field. *)
 
-val equal : 'a t -> 'b t -> ('a, 'b) Refl.t option
-val make : 'a t -> 'a -> field
-val ( $ ) : 'a t -> 'a -> field
+val make : Field_name.t -> 'a t -> 'a -> field
+(** [make field_name w v] returns a field. *)
 
-val of_field_name : Field_name.t -> field_name
-val to_field_name : 'a t -> Field_name.t
+val pp : field Fmt.t
+(** Pretty-printer of {!field}. *)
 
-val field_name : field -> Field_name.t
-val field_value : 'a t -> 'a v
+(** {2 Decoder of field.} *)
 
-val pp_of_field_value : 'a v -> 'a Fmt.t
-val pp_of_field_name : 'a t -> 'a Fmt.t
+module Decoder : sig
+  val field : ?g:witness Field_name.Map.t -> Field_name.t -> field Angstrom.t
+end
 
-val of_rfc5322_field : Rfc5322.field -> field
+(** {2 Encoder of field.} *)
 
 module Encoder : sig
-  val field : field Encoder.t
+  val field : field Prettym.t
 end

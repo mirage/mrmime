@@ -1,63 +1,49 @@
-type word = [`Atom of string | `String of string]
-type local = word list
-type domain = Rfc822.nonsense Rfc822.domain
-type t = Rfc822.nonsense Rfc822.msg_id (* = local * domain *)
+type domain = [ `Literal of string | `Domain of string list ]
+type t = Emile.local * domain
 
-let pp_word ppf = function
-  | `Atom x -> Fmt.string ppf x
-  | `String x -> Fmt.pf ppf "%S" x
-
-let pp_domain : Rfc822.nonsense Rfc822.domain Fmt.t = fun ppf -> function
-  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
-  | `Literal x -> Fmt.pf ppf "[%s]" x
-  | `Addr _ -> .
-
-let pp_local : local Fmt.t = Fmt.list ~sep:Fmt.(const string ".") pp_word
+let pp_domain : domain Fmt.t = fun ppf -> function
+  | `Domain _ as x -> Emile.pp_domain ppf x
+  | `Literal _ as x -> Emile.pp_domain ppf x
 
 let pp ppf (local, domain) =
-  Fmt.pf ppf "{ @[<hov>local= @[<hov>%a@];@ \
-                       domain= @[<hov>%a@]@] }"
-    pp_local local
+  Fmt.pf ppf "<%a@%a>"
+    Emile.pp_local local
     pp_domain domain
 
-let equal_word a b = match a, b with
-  | `Atom x, `Atom y -> String.equal x y
-  | `String x, `String y -> String.equal x y
-  | _, _ -> false
-
-let equal_local a b =
-  try List.for_all2 equal_word a b with _ -> false
-
 let equal_domain a b = match a, b with
-  | `Literal a, `Literal b -> String.equal a b
-  | `Domain a, `Domain b -> (try List.for_all2 String.equal a b with _ -> false)
-  | _, _ -> false
+  | a, b -> Emile.equal_domain (a :> Emile.domain) (b :> Emile.domain)
 
 let equal a b =
-  equal_local (fst a) (fst b)
+     Emile.equal_local ~case_sensitive:true (fst a) (fst b)
   && equal_domain (snd a) (snd b)
 
+module Decoder = struct
+  open Angstrom
+
+  let message_id = Emile.Parser.msg_id >>= fun (local, domain) ->
+    match domain with
+    | `Addr _ -> fail "Invalid message-id"
+    | #domain as domain -> return (local, domain)
+end
+
 module Encoder = struct
-  include Encoder
+  open Prettym
 
   let dot = (fun ppf () -> eval ppf [ fws; char $ '.'; fws ]), ()
 
-  let domain : Rfc822.nonsense Rfc822.domain Encoder.t = fun ppf -> function
+  let domain : domain Prettym.t = fun ppf -> function
     | `Domain domain ->
       let x ppf x = eval ppf [ box; !!string; close ] x in
       eval ppf [ tbox 1; !!(list ~sep:dot x); close ] domain
     | `Literal literal ->
       eval ppf [ tbox 1; char $ '['; !!string; char $ ']'; close ] literal
-    | `Addr _ -> .
 
-  let message_id ppf (t:Rfc822.nonsense Rfc822.msg_id) =
+  let message_id = fun ppf t ->
     match t with
     | (local_part, domain_part) ->
       eval ppf [ tbox 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain; char $ '>'; close ]
         local_part domain_part
 end
-
-let to_unstructured ~field_name x = Unstructured.to_unstructured ~field_name Encoder.message_id x
 
 let is_utf8_valid_string_with is x =
   let exception Invalid_utf8 in
@@ -83,9 +69,24 @@ let is_utf8_valid_string x =
     true
   with Invalid_utf8 -> false
 
-let is_atext_valid_string = is_utf8_valid_string_with Rfc822.is_atext
-let is_dtext_valid_string = is_utf8_valid_string_with Rfc822.is_dtext
-let is_qtext_valid_string = is_utf8_valid_string_with Rfc822.is_qtext
+let is_atext = function
+  | 'a' .. 'z'
+  | 'A' .. 'Z'
+  | '0' .. '9'
+  | '!' | '#' | '$' | '%' | '&' | '\'' | '*' | '+' | '-' | '/' | '=' | '?'
+  | '^' | '_' | '`' | '{' | '}' | '|' | '~' -> true
+  | _ -> false
+
+let is_obs_no_ws_ctl = function
+  | '\001' .. '\008' | '\011' | '\012' | '\014' .. '\031' | '\127' -> true
+  | _ -> false
+
+let is_dtext = function
+  | '\033' .. '\090' | '\094' .. '\126' -> true
+  | c -> is_obs_no_ws_ctl c
+
+let is_atext_valid_string = is_utf8_valid_string_with is_atext
+let is_dtext_valid_string = is_utf8_valid_string_with is_dtext
 
 module Domain = struct
   let atom x = if is_atext_valid_string x then Some (`Atom x) else None
@@ -102,8 +103,7 @@ module Domain = struct
       (* TODO *)
       let bindings = [('\000', '\000')] in
       ( (fun chr -> List.mem_assoc chr bindings)
-      , fun chr -> List.assoc chr bindings )
-    in
+      , fun chr -> List.assoc chr bindings ) in
     let escape_string x =
       let len = String.length x in
       let res = Buffer.create (len * 2) in
@@ -115,8 +115,7 @@ module Domain = struct
         else Buffer.add_char res x.[!pos] ;
         incr pos
       done ;
-      Buffer.contents res
-    in
+      Buffer.contents res in
     if is_dtext_valid_string x then Some (`Literal x)
     else if is_utf8_valid_string x then Some (`Literal (escape_string x))
     else None
@@ -148,17 +147,17 @@ module Domain = struct
   let domain = Domain
   let default = Literal
 
-  let make : type a. a t -> a -> Rfc822.nonsense Rfc822.domain option =
+  let make : type a. a t -> a -> [ `Literal of string | `Domain of string list ] option =
    fun witness v ->
     match witness with
     | Domain -> Option.(make_domain v >>| fun v -> `Domain v)
     | Literal -> literal v
 
-  let v : type a. a t -> a -> Rfc822.nonsense Rfc822.domain =
+  let v : type a. a t -> a -> [ `Literal of string | `Domain of string list ] =
    fun witness v ->
     match make witness v with
     | Some v -> v
     | None -> Fmt.invalid_arg "make_exn: invalid domain"
 
-  let to_string x = Encoder.to_string Encoder.domain x
+  let to_string x = Prettym.to_string Encoder.domain x
 end

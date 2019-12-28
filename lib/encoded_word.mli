@@ -1,3 +1,19 @@
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
 type charset =
   [ `UTF_8
   | `UTF_16
@@ -7,7 +23,7 @@ type charset =
   | `US_ASCII
   | `Charset of string ]
 
-type encoding = Rfc2047.encoding = Quoted_printable | Base64
+type encoding = Quoted_printable | Base64
 
 val b : encoding
 (** Base64 encoding. *)
@@ -15,15 +31,14 @@ val b : encoding
 val q : encoding
 (** Inline quoted-printable encoding. *)
 
-type t = Rfc2047.encoded_word =
-  { charset: charset
-  ; encoding: encoding
-  ; raw: string * char * string
-  ; data: (string, Rresult.R.msg) result }
+type t =
+  { charset : charset
+  ; encoding : encoding
+  ; data : (string, Rresult.R.msg) result }
 
 val is_normalized : t -> bool
 
-val make : encoding:encoding -> string -> (t, [ `Msg of string ]) result
+val make : encoding:encoding -> string -> (t, Rresult.R.msg) result
 (** [make ~encoding x] returns an {i encoded} word according [encoding] (Quoted
    Printable encoding or Base64 encoding). [x] must be a valid UTF-8 string. {i
    charset} of {i encoded} word will be, by the way, ["UTF-8"].
@@ -53,22 +68,27 @@ val equal_charset : charset -> charset -> bool
 val equal_encoding : encoding -> encoding -> bool
 val equal : t -> t -> bool
 
-val reconstruct : t -> string
-(** [reconstruct t] reconstructs [t] as it is in the mail. *)
-
-val charset_of_string : string -> Rfc2047.charset
+val charset_of_string : string -> charset
 (** [charset_of_string s] returns {i charset} of well-formed charset identifier
    [s] (according IANA). *)
 
-val normalize_to_utf8 : charset:Rfc2047.charset -> string -> (string, [ `Msg of string ]) result
+val charset_to_string : charset -> string
+
+val normalize_to_utf8 : charset:charset -> string -> (string, Rresult.R.msg) result
 (** [normalize_to_utf8 ~charset s] maps a source [s] which is encoded with the
    charset {!charset} and try to map/normalize it to UTF-8. *)
 
-val of_string : string -> (t, [ `Msg of string ]) result
+val of_string : string -> (t, Rresult.R.msg) result
 (** [of_string v] tries to parse [v] as an encoded-word (according RFC 2047). *)
+
+(** {2 Decoders.} *)
+
+module Decoder : sig
+  val encoded_word : t Angstrom.t
+end
 
 (** {2 Encoders.} *)
 
 module Encoder : sig
-  val encoded_word : t Encoder.t
+  val encoded_word : t Prettym.t
 end

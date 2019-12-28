@@ -1,7 +1,21 @@
-type word = Rfc822.word
-type domain = Rfc822.nonsense Rfc822.domain
-type local = Rfc822.local
-type t = Rfc822.nonsense Rfc822.msg_id
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
+type domain = [ `Literal of string | `Domain of string list ]
+type t = Emile.local * domain
 
 module Domain : sig
   (** An RFC 822 domain can be constructed in two ways.
@@ -63,7 +77,7 @@ module Domain : sig
   val default : string t
   (** Kind of {!literal}. *)
 
-  val make : 'a t -> 'a -> Rfc822.nonsense Rfc822.domain option
+  val make : 'a t -> 'a -> [ `Literal of string | `Domain of string list ] option
   (** [make kind v] returns a safe domain. It can fail if an user-defined
      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
      {!domain} don't follow standards:
@@ -72,36 +86,30 @@ module Domain : sig
      {- for a {!literal}, [make] returns [None] if {!literal} returns [None]}
      {- for a {!domain}, [make] returns [None] if list of {!atom} is empty}} *)
 
-  val v : 'a t -> 'a -> Rfc822.nonsense Rfc822.domain
+  val v : 'a t -> 'a -> [ `Literal of string | `Domain of string list ]
   (** Same as {!make} but raises an [Invalid_argument] instead [None]. *)
 
-  val to_string : Rfc822.nonsense Rfc822.domain -> string
+  val to_string : [ `Literal of string | `Domain of string list ] -> string
   (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 end
 
 (** {2 Pretty-printers.} *)
 
-val pp_word : word Fmt.t
-val pp_domain : domain Fmt.t
-val pp_local : local Fmt.t
 val pp : t Fmt.t
 
 (** {2 Equals.} *)
 
-val equal_word : word -> word -> bool
-val equal_local : local -> local -> bool
-val equal_domain : domain -> domain -> bool
 val equal : t -> t -> bool
+
+(** {2 Decoder of message ID.} *)
+
+module Decoder : sig
+  val message_id : t Angstrom.t
+end
 
 (** {2 Encoder of message ID.} *)
 
 module Encoder : sig
-  val domain : domain Encoder.t
-  val message_id : t Encoder.t
+  val domain : domain Prettym.t
+  val message_id : t Prettym.t
 end
-
-val to_unstructured : field_name:Field_name.t -> t -> Unstructured.t
-(** [to_unstructured ~field_name t] casts [t] to an {!Unstructured.t} value -
-   which is more general. Returned value respects limit of 1000 characters per
-   lines and [to_unstructured] puts [FWS] token ([\r\n] plus, at least, one
-   space) to fit under this limit. *)

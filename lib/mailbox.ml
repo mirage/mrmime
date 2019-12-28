@@ -1,125 +1,50 @@
-open Utils
+type t = Emile.mailbox
 
-type word = [`Atom of string | `String of string]
-type phrase = [`Dot | `Word of word | `Encoded of Encoded_word.t] list
+let pp = Emile.pp_mailbox
+let equal = Emile.equal_mailbox
 
-type literal_domain = Rfc5321.literal_domain =
-  | IPv4 of Ipaddr.V4.t
-  | IPv6 of Ipaddr.V6.t
-  | Ext of string * string
+let is_utf8_valid_string_with is x =
+  let exception Invalid_utf8 in
+  let exception Invalid_char in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8
+        | `Uchar uchar ->
+            if Uchar.is_char uchar && not (is (Uchar.to_char uchar)) then
+              raise Invalid_char )
+      () x ;
+    true
+  with
+  | Invalid_utf8 -> false
+  | Invalid_char -> false
 
-type domain =
-  [`Domain of string list | `Literal of string | `Addr of literal_domain]
+let is_utf8_valid_string x =
+  let exception Invalid_utf8 in
+  try
+    Uutf.String.fold_utf_8
+      (fun () _pos -> function `Malformed _ -> raise Invalid_utf8 | _ -> ())
+      () x ;
+    true
+  with Invalid_utf8 -> false
 
-type local = word list
-
-type t = Rfc5322.mailbox =
-  {name: phrase option; local: local; domain: domain * domain list}
-
-let pp_word ppf = function
-  | `Atom x -> Fmt.string ppf x
-  | `String x -> Fmt.pf ppf "%S" x
-
-let pp_phrase : phrase Fmt.t =
-  let pp_elt ppf = function
-    | `Dot -> Fmt.string ppf "."
-    | `Word w -> pp_word ppf w
-    | `Encoded e -> Encoded_word.pp ppf e
-  in
-  Fmt.list ~sep:Fmt.(fun ppf () -> fmt "@ " ppf) pp_elt
-
-let pp_literal_domain ppf = function
-  | IPv4 v -> Ipaddr.V4.pp ppf v
-  | IPv6 v -> Ipaddr.V6.pp ppf v
-  | Ext (ldh, value) -> Fmt.pf ppf "%s:%s" ldh value
-
-let pp_domain ppf = function
-  | `Domain l -> Fmt.list ~sep:Fmt.(const string ".") Fmt.string ppf l
-  | `Literal s -> Fmt.pf ppf "[%s]" s
-  | `Addr x -> Fmt.pf ppf "[%a]" pp_literal_domain x
-
-let pp_local = Fmt.list ~sep:Fmt.(const string ".") pp_word
-
-let pp : t Fmt.t =
- fun ppf x ->
-  Fmt.pf ppf "{ @[<hov>name = %a;@ local = %a;@ domain = %a@] }"
-    Fmt.(hvbox (Dump.option pp_phrase))
-    x.Rfc5322.name
-    Fmt.(hvbox pp_local)
-    x.Rfc5322.local
-    Fmt.(hvbox (Dump.pair pp_domain (Dump.list pp_domain)))
-    x.Rfc5322.domain
-
-let equal_word ?(sensitive = false) a b = match a, b with
-  | (`Atom a | `String a), (`Atom b | `String b) ->
-    if sensitive
-    then String.equal a b
-    else String.(equal (lowercase_ascii a) (lowercase_ascii b))
-
-let equal_phrase a b =
-  let elt a b = match a, b with
-    | `Dot, `Dot -> true
-    | `Word a, `Word b -> equal_word ~sensitive:true a b
-    | `Encoded a, `Encoded b -> Encoded_word.equal a b
-    | _, _ -> false (* TODO: [`Encoded a] & [`Word b] or [`Word a] & [`Encoded b]. *) in
-  try List.for_all2 elt a b with _ -> false
-
-let equal_literal_domain a b = match a, b with
-  | IPv4 a, IPv4 b -> Ipaddr.V4.compare a b = 0
-  | IPv6 a, IPv6 b -> Ipaddr.V6.compare a b = 0
-  | IPv4 a, IPv6 b -> Ipaddr.(compare (V4 a) (V6 b)) = 0
-  | IPv6 a, IPv4 b -> Ipaddr.(compare (V6 a) (V4 b)) = 0
-  | Ext (ldh0, value0), Ext (ldh1, value1) ->
-    String.equal ldh0 ldh1 && String.equal value0 value1
-  | _, _ -> false
-
-let equal_domain a b = match a, b with
-  | `Domain a, `Domain b ->
-    let a = List.map String.lowercase_ascii a in
-    let b = List.map String.lowercase_ascii b in
-    (try List.for_all2 String.equal a b with _ -> false)
-  | `Literal a, `Literal b ->
-    let a = String.lowercase_ascii a in
-    let b = String.lowercase_ascii b in
-    String.equal a b
-  | `Addr a, `Addr b -> equal_literal_domain a b
-  | _, _ -> false (* TODO: resolution? *)
-
-let equal_domains a b = try List.for_all2 equal_domain a b with _ -> false
-
-let equal_local a b =
-  (* XXX(dinosaure): RFC 5321 (2.4) explains:
-     The local-part of a mailbox MUST BE treated as case sensitive. *)
-  try List.for_all2 (equal_word ~sensitive:true) a b
-  with _ -> false
-
-let equal a b = match a, b with
-  | { name= Some name0; local= local0; domain= head0, tail0 },
-    { name= Some name1; local= local1; domain= head1, tail1 } ->
-    equal_phrase name0 name1 && equal_local local0 local1 && equal_domains (head0 :: tail0) (head1 :: tail1)
-  | { name= None; local= local0; domain= head0, tail0 },
-    { name= None; local= local1; domain= head1, tail1 } ->
-    equal_local local0 local1 && equal_domains (head0 :: tail0) (head1 :: tail1)
-  | _, _ -> false
-
-let is_atext_valid_string = is_utf8_valid_string_with Rfc822.is_atext
-let is_dtext_valid_string = is_utf8_valid_string_with Rfc822.is_dtext
-let is_qtext_valid_string = is_utf8_valid_string_with Rfc822.is_qtext
+let is_atext_valid_string = is_utf8_valid_string_with Emile.Parser.is_atext
+let is_dtext_valid_string = is_utf8_valid_string_with Emile.Parser.is_dtext
+let is_qtext_valid_string = is_utf8_valid_string_with Emile.Parser.is_qtext
 
 let need_to_escape, escape_char =
-  (* See [Rfc822.of_escaped_character] but totally arbitrary. *)
-  let bindings = [('\000', '\000')
-                 ;('\\',   '\\')
-                 ;('\x07', 'a')
-                 ;('\b',   'b')
-                 ;('\t',   't')
-                 ;('\n',   'n')
-                 ;('\x0b', 'v')
-                 ;('\x0c', 'f')
-                 ;('\r',   'r')
-                 ;('"',    '"')] in
+  (* See [of_escaped_character] but totally arbitrary. *)
+  let bindings = [ ('\000', '\000')
+                 ; ('\\',   '\\')
+                 ; ('\x07', 'a')
+                 ; ('\b',   'b')
+                 ; ('\t',   't')
+                 ; ('\n',   'n')
+                 ; ('\x0b', 'v')
+                 ; ('\x0c', 'f')
+                 ; ('\r',   'r')
+                 ; ('"',    '"')] in
   ( (fun chr -> List.mem_assoc chr bindings)
-  , fun chr -> List.assoc chr bindings )
+  , (fun chr -> List.assoc chr bindings) )
 
 let escape_string x =
   let len = String.length x in
@@ -135,13 +60,21 @@ let escape_string x =
   Buffer.contents res
 
 let make_word raw =
-  if is_atext_valid_string raw then Ok (`Atom raw)
-  else if is_qtext_valid_string raw then Ok (`String raw)
-  else if is_utf8_valid_string raw then Ok (`String (escape_string raw))
+  if is_atext_valid_string raw
+  then Ok (`Atom raw)
+  else if is_qtext_valid_string raw
+  then Ok (`String raw)
+  else if is_utf8_valid_string raw
+  then Ok (`String (escape_string raw))
   else Rresult.R.error_msgf "word %S does not respect standards" raw
 
+module Decoder = struct
+  let mailbox = Emile.Parser.mailbox
+  let mailbox_list = Emile.Parser.mailbox_list
+end
+
 module Encoder = struct
-  include Encoder
+  open Prettym
 
   let atom = [ !!string; ]
   let str = [ char $ '"'; !!string; char $ '"'; ]
@@ -167,29 +100,38 @@ module Encoder = struct
       eval ppf [ box; !!(list ~sep:dot boxed_string); close ] domain
     | `Literal literal ->
       eval ppf [ box; char $ '['; cut; !!string; cut; char $ ']'; close ] literal
-    | `Addr (IPv4 ip) ->
+    | `Addr (Emile.IPv4 ip) ->
       eval ppf [ box; char $ '['; cut; !!ipaddr_v4; cut; char $ ']'; close ] ip
-    | `Addr (IPv6 ip) ->
+    | `Addr (Emile.IPv6 ip) ->
       eval ppf [ box; char $ '['; cut; string $ "IPv6:"; cut; !!ipaddr_v6; cut; char $ ']'; close ] ip
-    | `Addr (Ext (ldh, v)) ->
+    | `Addr (Emile.Ext (ldh, v)) ->
       eval ppf [ box; char $ '['; cut; !!string; cut; char $ ':'; cut; !!string; cut; char $ ']'; close ] ldh v
 
   let phrase ppf lst =
     let elt ppf = function
       | `Dot -> char ppf '.'
       | `Word w -> word ppf w
-      | `Encoded e -> Encoded_word.Encoder.encoded_word ppf e in
+      | `Encoded (charset, Emile.Quoted_printable data) ->
+        Encoded_word.Encoder.encoded_word ppf
+          { Encoded_word.charset= `Charset charset
+          ; encoding= Encoded_word.Quoted_printable
+          ; data }
+      | `Encoded (charset, Emile.Base64 data) ->
+        Encoded_word.Encoder.encoded_word ppf
+          { Encoded_word.charset= `Charset charset
+          ; encoding= Encoded_word.Base64
+          ; data } in
     let space ppf () = eval ppf [ fws ] in
     eval ppf [ box; !!(list ~sep:(space, ()) elt); close ] lst
 
-  let mailbox ppf (t:Rfc5322.mailbox) =
-    match t.Rfc5322.name, t.Rfc5322.domain with
+  let mailbox ppf (t:Emile.mailbox) =
+    match t.Emile.name, t.Emile.domain with
     | Some name, (x, []) ->
       eval ppf [ box; !!phrase ; spaces 1; char $ '<'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
-        name t.Rfc5322.local x
+        name t.Emile.local x
     | None, (x, []) ->
       eval ppf [ box; !!local ; cut; char $ '@'; cut; !!domain; close ]
-        t.Rfc5322.local x
+        t.Emile.local x
     | name, (x, r) ->
       let domains ppf lst =
         let domain ppf x = eval ppf [ box; char $ '@'; !!domain; close ] x in
@@ -200,19 +142,19 @@ module Encoder = struct
 
       eval ppf
         [ box; !!(option phrase); cut; char $ '<'; cut; !!domains; cut; char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; cut; char $ '>'; close ]
-        name r t.Rfc5322.local x
+        name r t.Emile.local x
 
   let mailboxes = list ~sep:comma mailbox
 end
 
 module Phrase = struct
-  type elt = [`Word of Rfc822.word | `Encoded of Encoded_word.t | `Dot]
+  type elt = [ `Word of Emile.word | `Encoded of string * Emile.raw | `Dot ]
   type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
 
   let o : elt = `Dot
   let q = Encoded_word.q
   let b = Encoded_word.b
-  let word x : (elt, [ `Msg of string]) result = Rresult.R.(make_word x >>| fun x -> `Word x)
+  let word x : (elt, [> Rresult.R.msg ]) result = Rresult.R.(make_word x >>| fun x -> `Word x)
 
   let word_exn x : elt =
     match word x with
@@ -220,13 +162,18 @@ module Phrase = struct
     | Error (`Msg err) -> invalid_arg err
 
   let w : string -> elt = word_exn
-  let e ~encoding v : elt = `Encoded (Encoded_word.make_exn ~encoding v)
+  let e ~encoding v : elt =
+    let x = Encoded_word.make_exn ~encoding v in
+    let charset = Encoded_word.charset_to_string x.Encoded_word.charset in
+    match x.Encoded_word.encoding with
+    | Base64 -> `Encoded (charset, Emile.Base64 x.Encoded_word.data)
+    | Quoted_printable -> `Encoded (charset, Emile.Quoted_printable x.Encoded_word.data)
 
-  let rec coerce : type a. a Peano.s t -> phrase = function
-    | [x] -> [(x :> elt)]
+  let rec coerce : type a. a Peano.s t -> Emile.phrase = function
+    | [ x ] -> [(x :> elt)]
     | x :: y :: r -> List.cons (x :> elt) (coerce (y :: r))
 
-  let make : type a. a t -> (phrase, [ `Msg of string ]) result = function
+  let make : type a. a t -> (Emile.phrase, [> Rresult.R.msg ]) result = function
     | [] -> Rresult.R.error_msgf "A phrase must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
@@ -235,7 +182,7 @@ module Phrase = struct
     | Ok v -> v
     | Error (`Msg err) -> invalid_arg err
 
-  let to_string x = Encoder.to_string Encoder.phrase x
+  let to_string x = Prettym.to_string Encoder.phrase x
 end
 
 module Literal_domain = struct
@@ -256,11 +203,15 @@ module Literal_domain = struct
       true
     with Invalid_char -> false
 
+  let is_dcontent = function
+    | '\033' .. '\090' | '\094' .. '\126' -> true
+    | _ -> false
+
   let is_dcontent_valid_string x =
     let exception Invalid_char in
     try
       String.iter
-        (fun chr -> if not (Rfc5321.is_dcontent chr) then raise Invalid_char)
+        (fun chr -> if not (is_dcontent chr) then raise Invalid_char)
         x ;
       true
     with Invalid_char -> false
@@ -269,18 +220,18 @@ module Literal_domain = struct
   let ipv6 = IPv6
   let extension = Ext
 
-  let make : type a. a t -> a -> (literal_domain, [ `Msg of string ]) result =
+  let make : type a. a t -> a -> (Emile.addr, [> Rresult.R.msg ]) result =
    fun witness v ->
     match witness with
-    | IPv4 -> Ok (Rfc5321.IPv4 v)
-    | IPv6 -> Ok (Rfc5321.IPv6 v)
+    | IPv4 -> Ok (Emile.IPv4 v)
+    | IPv6 -> Ok (Emile.IPv6 v)
     | Ext ->
         let ldh, value = v in
         if is_ldh_valid_string ldh && is_dcontent_valid_string value then
-          Ok (Rfc5321.Ext (ldh, value))
+          Ok (Emile.Ext (ldh, value))
         else Rresult.R.error_msgf "literal-domain %S-%S does not respect standards" ldh value
 
-  let v : type a. a t -> a -> literal_domain =
+  let v : type a. a t -> a -> Emile.addr =
    fun witness v ->
     match make witness v with
     | Ok v -> v
@@ -351,7 +302,7 @@ module Domain = struct
     | [`Atom x] -> [x]
     | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
 
-  let make_domain : type a. a domain -> (string list, [ `Msg of string ]) result = function
+  let make_domain : type a. a domain -> (string list, [> Rresult.R.msg ]) result = function
     | [] -> Rresult.R.error_msg "A domain must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
@@ -366,7 +317,7 @@ module Domain = struct
   let extension = Literal_domain Literal_domain.Ext
   let default = Literal
 
-  let make : type a. a t -> a -> (Rfc5322.domain, [ `Msg of string ]) result =
+  let make : type a. a t -> a -> (Emile.domain, [> Rresult.R.msg ]) result =
    fun witness v ->
     match witness with
     | Domain -> Rresult.R.(make_domain v >>| fun v -> `Domain v)
@@ -374,19 +325,19 @@ module Domain = struct
         Rresult.R.(Literal_domain.make witness v >>| fun v -> `Addr v)
     | Literal -> literal v
 
-  let v : type a. a t -> a -> Rfc5322.domain =
+  let v : type a. a t -> a -> Emile.domain =
    fun witness v ->
     match make witness v with
     | Ok v -> v
     | Error (`Msg err) -> invalid_arg err
 
-  let to_string x = Encoder.to_string Encoder.domain x
+  let to_string x = Prettym.to_string Encoder.domain x
 end
 
 module Local = struct
   type 'a local =
     | [] : Peano.z local
-    | ( :: ) : word * 'a local -> 'a Peano.s local
+    | ( :: ) : Emile.word * 'a local -> 'a Peano.s local
 
   let word x = if String.length x > 0 then make_word x else Rresult.R.error_msgf "A word can not be empty"
 
@@ -397,11 +348,11 @@ module Local = struct
 
   let w = word_exn
 
-  let rec coerce : type a. a Peano.s local -> Rfc822.local = function
+  let rec coerce : type a. a Peano.s local -> Emile.local = function
     | [x] -> List.cons x []
     | x :: y :: r -> List.cons x (coerce (y :: r))
 
-  let make : type a. a local -> (Rfc822.local, [ `Msg of string ]) result = function
+  let make : type a. a local -> (Emile.local, [> Rresult.R.msg ]) result = function
     | [] -> Rresult.R.error_msg "A local-part must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
@@ -419,38 +370,32 @@ module Local = struct
     | [] -> error_msgf "A local-part must contain at least one element"
     | v -> Ok v
 
-  let v : type a. a local -> Rfc822.local =
+  let v : type a. a local -> Emile.local =
    fun l ->
     match make l with
     | Ok v -> v
     | Error (`Msg err) -> invalid_arg err
 
-  let to_string x = Encoder.to_string Encoder.local x
+  let to_string x = Prettym.to_string Encoder.local x
 end
 
 let make ?name local ?(domains= []) domain =
-  { name; local; domain= (domain, domains); }
+  { Emile.name; local; domain= (domain, domains); }
 
-let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Rfc5322.mailbox =
+let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Emile.mailbox =
  fun local (witness, domain) ->
   match (Local.make local, Domain.make witness domain) with
   | Ok local, Ok domain ->
-      {Rfc5322.name= None; local; domain= (domain, [])}
+      { Emile.name= None; local; domain= (domain, []) }
   | Error (`Msg err), Ok _ -> invalid_arg err
   | Ok _, Error (`Msg err) -> invalid_arg err
   | Error _, Error _ -> Fmt.invalid_arg "Invalid local-part and domain"
 
-let with_name : Rfc5322.phrase -> Rfc5322.mailbox -> Rfc5322.mailbox =
- fun name mailbox -> {mailbox with Rfc5322.name= Some name}
+let with_name =
+  fun name mailbox -> { mailbox with Emile.name= Some name }
 
-let to_string x = Encoder.to_string Encoder.mailbox x
-
-let of_string x = match Angstrom.parse_string Rfc5322.mailbox x with
+let of_string x = match Emile.of_string x with
   | Ok v -> Ok v
-  | Error _ -> Rresult.R.error_msgf "Invalid mailbox: %S" x
+  | Error `Invalid -> Rresult.R.error_msgf "Invalid email address: %S" x
 
-let mailboxes_to_unstructured ~field_name x =
-  Unstructured.to_unstructured ~field_name Encoder.mailboxes x
-
-let to_unstructured ~field_name x =
-  Unstructured.to_unstructured ~field_name Encoder.mailbox x
+let to_string = Prettym.to_string Encoder.mailbox

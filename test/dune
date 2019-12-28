@@ -16,26 +16,21 @@
 (executable
  (name test_encoder)
  (modules test_encoder)
- (libraries fmt jsonm alcotest mrmime.encoder))
+ (libraries fmt jsonm alcotest mrmime.prettym))
 
 (executable
- (name obs_unstruct)
- (modules obs_unstruct)
+ (name test_date)
+ (modules test_date)
  (libraries alcotest mrmime))
 
 (executable
- (name date)
- (modules date)
+ (name test_message_id)
+ (modules test_message_id)
  (libraries alcotest mrmime))
 
 (executable
- (name message_id)
- (modules message_id)
- (libraries alcotest mrmime))
-
-(executable
- (name mail)
- (modules mail)
+ (name test_mail)
+ (modules test_mail)
  (libraries alcotest ptime.clock.os mrmime))
 
 (alias
@@ -60,20 +55,15 @@
 
 (alias
  (name runtest)
- (deps (:obs_unstruct obs_unstruct.exe))
- (action (run %{obs_unstruct} --color=always)))
-
-(alias
- (name runtest)
- (deps (:date date.exe))
+ (deps (:date test_date.exe))
  (action (run %{date} --color=always)))
 
 (alias
  (name runtest)
- (deps (:message_id message_id.exe))
+ (deps (:message_id test_message_id.exe))
  (action (run %{message_id} --color=always)))
 
 (alias
  (name runtest)
- (deps (:mail mail.exe))
+ (deps (:mail test_mail.exe))
  (action (run %{mail} --color=always)))

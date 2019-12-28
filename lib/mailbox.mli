@@ -1,14 +1,20 @@
-type word = Rfc822.word
-type phrase = Rfc5322.phrase
-type literal_domain = Rfc5321.literal_domain =
-  | IPv4 of Ipaddr.V4.t
-  | IPv6 of Ipaddr.V6.t
-  | Ext of string * string
-type domain = Rfc5322.domain
-type local = Rfc822.local
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
 
-type t = Rfc5322.mailbox =
-  {name: phrase option; local: local; domain: domain * domain list}
+type t = Emile.mailbox
 (** Type of mailbox. Normally, a mailbox is composed of two parts:
 
     {ul
@@ -22,12 +28,7 @@ type t = Rfc5322.mailbox =
 
 (** {2 Equals.} *)
 
-val equal_word : ?sensitive:bool -> word -> word -> bool
-val equal_phrase : phrase -> phrase -> bool
-val equal_local : local -> local -> bool
-val equal_domain : domain -> domain -> bool
-val equal_literal_domain : literal_domain -> literal_domain -> bool
-val equal : t -> t -> bool
+val equal : ?case_sensitive:bool -> t -> t -> bool
 
 val escape_string : string -> string
 (** [escape_string x] returns a safe [string] where control characters are
@@ -61,7 +62,7 @@ module Phrase : sig
   *)
 
 
-  type elt = [ `Dot | `Word of word | `Encoded of Encoded_word.t ]
+  type elt = [ `Dot | `Word of Emile.word | `Encoded of string * Emile.raw ]
   type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
   (** Phrase, according RFC 5322, is a non-empty list of three
       elements ({!elt}):
@@ -92,7 +93,7 @@ module Phrase : sig
   val b : Encoded_word.encoding
   (** Base64 encoding. *)
 
-  val word : string -> (elt, [ `Msg of string ]) result
+  val word : string -> (elt, [> Rresult.R.msg ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
      returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
@@ -103,16 +104,16 @@ module Phrase : sig
   val word_exn : string -> elt
   (** Same as {!word} but raises [Invalid_argument] instead to return [Error]. *)
 
-  val coerce : 'a Peano.s t -> phrase
+  val coerce : 'a Peano.s t -> Emile.phrase
   (** [coerce l] returns a valid and safe {!phrase}. *)
 
-  val make : 'a t -> (phrase, [ `Msg of string ]) result
+  val make : 'a t -> (Emile.phrase, [> Rresult.R.msg ]) result
   (** [make l] returns a {!phrase} only if [l] is a non-empty list. *)
 
-  val v : 'a t -> phrase
+  val v : 'a t -> Emile.phrase
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 
-  val to_string : phrase -> string
+  val to_string : Emile.phrase -> string
   (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 end
 
@@ -139,11 +140,11 @@ module Literal_domain : sig
   val extension : (string * string) t
   (** An user-defined literal domain kind. *)
 
-  val make : 'a t -> 'a -> (literal_domain, [ `Msg of string ]) result
+  val make : 'a t -> 'a -> (Emile.addr, [> Rresult.R.msg ]) result
   (** [make kind v] returns a literal-domain according RFC 5321. It should fails
      if [kind] is {!extension} and value does not respect standards. *)
 
-  val v : 'a t -> 'a -> literal_domain
+  val v : 'a t -> 'a -> Emile.addr
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 end
 
@@ -161,7 +162,7 @@ module Domain : sig
 
       {[
         let localhost = Domain.(v ipv4 Ipaddr.V4.localhost) ;;
-        val localhost : domain = `Addr (Rfc5321.IPv4 127.0.0.1)
+        val localhost : domain = `Addr (IPv4 127.0.0.1)
         Domain.to_string localhost ;;
         - : string = "[127.0.0.1]"
       ]}
@@ -194,7 +195,7 @@ module Domain : sig
       {- A {!Literal_domain.t}}
       {- A [`Literal] domain which is a string surrounded by brackets.}} *)
 
-  val atom : string -> (atom, [ `Msg of string ]) result
+  val atom : string -> (atom, [> Rresult.R.msg ]) result
   (** [atom x] returns a safe {!atom} element. If [x] does not respect RFC 5322,
      it returns [Error]. It accepts any characters excepts controls, space and
      specials characters - for instance, brackets are not allowed. *)
@@ -205,7 +206,7 @@ module Domain : sig
   val a : string -> atom
   (** Alias of {!atom_exn}. *)
 
-  val literal : string -> (literal, [ `Msg of string ]) result
+  val literal : string -> (literal, [> Rresult.R.msg ]) result
   (** [literal x] returns a {!literal} domain. If [x] does not respect RFC 5321,
      it returns [Error]. It will try to escape control characters
      (with {!escape_string}). *)
@@ -228,7 +229,7 @@ module Domain : sig
   val default : string t
   (** Kind of {!literal}. *)
 
-  val make : 'a t -> 'a -> (Rfc5322.domain, [ `Msg of string ]) result
+  val make : 'a t -> 'a -> (Emile.domain, [> Rresult.R.msg ]) result
   (** [make kind v] returns a safe domain. It can fail if an user-defined
      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
      {!domain} don't follow standards:
@@ -239,14 +240,14 @@ module Domain : sig
      {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
      {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
 
-  val of_list : string list -> (Rfc5322.domain, [ `Msg of string ]) result
+  val of_list : string list -> (Emile.domain, [> Rresult.R.msg ]) result
   (** [of_list l] returns a domain from a non-empty list of well-formed atom
      elements. Otherwise, it returns an error. *)
 
-  val v : 'a t -> 'a -> Rfc5322.domain
+  val v : 'a t -> 'a -> Emile.domain
   (** Same as {!make} but raises an [Invalid_argument] instead [Error]. *)
 
-  val to_string : Rfc5322.domain -> string
+  val to_string : Emile.domain -> string
   (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 end
 
@@ -275,15 +276,15 @@ module Local : sig
 
   type 'a local =
     | [] : Peano.z local
-    | ( :: ) : word * 'a local -> 'a Peano.s local
+    | ( :: ) : Emile.word * 'a local -> 'a Peano.s local
 
-  val w : string -> word
+  val w : string -> Emile.word
   (** {!w} produces a {b safe} word. {!w} will try to escape control characters
      and verify if contents respects standards. Otherwise, {!w} raises an
      [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
      double-quote. *)
 
-  val word : string -> (word, [ `Msg of string ]) result
+  val word : string -> (Emile.word, [> Rresult.R.msg ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
      returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
@@ -291,27 +292,27 @@ module Local : sig
 
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
-  val word_exn : string -> word
+  val word_exn : string -> Emile.word
   (** Same as {!word} but raises an exception instead to return [Error]. *)
 
-  val coerce : 'a Peano.s local -> Rfc822.local
+  val coerce : 'a Peano.s local -> Emile.local
   (** [coerce l] returns a valid and safe {!local}. *)
 
-  val make : 'a local -> (Rfc822.local, [ `Msg of string ]) result
+  val make : 'a local -> (Emile.local, [> Rresult.R.msg ]) result
   (** [make l] returns a {!local} only if [l] is a non-empty list. *)
 
-  val of_list : string list -> (Rfc822.local, [ `Msg of string ]) result
+  val of_list : string list -> (Emile.local, [> Rresult.R.msg ]) result
   (** [of_list l] returns a local-part from a non-empty list of well-formed
      words. Otherwise, it returns an error. *)
 
-  val v : 'a local -> Rfc822.local
+  val v : 'a local -> Emile.local
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 
-  val to_string : Rfc822.local -> string
+  val to_string : Emile.local -> string
   (** [to_string x] returns a string which represents [x] as it is in an e-mail. *)
 end
 
-val make : ?name:phrase -> local -> ?domains:domain list -> domain -> t
+val make : ?name:Emile.phrase -> Emile.local -> ?domains:Emile.domain list -> Emile.domain -> t
 (** [make ?name local ?domains domain] returns a {!mailbox} with local-part [local],
     first domain [domain], others domains [domains] (default is an empty list) and
     an optional name.
@@ -345,7 +346,7 @@ val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> t
     [@] operator can raise [Invalid_argument] where local-part or domain fail to
     normalize inputs according standards (see {!Local.make} and {!Domain.make}). *)
 
-val with_name : phrase -> t -> t
+val with_name : Emile.phrase -> t -> t
 (** [with_name phrase t] put or replace {i display name} of mailbox [t].
 
      {[
@@ -360,7 +361,7 @@ val with_name : phrase -> t -> t
 val to_string : t -> string
 (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 
-val of_string : string -> (t, [ `Msg of string ]) result
+val of_string : string -> (t, [> Rresult.R.msg ]) result
 (** [of_string x] returns a {!t} from a well-formed string [x] according RFC
    5322. A {i mailbox} can have several forms and can include [FWS] tokens. Some
    examples of what is allowed:
@@ -377,23 +378,21 @@ val of_string : string -> (t, [ `Msg of string ]) result
 
 (** {2 Pretty-printers.} *)
 
-val pp_phrase : phrase Fmt.t
-val pp_word : word Fmt.t
-val pp_literal_domain : literal_domain Fmt.t
-val pp_domain : domain Fmt.t
-val pp_local : local Fmt.t
 val pp : t Fmt.t
+
+(** {2 Decoder of mailbox.} *)
+
+module Decoder : sig
+  val mailbox : Emile.mailbox Angstrom.t
+  val mailbox_list : Emile.mailbox list Angstrom.t
+end
 
 (** {2 Encoder of mailbox.} *)
 
 module Encoder : sig
-  val word : word Encoder.t
-  val local : local Encoder.t
-  val phrase : phrase Encoder.t
-  val domain : domain Encoder.t
-  val mailbox : t Encoder.t
-  val mailboxes : t list Encoder.t
+  val word : Emile.word Prettym.t
+  val phrase : Emile.phrase Prettym.t
+  val local : Emile.local Prettym.t
+  val mailbox : t Prettym.t
+  val mailboxes : t list Prettym.t
 end
-
-val mailboxes_to_unstructured : field_name:Field_name.t -> t list -> Unstructured.t
-val to_unstructured : field_name:Field_name.t -> t -> Unstructured.t

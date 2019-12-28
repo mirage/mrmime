@@ -1,5 +1,27 @@
 (library
  (name mrmime)
  (public_name mrmime)
- (flags (:standard -w -32-27))
- (libraries encoder ptime ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))
+ (modules content_type
+          content_encoding
+	  encoded_word
+	  date
+	  address
+	  mailbox
+	  group
+	  messageID
+	  field
+	  field_name
+	  unstructured
+	  header
+	  mail
+	  b64 quoted_printable
+	  iana
+	  location option peano
+	  hd mt
+	  rfc2046
+	  mrmime)
+ (libraries unstrctrd unstrctrd.parser
+	    ptime ipaddr
+	    base64 base64.rfc2045 pecu
+	    emile rosetta
+	    prettym rresult fmt angstrom))

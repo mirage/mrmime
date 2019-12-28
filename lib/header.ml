@@ -1,105 +1,84 @@
-module Ordered = Map.Make(Number)
-type field = Rfc5322.field
-type t = (Field.field * Location.t) Ordered.t
+type t = Field.field Location.with_location list
 
-let reduce
-  : (Number.t * ([> field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
-  = fun fields header ->
-    List.fold_left
-      (fun (header, rest) (n, field, loc) -> match field with
-         | #field as field ->
-           Ordered.add n (Field.of_rfc5322_field field, loc) header, rest
-         | field ->
-           header, (n, field, loc) :: rest)
-      (header, []) fields
-    |> fun (header, rest) -> (header, List.rev rest)
+let pp = Fmt.(list ~sep:(always "@\n") (using Location.prj Field.pp))
 
-type value = Value : 'a Field.v * 'a -> value
+let assoc field_name header =
+  let f acc (Field.Field (field_name', _, _) as field) =
+    if Field_name.equal field_name field_name'
+    then field :: acc
+    else acc in
+  List.fold_left f [] (List.map Location.prj header) |> List.rev
 
-let field_to_value : Field.field -> value =
-  fun (Field (field_name, v)) -> Value (Field.field_value field_name, v)
+let remove_assoc field_name header =
+  let f acc x =
+    let Field.Field (field_name', _, _) = Location.prj x in
+    if Field_name.equal field_name field_name'
+    then acc else x :: acc in
+  List.fold_left f [] header |> List.rev
 
-let get field_name header =
-  let f i (field, loc) a =
-    if Field_name.equal field_name (Field.field_name field)
-    then (i, field_to_value field, loc) :: a
-    else a in
-  Ordered.fold (fun i (field, loc) a -> match field with
-      (* TODO: folded fields. *)
-      | Field.Field (Field.Content, _) -> a
-      | Field.Field (Field.Resent, _) -> a
-      | Field.Field (Field.Trace, _) -> a
-      | field -> f i (field, loc) a) header []
+let exists field_name t =
+  List.exists (fun (Field.Field (field_name', _, _)) -> Field_name.equal field_name field_name') (List.map Location.prj t)
 
-let cardinal t =
-  let folder
-    : Number.t -> (Field.field * Location.t) -> (Number.t, [ `Msg of string ]) result -> (Number.t, [ `Msg of string ]) result
-    = fun _ (field, _) a ->
-    let open Rresult.R in
-    match field with
-    | Field.Field (Content, v) -> bind a (Number.add_int (Content.length v))
-    | Field.Field (Resent, v) -> bind a (Number.add_int (Resent.length v))
-    | Field.Field (Trace, v) -> bind a (Number.add_int (Trace.length v))
-    | _ -> map Number.succ a in
-  let res = Ordered.fold folder t (Ok Number.zero) in
-  match res with
-  | Ok length -> length
-  | Error (`Msg err) -> invalid_arg err (* XXX(dinosaure): should never occur. *)
+let empty = []
+            let concat a b = a @ b
 
-let add field t =
-  Ordered.add (cardinal t) (field, Location.none) t
+let add
+  : type a. Field_name.t -> (a Field.t * a) -> t -> t
+  = fun field_name (w, v) t ->
+    let field = Field.Field (field_name, w, v) in
+    Location.inj ~location:Location.none field :: t
 
-let add_or_replace (Field.Field (field_name, v) as field) t =
-  let exception Exists of Number.t in
-  try
-    Ordered.iter
-      (fun n Field.(Field (field_name', v'), _) ->
-         match Field.equal field_name field_name' with
-         | Some Refl.Refl -> raise_notrace (Exists n)
-         | None -> ())
-      t ; add field t
-  with Exists n ->
-    Ordered.add n (field, Location.none) t
+let replace
+  : type a. Field_name.t -> (a Field.t * a) -> t -> t
+  = fun field_name (w, v) t ->
+    let header = remove_assoc field_name t in
+    let field = Field.Field (field_name, w, v) in
+    Location.inj ~location:Location.none field :: header
 
-let ( & ) = add
+let of_list = List.map (Location.inj ~location:Location.none)
+let of_list_with_location x = x
 
-let pp : t Fmt.t = fun ppf t ->
-  Fmt.Dump.iter_bindings
-    Ordered.iter
-    Fmt.(always "header")
-    Fmt.nop
-    Fmt.(fun ppf (Field.Field (k, v)) ->
-        match k with
-        | Resent -> Resent.pp ppf v
-        | Trace -> Trace.pp ppf v
-        | Content -> Content.pp ppf v
-        | k ->
-          Dump.pair
-            (using Field.to_field_name Field_name.pp)
-            (Field.pp_of_field_name k) ppf (k, v))
-    ppf (Ordered.map fst t)
+let content_type header =
+  let content : Content_type.t ref = ref Content_type.default in
+  List.iter (function
+      | Field.Field (field_name, Field.Content, v) ->
+        if Field_name.equal field_name Field_name.content_type
+        then content := v
+      | _ -> ()) (List.map Location.prj header) ;
+  !content
 
-let pp_value ppf = fun (Value (k, v)) ->
-  Field.pp_of_field_value k ppf v
+let content_encoding header =
+  let mechanism : Content_encoding.t ref = ref Content_encoding.default in
+  List.iter (function
+      | Field.Field (field_name, Field.Encoding, v) ->
+        if Field_name.equal field_name Field_name.content_encoding
+        then mechanism := v
+      | _ -> ()) (List.map Location.prj header) ;
+  !mechanism
 
-let empty = Ordered.empty
+module Decoder = struct
+  open Angstrom
 
-let content header =
-  let content : Content.t option ref = ref None in
-  Ordered.iter (fun _ -> function
-      | Field.Field (Field.Content, v), _ -> content := Some v
-      | _ -> ()) header ;
-  match !content with
-  | Some content -> content
-  | None -> Content.default
+  let is_wsp = function ' ' | '\t' -> true | _ -> false
 
-module Encoder = struct
-  include Encoder
+  let field =
+    Field_name.Decoder.field_name >>= fun field_name ->
+    skip_while is_wsp *> char ':' *> Field.Decoder.field field_name
 
-  let epsilon = (fun t () -> t), ()
-  let field ppf (_, (x, _)) = Field.Encoder.field ppf x
-  let header ppf x = (list ~sep:epsilon field) ppf (Ordered.bindings x)
+  let with_location p =
+    pos >>= fun a -> p >>= fun v -> pos >>| fun b ->
+    let location = Location.make a b in
+    Location.inj ~location v
+
+  let header = many (with_location field)
 end
 
-let to_string x = Encoder.to_string Encoder.header x
+module Encoder = struct
+  include Prettym
+
+  let noop = (fun ppf () -> ppf), ()
+  let field ppf x = Field.Encoder.field ppf x
+  let header ppf x = (list ~sep:noop field) ppf (List.map Location.prj x)
+end
+
 let to_stream x = Encoder.to_stream Encoder.header x

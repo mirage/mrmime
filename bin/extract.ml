@@ -1,34 +1,17 @@
 open Common
 
-let print_field value v =
-  Fmt.pr "Retrieve: @[<hov>%a@].\n%!" (Mrmime.Hd.Value.pp_of_value value) v
-
-let print_others field others =
-  let open Mrmime in
-  Fmt.pr "Your requested field %a does not exists but you can extract:@\n" Mrmime.Field_name.pp field ;
-  Fmt.pr "%a.\n%!" Fmt.(Dump.hashtbl Field_name.pp int) others
-
-let run ~newline ic field_name (Mrmime.Hd.Value.V value) capacity =
+let run ~newline ic capacity =
   let open Mrmime in
   let open Hd in
   let raw = Bytes.create capacity in
   let buffer = Bigstringaf.create (2 * capacity) in
-  let decoder = decoder ~field_name value buffer in
-  let exists = ref false in
-  let others = Hashtbl.create 0x10 in
-  let add_other field =
-    try Hashtbl.add others field (Hashtbl.find others field + 1)
-    with Not_found -> Hashtbl.add others field 1 in
+  let decoder = decoder buffer in
   let rec go () = match decode decoder with
-    | `Field (_, v) ->
-      exists := true ; print_field value v ; go ()
-    | `Other (field', _) ->
-      add_other field' ; go ()
-    | `Lines _ -> go ()
+    | `Field v ->
+      let v = Location.prj v in
+      Fmt.pr "%a@\n%!" Field.pp v ; go ()
     | `Malformed err ->Rresult.R.error_msg err
-    | `End _ ->
-      if not !exists then print_others field_name others ;
-      Rresult.R.ok ()
+    | `End _ -> Rresult.R.ok ()
     | `Await ->
       let len = input ic raw 0 capacity in
       let raw = sanitize_input newline raw len in
@@ -37,12 +20,12 @@ let run ~newline ic field_name (Mrmime.Hd.Value.V value) capacity =
       | Error _ as err -> err in
   go ()
 
-let run newline input field value capacity =
+let run newline input capacity =
   let close, ic =
     match input with
     | `Path x -> let ic = open_in (Fpath.to_string x) in (fun () -> close_in ic), ic
     | `Std -> (fun () -> ()), stdin in
-  let res = run ~newline ic field value capacity in
+  let res = run ~newline ic capacity in
   close () ; (res :> (unit, Header.error) result)
 
 open Cmdliner
@@ -57,12 +40,6 @@ let field = Arg.(required & opt (some field) None & info [ "f"; "field" ] ~doc:"
 let filename = Header.filename
 let source = Header.source
 
-let kind =
-  let open Mrmime in
-  let parser = Hd.Value.of_string in
-  let pp = Hd.Value.pp in
-  Arg.conv (parser, (fun ppf (Hd.Value.V x) -> pp ppf x))
-
 let[@inline always] is_power_of_two v = v <> 0 && v land (lnot v + 1) = v
 
 let capacity =
@@ -75,7 +52,6 @@ let capacity =
   let pp = Fmt.int in
   Arg.conv (parser, pp)
 
-let value = Arg.(required & opt (some kind) None & info [ "v"; "value" ] ~doc:"kind of value expected")
 let capacity = Arg.(value & opt capacity 0x1000 & info [ "c"; "capacity" ] ~doc:"capacity of the ring-buffer")
 
 let command =
@@ -84,5 +60,5 @@ let command =
   let man =
     [ `S Manpage.s_description
     ; `P "Extract one field in one pass (safe to use standard input)" ] in
-  Term.(const run $ Common.newline $ source $ field $ value $ capacity),
+  Term.(const run $ Common.newline $ source $ capacity),
   Term.info "extract" ~doc ~exits ~man

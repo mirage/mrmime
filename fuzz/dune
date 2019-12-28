@@ -6,7 +6,7 @@
 (executable
  (name fuzz_encoder)
  (modules fuzz_encoder)
- (libraries mrmime.encoder common crowbar jsonm))
+ (libraries mrmime.prettym common crowbar jsonm))
 
 (executable
  (name fuzz_mailbox)

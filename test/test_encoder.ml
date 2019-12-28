@@ -1,22 +1,22 @@
 let comma =
-  (fun t () -> Encoder.char t ','), ()
+  (fun t () -> Prettym.char t ','), ()
 
 let rec value t x =
   let binding t (k, v) =
-    Encoder.eval t
-      Encoder.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
+    Prettym.eval t
+      Prettym.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
       k v
   in
-  let arr = Encoder.list ~sep:comma value in
-  let obj = Encoder.list ~sep:comma binding in
+  let arr = Prettym.list ~sep:comma value in
+  let obj = Prettym.list ~sep:comma binding in
   match x with
-  | `Bool true -> Encoder.string t "true"
-  | `Bool false -> Encoder.string t "false"
-  | `Null -> Encoder.string t "null"
-  | `Float f -> Encoder.string t (Fmt.strf "%.16g" f)
-  | `String s -> Encoder.eval t Encoder.[char $ '"'; !!string; char $ '"'] s
-  | `A a -> Encoder.eval t Encoder.[char $ '['; !!arr; char $ ']'] a
-  | `O o -> Encoder.eval t Encoder.[char $ '{'; !!obj; char $ '}'] o
+  | `Bool true -> Prettym.string t "true"
+  | `Bool false -> Prettym.string t "false"
+  | `Null -> Prettym.string t "null"
+  | `Float f -> Prettym.string t (Fmt.strf "%.16g" f)
+  | `String s -> Prettym.eval t Prettym.[char $ '"'; !!string; char $ '"'] s
+  | `A a -> Prettym.eval t Prettym.[char $ '['; !!arr; char $ ']'] a
+  | `O o -> Prettym.eval t Prettym.[char $ '{'; !!obj; char $ '}'] o
 
 type await = [`Await]
 type error = [`Error of Jsonm.error]
@@ -123,8 +123,8 @@ let make v =
 
   let emitter =
     let write a x =
-      let open Encoder.IOVec in
-      let open Encoder.Buffer in
+      let open Prettym.IOVec in
+      let open Prettym.Buffer in
       match x with
       | { buffer= String x; off; len; } ->
         Buffer.add_substring buf x off len ; a + len
@@ -135,25 +135,25 @@ let make v =
         Buffer.add_string buf x ; a + len in
     List.fold_left write 0 in
 
-  let encoder = Encoder.create
+  let encoder = Prettym.create
       ~emitter
       ~margin:78
       ~new_line:"\n" 0x100 in
 
   let kend encoder =
-    if Encoder.is_empty encoder
+    if Prettym.is_empty encoder
     then ()
     else Fmt.failwith "Leave a non-empty encoder" in
 
-  let () = Encoder.keval kend encoder Encoder.[!!value; new_line] v in
+  let () = Prettym.keval kend encoder Prettym.[!!value; new_line] v in
   let res = Buffer.contents buf in
   let res = json_of_string res in
   Alcotest.(check json) "encode:decode:compare" v res
 
 let unroll_box () =
   Alcotest.test_case "unroll" `Quick @@ fun () ->
-  let g ppf (k, x, y) = let open Encoder in eval ppf [ !!string; char $ ':'; tbox 1; !!string; cut; char $ '&'; cut; !!string; close; new_line ] k x y in
-  let result = Encoder.to_string ~margin:14 g ("AAAAAA", "BBBBBB", "CCCCCC") in
+  let g ppf (k, x, y) = let open Prettym in eval ppf [ !!string; char $ ':'; tbox 1; !!string; cut; char $ '&'; cut; !!string; close; new_line ] k x y in
+  let result = Prettym.to_string ~margin:14 g ("AAAAAA", "BBBBBB", "CCCCCC") in
   Alcotest.(check string) "result" result "AAAAAA:\r\n  BBBBBB&CCCCCC\r\n"
     (* XXX(dinosaure): instead to cut at [&], it unroll the [tbox] and print elements to the new line. *)
 

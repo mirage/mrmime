@@ -1,9 +1,4 @@
 (executable
  (name mr)
- (modules mr)
+ (modules mr header extract common)
  (libraries fpath rresult cmdliner mrmime))
-
-(executable
- (name maker)
- (modules maker)
- (libraries ptime.clock.os fpath rresult mrmime))

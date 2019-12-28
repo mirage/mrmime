@@ -1,0 +1,4 @@
+(library
+ (name prettym)
+ (public_name mrmime.prettym)
+ (libraries butils fmt ke bigstringaf))

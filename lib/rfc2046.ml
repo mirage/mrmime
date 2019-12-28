@@ -91,21 +91,20 @@ let discard_all_to_delimiter boundary =
 
 let nothing_to_do = Fmt.kstrf fail "nothing to do"
 
+let crlf = string "\r\n"
+
 let body_part body =
-  Rfc2045.mime_part_headers
-    (Rfc5322.field (fun _ -> nothing_to_do))
-  >>| List.mapi (fun n (field, location) -> Number.of_int_exn n, field, location)
-  >>| (fun fields -> Content.reduce_as_part fields Content.empty)
-  >>= fun (content, fields) -> ((Rfc822.crlf *> return `CRLF) <|> (return `Nothing))
+  Header.Decoder.header >>= fun header ->
+  ((crlf *> return `CRLF) <|> (return `Nothing))
   >>= (function
-      | `CRLF -> body content fields >>| Option.some
+      | `CRLF -> body header >>| Option.some
       | `Nothing -> return None)
-  >>| fun body -> (content, fields, body)
+  >>| fun body -> (header, body)
 
 let encapsulation boundary body =
   string (make_delimiter boundary)
   *> transport_padding
-  *> Rfc822.crlf
+  *> crlf
   *> body_part body
 
 (* From RFC 2046:
@@ -125,7 +124,7 @@ let multipart_body ?parent boundary body =
   option () (preambule boundary) (* see [preambule]. *)
   *> dash_boundary boundary
   *> transport_padding
-  *> Rfc822.crlf
+  *> crlf
   *> body_part body
   >>= fun x -> many (encapsulation boundary body)
   >>= fun r -> ((close_delimiter boundary

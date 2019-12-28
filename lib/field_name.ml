@@ -26,7 +26,6 @@ exception Break
 let is_ftext = function
   | '\033' .. '\057' | '\059' .. '\126' -> true
   | _ -> false
-(* XXX(dinosaure): from [Rfc5322] but to avoid cyclic dependency. *)
 
 let of_string x =
   try
@@ -47,11 +46,17 @@ let prefixed_by prefix field =
   if String.contains prefix '-' then Fmt.invalid_arg "Field.prefixed_by: %s contains '-'" prefix ;
   match String.(split_on_char '-' (lowercase_ascii field)) with
   | [] -> assert false (* XXX(dinosaure): see invariants of [split_on_char]. *)
-  | [ x ] -> false
-  | x :: r -> String.(equal x (lowercase_ascii prefix))
+  | [ _ ] -> false
+  | x :: _ -> String.(equal x (lowercase_ascii prefix))
+
+module Decoder = struct
+  open Angstrom
+
+  let field_name = take_while1 is_ftext
+end
 
 module Encoder = struct
-  open Encoder
+  open Prettym
 
   let field_name = using capitalize string
 end
@@ -85,3 +90,5 @@ let resent_cc = v "Resent-Cc"
 let resent_bcc = v "Resent-Bcc"
 let resent_message_id = v "Resent-Message-ID"
 let resent_reply_to = v "Resent-Reply-To"
+
+module Map = Map.Make(struct type nonrec t = t let compare = compare end)

@@ -1,22 +1,22 @@
 let comma =
-  (fun t () -> Encoder.char t ','), ()
+  (fun t () -> Prettym.char t ','), ()
 
 let rec value t x =
   let binding t (k, v) =
-    Encoder.eval t
-      Encoder.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
+    Prettym.eval t
+      Prettym.[char $ '"'; !!string; char $ '"'; char $ ':'; !!value]
       k v
   in
-  let arr = Encoder.list ~sep:comma value in
-  let obj = Encoder.list ~sep:comma binding in
+  let arr = Prettym.list ~sep:comma value in
+  let obj = Prettym.list ~sep:comma binding in
   match x with
-  | `Bool true -> Encoder.string t "true"
-  | `Bool false -> Encoder.string t "false"
-  | `Null -> Encoder.string t "null"
-  | `Float f -> Encoder.string t (Fmt.strf "%.16g" f)
-  | `String s -> Encoder.eval t Encoder.[char $ '"'; !!string; char $ '"'] s
-  | `A a -> Encoder.eval t Encoder.[char $ '['; !!arr; char $ ']'] a
-  | `O o -> Encoder.eval t Encoder.[char $ '{'; !!obj; char $ '}'] o
+  | `Bool true -> Prettym.string t "true"
+  | `Bool false -> Prettym.string t "false"
+  | `Null -> Prettym.string t "null"
+  | `Float f -> Prettym.string t (Fmt.strf "%.16g" f)
+  | `String s -> Prettym.eval t Prettym.[char $ '"'; !!string; char $ '"'] s
+  | `A a -> Prettym.eval t Prettym.[char $ '['; !!arr; char $ ']'] a
+  | `O o -> Prettym.eval t Prettym.[char $ '{'; !!obj; char $ '}'] o
 
 exception Fail
 
@@ -154,7 +154,7 @@ let rec cmp_json a b = match a, b with
   | `Null, `Null -> 0
   | `Bool a, `Bool b -> cmp_bool a b
   | `String a, `String b -> String.compare a b
-  | `Float a, `Float b -> Pervasives.compare a b
+  | `Float a, `Float b -> Stdlib.Float.compare a b
   | `A a, `A b -> list_cmp cmp_json a b
   | `O a, `O b ->
     let cmp (ka, a) (kb, b) =
@@ -180,7 +180,7 @@ let eq_json a b = cmp_json a b = 0
 module BBuffer = Buffer
 
 let emitter_of_buffer buf =
-  let open Mrmime.Encoder in
+  let open Prettym in
 
   let write a = function
     | { IOVec.buffer= Buffer.String x; off; len; } ->
@@ -197,8 +197,8 @@ let () =
 
   let emitter =
     let write a x =
-      let open Encoder.IOVec in
-      let open Encoder.Buffer in
+      let open Prettym.IOVec in
+      let open Prettym.Buffer in
       match x with
       | { buffer= String x; off; len; } ->
         Buffer.add_substring buf x off len ; a + len
@@ -209,13 +209,13 @@ let () =
         Buffer.add_string buf x ; a + len in
     List.fold_left write 0 in
 
-  let encoder = Encoder.create
+  let encoder = Prettym.create
       ~emitter
       ~margin:78
       ~new_line:"\n" 0x100 in
-  let encoder = Encoder.eval encoder Encoder.[!!value; new_line] json in
+  let encoder = Prettym.eval encoder Prettym.[!!value; new_line] json in
 
-  Crowbar.check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+  Crowbar.check_eq ~pp:Fmt.bool ~eq:(=) (Prettym.is_empty encoder) true ;
 
   let res = Buffer.contents buf in
   let res = json_of_string res in

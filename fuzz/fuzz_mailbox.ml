@@ -59,13 +59,13 @@ let mailbox =
   map [ option phrase; local; list1 domain ]
     (fun name local domains ->
        match domains with
-       | x :: r -> Mrmime.Mailbox.{ name; local; domain = (x, r) }
+       | x :: r -> Emile.{ name; local; domain = (x, r) }
        | [] -> bad_test ())
 
 module BBuffer = Buffer
 
 let emitter_of_buffer buf =
-  let open Mrmime.Encoder in
+  let open Prettym in
 
   let write a = function
     | { IOVec.buffer= Buffer.String x; off; len; } ->
@@ -76,20 +76,36 @@ let emitter_of_buffer buf =
       BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
+let parser buf =
+  let open Angstrom in
+  Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+  let res =
+    let open Rresult in
+    R.ok v
+    >>| Unstrctrd.fold_fws
+    (* XXX(dinosaure): '(' and ')' can be handle (and have a signification) by
+       [Emile]. *)
+    >>| Unstrctrd.to_utf_8_string
+    >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Mailbox.Decoder.mailbox ) in
+  match res with
+  | Ok v -> return v
+  | Error (`Msg err) -> fail err
+
 let () =
   let open Mrmime in
 
   Crowbar.add_test ~name:"mailbox" [ mailbox ] @@ fun mailbox ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
-  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Mailbox.Encoder.mailbox; new_line; new_line ] mailbox in
+  let encoder = Prettym.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Prettym.keval Prettym.flush encoder Prettym.[ !!Mailbox.Encoder.mailbox; new_line; ] mailbox in
 
-  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+  check_eq ~pp:Fmt.bool ~eq:(=) (Prettym.is_empty encoder) true ;
 
   let result = Buffer.contents buffer in
+  let buf = Bytes.create 0x7f in
 
-  match Angstrom.parse_string Angstrom.(Rfc5322.mailbox <* Rfc822.crlf <* Rfc822.crlf) result with
+  match Angstrom.parse_string (parser buf) result with
   | Ok mailbox' ->
     check_eq ~pp:Mailbox.pp ~eq:Mailbox.equal mailbox mailbox'
   | Error err ->

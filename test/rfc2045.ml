@@ -1,19 +1,26 @@
-module Option = struct
-  let value_exn = function
-    | Some v -> v
-    | None -> Fmt.invalid_arg "Option.value_exn"
-end
+let ( <.> ) f g = fun x -> f (g x)
 
 let parse_content_type x =
-  let x = x ^ "\r\n" in
-  Angstrom.parse_string Mrmime.Rfc2045.content x
+  let parser =
+    let open Angstrom in
+    let buf = Bytes.create 0x7f in
+    Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+    let res =
+      let open Rresult in
+      Unstrctrd.without_comments v
+      >>| Unstrctrd.fold_fws
+      >>| Unstrctrd.to_utf_8_string
+      >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Content_type.Decoder.content ) in
+    match res with
+    | Ok v -> return v
+    | Error _ -> fail "Invalid Content-Type" in
+  Angstrom.parse_string parser (x ^ "\r\n")
 
 let content_type =
   Alcotest.testable Mrmime.Content_type.pp Mrmime.Content_type.equal
 
 let make raw expect =
-  Alcotest.test_case raw `Quick
-  @@ fun () ->
+  Alcotest.test_case raw `Quick @@ fun () ->
   match parse_content_type raw with
   | Ok value -> Alcotest.(check content_type) raw expect value
   | Error _ -> Fmt.invalid_arg "Invalid content-type value: %s." raw

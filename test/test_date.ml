@@ -1,12 +1,25 @@
-let date =
-  Alcotest.testable Mrmime.Date.pp Mrmime.Date.equal
+let ( <.> ) f g = fun x -> f (g x)
+
+let date = Alcotest.testable Mrmime.Date.pp Mrmime.Date.equal
 
 let parse_date x =
-  let x = x ^"\r\n\r\n" in
-  Angstrom.parse_string Mrmime.Rfc5322.date_time x
+  let parser =
+    let open Angstrom in
+    let buf = Bytes.create 0x7f in
+    Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+    let res =
+      let open Rresult in
+      Unstrctrd.without_comments v
+      >>| Unstrctrd.fold_fws
+      >>| Unstrctrd.to_utf_8_string
+      >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Date.Decoder.date_time ) in
+    match res with
+    | Ok v -> return v
+    | Error _ -> fail "Invalid date" in
+  Angstrom.parse_string parser (x ^ "\r\n")
 
 let make raw expect =
-  Alcotest.test_case raw `Quick @@ fun () ->
+  Alcotest.test_case (Fmt.strf "%S" raw) `Quick @@ fun () ->
   match parse_date raw with
   | Ok value -> Alcotest.(check date) raw expect value
   | Error err -> Fmt.invalid_arg "Invalid date value (%s): %s." err raw
