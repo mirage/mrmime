@@ -1,5 +1,12 @@
 (library
  (name mrmime)
  (public_name mrmime)
- (flags (:standard -w -32-27))
- (libraries encoder ptime ipaddr base64 base64.rfc2045 uutf rosetta pecu rresult fmt angstrom))
+ (libraries unstrctrd unstrctrd.parser
+	    base64 base64.rfc2045
+	    pecu
+	    ptime
+	    ipaddr
+	    emile
+	    rosetta
+	    angstrom prettym
+	    ke rresult fmt))

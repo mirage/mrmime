@@ -70,7 +70,7 @@ let date =
 module BBuffer = Buffer
 
 let emitter_of_buffer buf =
-  let open Mrmime.Encoder in
+  let open Prettym in
 
   let write a = function
     | { IOVec.buffer= Buffer.String x; off; len; } ->
@@ -81,20 +81,36 @@ let emitter_of_buffer buf =
       BBuffer.add_string buf (Bigstringaf.substring x ~off ~len); a + len in
   List.fold_left write 0
 
+let ( <.> ) f g = fun x -> f (g x)
+
+let parser buf =
+  let open Angstrom in
+  Unstrctrd_parser.unstrctrd buf >>= fun v ->
+  let res =
+    let open Rresult in
+    Unstrctrd.without_comments v
+    >>| Unstrctrd.fold_fws
+    >>| Unstrctrd.to_utf_8_string
+    >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Date.Decoder.date_time ) in
+  match res with
+  | Ok v -> return v
+  | Error (`Msg err) -> fail err
+
 let () =
   let open Mrmime in
 
   Crowbar.add_test ~name:"date" [ date ] @@ fun date ->
 
   let buffer = Buffer.create 0x100 in
-  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
-  let encoder = Encoder.keval Encoder.flush encoder Encoder.[ !!Date.Encoder.date; new_line; new_line ] date in
+  let encoder = Prettym.create ~margin:78 ~new_line:"\r\n" 0x100 ~emitter:(emitter_of_buffer buffer) in
+  let encoder = Prettym.keval Prettym.flush encoder Prettym.[ !!Date.Encoder.date; new_line; ] date in
 
-  check_eq ~pp:Fmt.bool ~eq:(=) (Encoder.is_empty encoder) true ;
+  check_eq ~pp:Fmt.bool ~eq:(=) (Prettym.is_empty encoder) true ;
 
   let result = Buffer.contents buffer in
+  let buf = Bytes.create 0x7f in
 
-  match Angstrom.parse_string Angstrom.(Rfc5322.date_time <* Rfc822.crlf <* Rfc822.crlf) result with
+  match Angstrom.parse_string (parser buf) result with
   | Ok date' ->
     check_eq ~pp:Date.pp ~eq:Date.equal date date'
   | Error err ->
@@ -108,7 +124,7 @@ let () =
   Crowbar.add_test ~name:"date & ptime" [ float; zone ] @@ fun seconds zone ->
   (* XXX(dinosaure): according [Ptime]'s documentation, subsecond precision are
      floored. *)
-  match Ptime.of_float_s (Pervasives.floor seconds) with
+  match Ptime.of_float_s (Stdlib.Float.floor seconds) with
   | None -> Crowbar.bad_test ()
   | Some ptime ->
     let date = Date.of_ptime ~zone ptime in

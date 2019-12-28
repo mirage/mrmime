@@ -1,5 +1,21 @@
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
 module Day : sig
-  type t = Rfc5322.day =
+  type t =
     | Mon | Tue | Wed
     | Thu | Fri | Sat
     | Sun
@@ -41,7 +57,7 @@ module Day : sig
 end
 
 module Month : sig
-  type t = Rfc5322.month =
+  type t =
     | Jan | Feb | Mar | Apr | May | Jun
     | Jul | Aug | Sep | Oct | Nov | Dec
     (** Type of month according RFC 822 / RFC 2822 / RFC 5322. *)
@@ -98,7 +114,7 @@ module Month : sig
 end
 
 module Zone : sig
-  type t = Rfc5322.zone =
+  type t =
     | UT  | GMT
     | EST | EDT
     | CST | CDT
@@ -148,7 +164,7 @@ module Zone : sig
   val equal : t -> t -> bool
 end
 
-type t = Rfc5322.date =
+type t =
   { day  : Day.t option
   ; date : int * Month.t * int
   ; time : int * int * int option
@@ -157,7 +173,7 @@ type t = Rfc5322.date =
 
 (** {2 Constructors.} *)
 
-val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> (t, [ `Msg of string ]) result
+val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> (t, [> Rresult.R.msg ]) result
 (** [make ?day (year, month, day) (hh, mm, ss) tz] returns a date corresponding
    to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
    the day in the 7-day week) and [day] must correspond according of timestamp
@@ -175,7 +191,7 @@ val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zo
    [make] relies on {!Ptime.of_date_time}. To completely understand implication
    of that, you should read basics about [ptime]. *)
 
-val to_ptime : t -> (Ptime.t, [ `Msg of string ]) result
+val to_ptime : t -> (Ptime.t, [> Rresult.R.msg ]) result
 (** [to_ptime t] returns a POSIX timestamp {!Ptime.t}. *)
 
 val of_ptime : zone:Zone.t -> Ptime.t -> t
@@ -191,11 +207,14 @@ val pp : t Fmt.t
 val equal : t -> t -> bool
 val compare : t -> t -> int
 
+(** {2 Decoder of date.} *)
+
+module Decoder : sig
+  val date_time : t Angstrom.t
+end
+
 (** {2 Encoder of date.} *)
 
 module Encoder : sig
-  val date : t Encoder.t
+  val date : t Prettym.t
 end
-
-val to_string : t -> string
-val to_unstructured : t -> Unstructured.t

@@ -1,33 +1,41 @@
-type word = [`Atom of string | `String of string]
-type phrase = [`Dot | `Word of word | `Encoded of Encoded_word.t] list
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
 
-type t = Rfc5322.group =
-  { name : phrase
-  ; mailboxes : Mailbox.t list }
+type t = Emile.group
 
-let equal a b =
-  let mailboxes =
-    try List.for_all2 Mailbox.equal a.mailboxes b.mailboxes
-    with _ -> false in
-  Mailbox.equal_phrase a.name b.name
-  && mailboxes
+module Phrase = Mailbox.Phrase
 
-let make ~name mailboxes =
+let equal = Emile.equal_group
+
+let make ~name:group mailboxes =
   if List.length mailboxes = 0 then None
-  else Some { name; mailboxes; }
+  else Some { Emile.group; mailboxes; }
 
 let v ~name mailboxes = match make ~name mailboxes with
   | None -> Fmt.invalid_arg "A group contains at least one mailbox"
   | Some t -> t
 
-let pp : t Fmt.t = fun ppf t ->
-  Fmt.pf ppf "{ @[<hov>name = %a;@ \
-                       mailboxes = %a;@] }"
-    Mailbox.pp_phrase t.name
-    (Fmt.Dump.list Mailbox.pp) t.mailboxes
+let pp = Emile.pp_group
+
+module Decoder = struct
+  let group = Emile.Parser.group
+end
 
 module Encoder = struct
-  open Encoder
+  open Prettym
 
   let comma = (fun ppf () -> eval ppf [ char $ ','; fws ]), ()
   let phrase = Mailbox.Encoder.phrase
@@ -35,5 +43,5 @@ module Encoder = struct
 
   let group ppf t =
     eval ppf [ box; !!phrase; char $ ':'; spaces 1; box; !!(list ~sep:comma mailbox); close; char $ ';'; close ]
-      t.name t.mailboxes
+      t.Emile.group t.Emile.mailboxes
 end

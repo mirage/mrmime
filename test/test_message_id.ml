@@ -1,13 +1,8 @@
-let parse_msg_id x =
-  let x = x ^ "\r\n\r\n" in
-  let address_literal = Angstrom.fail "invalid domain" in
-  Angstrom.parse_string (Mrmime.Rfc822.msg_id ~address_literal) x
-
+let parse_msg_id x = Angstrom.parse_string Mrmime.MessageID.Decoder.message_id x
 let msg_id = Alcotest.testable Mrmime.MessageID.pp Mrmime.MessageID.equal
 
 let make raw expect =
-  Alcotest.test_case raw `Quick
-  @@ fun () ->
+  Alcotest.test_case raw `Quick @@ fun () ->
   match parse_msg_id raw with
   | Ok value -> Alcotest.(check msg_id) raw expect value
   | Error _ -> Fmt.invalid_arg "Invalid msg-id value: %s." raw

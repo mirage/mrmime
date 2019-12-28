@@ -1,4 +1,4 @@
 (library
- (name encoder)
- (public_name mrmime.encoder)
+ (name prettym)
+ (public_name mrmime.prettym)
  (libraries butils fmt ke bigstringaf bigarray-compat))

@@ -1,7 +1,39 @@
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
 (** Content-type module. *)
 
+val is_qtext : char -> bool
+val is_token : char -> bool
+
 module Type : sig
-  type t = Rfc2045.ty
+  type discrete = [ `Text | `Image | `Audio | `Video | `Application ]
+  type composite = [ `Message | `Multipart ]
+  type extension = [ `Ietf_token of string | `X_token of string ]
+
+  type t =
+    [ `Text
+    | `Image
+    | `Audio
+    | `Video
+    | `Application
+    | `Message
+    | `Multipart
+    | `Ietf_token of string
+    | `X_token of string ]
   (** Type of ... type. *)
 
   val text : t
@@ -25,10 +57,10 @@ module Type : sig
   val multipart : t
   (** Multipart type. *)
 
-  val ietf : string -> (t, [ `Msg of string ]) result
+  val ietf : string -> (t, [> Rresult.R.msg ]) result
   (** Type defined by IETF. *)
 
-  val extension : string -> (t, [ `Msg of string ]) result
+  val extension : string -> (t, [> Rresult.R.msg ]) result
   (** User-defined type. *)
 
   val pp : t Fmt.t
@@ -46,23 +78,25 @@ module Type : sig
   val is_discrete : t -> bool
   val is_multipart : t -> bool
   val is_message : t -> bool
+
+  val to_string : t -> string
 end
 
 module Subtype : sig
-  type t = Rfc2045.subty
+  type t = [ `Ietf_token of string | `Iana_token of string | `X_token of string ]
   (** Type of sub-type. *)
 
-  val ietf : string -> (t, [ `Msg of string ]) result
+  val ietf : string -> (t, [> Rresult.R.msg ]) result
   (** Sub-type defined by IETF. *)
 
-  val iana : Type.t -> string -> (t, [ `Msg of string ]) result
+  val iana : Type.t -> string -> (t, [> Rresult.R.msg ]) result
   (** Sub-type from IANA database. Returns [Error] if sub-type
       is not a part of the IANA database. *)
 
   val iana_exn : Type.t -> string -> t
   val v : Type.t -> string -> t
 
-  val extension : string -> (t, [ `Msg of string ]) result
+  val extension : string -> (t, [> Rresult.R.msg ]) result
   (** User-defined sub-type. *)
 
   val pp : t Fmt.t
@@ -84,7 +118,7 @@ module Parameters : sig
   type key = string
   (** Type of parameter key. *)
 
-  type value = Rfc2045.value
+  type value = [ `String of string | `Token of string ]
   (** Type of parameter value. *)
 
   type t = value Map.t
@@ -93,14 +127,14 @@ module Parameters : sig
   val of_list : (key * value) list -> t
   (** Make {!t} from an association list. *)
 
-  val key : string -> (key, [ `Msg of string ]) result
+  val key : string -> (key, [> Rresult.R.msg ]) result
   (** [key v] makes a new key (according to RFC 2045 - otherwise, it returns an
      error). *)
 
   val key_exn : string -> key
   val k : string -> key
 
-  val value : string -> (value, [ `Msg of string ]) result
+  val value : string -> (value, [> Rresult.R.msg ]) result
   (** [value v] makes a new value (according to RFC 2045 - otherwise, it returns
       an error). *)
 
@@ -149,7 +183,10 @@ module Parameters : sig
   val to_list : t -> (key * value) list
 end
 
-type t = Rfc2045.content
+type t =
+  { ty : Type.t
+  ; subty : Subtype.t
+  ; parameters : (string * Parameters.value) list }
 (** Type of Content-Type value. *)
 
 val default : t
@@ -175,6 +212,8 @@ val with_type : t -> Type.t -> t
 val with_subtype : t -> Subtype.t -> t
 val with_parameter : t -> (Parameters.key * Parameters.value) -> t
 
+val boundary : t -> string option
+
 (** {2 Pretty-printers.} *)
 
 val pp : t Fmt.t
@@ -185,10 +224,16 @@ val pp : t Fmt.t
 val equal : t -> t -> bool
 (** Equal of {!t}. *)
 
+(** {2 Decoder of content-type.} *)
+
+module Decoder : sig
+  val content : t Angstrom.t
+end
+
 (** {2 Encoder of content-type.} *)
 
 module Encoder : sig
-  val ty : Type.t Encoder.t
-  val subty : Subtype.t Encoder.t
-  val content_type : t Encoder.t
+  val ty : Type.t Prettym.t
+  val subty : Subtype.t Prettym.t
+  val content_type : t Prettym.t
 end

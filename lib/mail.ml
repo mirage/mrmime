@@ -1,86 +1,64 @@
-type field_mail = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc2045.field_version | Rfc5322.unsafe | Rfc5322.lines ]
-type field_part = [ Rfc5322.field | Rfc5322.resent | Rfc5322.trace | Rfc2045.field | Rfc5322.unsafe | Rfc5322.lines ]
+type 'a elt = { header : Header.t; body : 'a; }
 
-type ('discrete, 'extension) t =
-  | Discrete of { content : Content.t
-                ; fields : Garbage.t
-                ; body : 'discrete }
-  | Extension of { content : Content.t
-                 ; fields : Garbage.t
-                 ; body : 'extension }
-  | Multipart of { content : Content.t
-                 ; fields : Garbage.t
-                 ; parts : ('discrete, 'extension) atom list }
-  | Message of { content : Content.t
-               ; header : Header.t
-               ; fields : Garbage.t
-               ; message : ('discrete, 'extension) t }
-and ('discrete, 'extension) part =
-  | Part_discrete of 'discrete
-  | Part_extension of 'extension
-  | Part_multipart of ('discrete, 'extension) atom list
-  | Part_message of { header : Header.t
-                    ; message : ('discrete, 'extension) t }
-and ('discrete, 'extension) atom =
-  { content : Content.t
-  ; fields : (Number.t * field_part * Location.t) list
-  ; part : ('discrete, 'extension) part option }
+type 'a t =
+  | Leaf of 'a elt
+  | Multipart of 'a t option list elt
+  | Message of 'a t elt
 
-type garbage =
-  [ `Unsafe of Field_name.t * Unstructured.t
-  | `Lines of (string * Location.t) list ]
+let parser ~write_line end_of_body =
+  let open Angstrom in
+  let check_end_of_body =
+    let expected_len = String.length end_of_body in
+    Unsafe.peek expected_len
+      (fun ba ~off ~len ->
+         let raw = Bigstringaf.substring ba ~off ~len in
+         String.equal raw end_of_body) in
 
-let rfc5322 fields =
-  let go acc = function
-    | _, #Rfc5322.resent, _ -> acc
-    | _, #Rfc5322.trace, _ -> acc
-    | _, #Rfc2045.field, _ -> acc
-    | _, #Rfc2045.field_version, _ -> acc
-    | _, #Rfc5322.field, _ as x -> x :: acc
-    | _, #garbage, _ as x -> x :: acc in
-  List.fold_left go [] fields |> List.rev
+  fix @@ fun m ->
+  let choose chunk = function
+    | true ->
+      let chunk = Bytes.sub_string chunk 0 (Bytes.length chunk - 1) in
+      write_line chunk ; commit
+    | false ->
+      Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0] ;
+      write_line (Bytes.unsafe_to_string chunk) ;
+      advance 1 *> m in
 
-let clean fields =
-  let go acc = function
-    | _, #Rfc5322.field, _ -> acc
-    | _, #garbage, _ as x -> x :: acc in
-  List.fold_left go [] fields |> List.rev
+  Unsafe.take_while ((<>) end_of_body.[0]) Bigstringaf.substring
+  >>= fun chunk ->
+  let chunk' = Bytes.create (String.length chunk + 1) in
+  Bytes.blit_string chunk 0 chunk' 0 (String.length chunk) ;
+  check_end_of_body >>= choose chunk'
 
-type ('valid, 'invalid) contents =
-  | Contents of 'valid
-  | Invalid of 'invalid
+let with_buffer ?(end_of_line = "\n") end_of_body =
+  let buf = Buffer.create 0x100 in
+  let write_line x =
+    Buffer.add_string buf x ;
+    Buffer.add_string buf end_of_line in
 
-type mail = ((string, string) contents, string) t
-type 'id stream = ('id, 'id) t
+  let open Angstrom in
+  parser ~write_line end_of_body >>| fun () -> Buffer.contents buf
 
-open Angstrom
+let with_emitter ?(end_of_line = "\n") ~emitter end_of_body =
+  let write_line x = emitter (Some (x ^ end_of_line)) in
+  parser ~write_line end_of_body
 
-let header : (Header.t * Garbage.t) Angstrom.t =
-  let nothing_to_do _ = fail "Nothing to do" in
-  Rfc5322.header (Rfc2045.message_field nothing_to_do nothing_to_do)
-  >>| List.mapi (fun i (field, loc) -> Number.of_int_exn i, field, loc)
-  >>= fun fields -> return (Resent.reduce fields [])
-  >>= fun (resents, _) -> return (Trace.reduce fields [])
-  >>= fun (traces, _) -> return (Content.reduce_as_mail fields Content.empty)
-  >>= fun (content, _) -> return (Header.reduce (rfc5322 fields) Header.empty)
-  >>= fun (header, fields) -> return (clean fields)
-  >>= fun rest ->
-  let header = Header.add Field.(Content $ content) header in
-  let header = List.fold_left (fun header resent -> Header.add Field.(Resent $ resent) header) header resents in
-  let header = List.fold_left (fun header trace -> Header.add Field.(Trace $ trace) header) header traces in
-  match rest with
-  | [] ->
-    return (header, Garbage.empty)
-  | rest -> return (header, Garbage.make rest)
+let to_end_of_input ~write_data =
+  let open Angstrom in
 
-let contents x = Contents x
-let invalid x = Invalid x
+  fix @@ fun m ->
+  peek_char >>= function
+  | None -> commit
+  | Some _ ->
+    available >>= fun n -> Unsafe.take n
+      (fun ba ~off ~len ->
+         let chunk = Bytes.create len in
+         Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len ;
+         write_data (Bytes.unsafe_to_string chunk))
+    >>= fun () -> m
 
-let best_effort strict_parser raw_parser =
-  ((strict_parser >>| fun () -> `Contents)
-   <|> (raw_parser >>| fun () -> `Invalid))
-
-let heavy_octet boundary content =
+let heavy_octet boundary header =
+  let open Angstrom in
   match boundary with
   | None ->
     let buf = Buffer.create 0x800 in
@@ -88,49 +66,41 @@ let heavy_octet boundary content =
       Buffer.add_string buf line ;
       Buffer.add_string buf "\n" in
     let write_data = Buffer.add_string buf in
-    (match Content.encoding content with
+    (match Header.content_encoding header with
      | `Quoted_printable ->
-       best_effort
-         (Quoted_printable.to_end_of_input ~write_data ~write_line)
-         ((return (Buffer.clear buf)) *> Rfc5322.to_end_of_input ~write_data)
+       Quoted_printable.to_end_of_input ~write_data ~write_line
      | `Base64 ->
-       best_effort
-         (B64.to_end_of_input ~write_data)
-         ((return (Buffer.clear buf)) *> Rfc5322.to_end_of_input ~write_data)
+       B64.to_end_of_input ~write_data
      | `Bit7 | `Bit8 | `Binary ->
-       (Rfc5322.to_end_of_input ~write_data >>| fun () -> `Contents)
-     | `Ietf_token _x | `X_token _x -> assert false) >>|
-    (function
-      | `Contents -> Contents (Buffer.contents buf)
-      | `Invalid -> Invalid (Buffer.contents buf))
+       to_end_of_input ~write_data
+     | `Ietf_token _x | `X_token _x -> assert false)
+    >>| fun () -> Buffer.contents buf
   | Some boundary ->
     let end_of_body = Rfc2046.make_delimiter boundary in
-    match Content.encoding content with
+    match Header.content_encoding header with
     | `Quoted_printable ->
-      choice
-        [ (Quoted_printable.with_buffer end_of_body >>| contents)
-        ; (Rfc5322.with_buffer end_of_body >>| invalid) ]
+      Quoted_printable.with_buffer end_of_body
     | `Base64 ->
-      choice
-        [ (B64.with_buffer end_of_body >>| contents)
-        ; (Rfc5322.with_buffer end_of_body >>| invalid) ]
-    | `Bit7 | `Bit8 | `Binary -> (Rfc5322.with_buffer end_of_body >>| contents)
+      B64.with_buffer end_of_body
+    | `Bit7 | `Bit8 | `Binary ->
+      with_buffer end_of_body
     | `Ietf_token _x | `X_token _x -> assert false
 
-let light_octet ~emitter boundary content =
+let light_octet ~emitter boundary header =
+  let open Angstrom in
   match boundary with
   | None ->
     let write_line line = emitter (Some (line ^ "\n")) in
     let write_data data = emitter (Some data) in
-    (match Content.encoding content with
+    (match Header.content_encoding header with
      | `Quoted_printable -> Quoted_printable.to_end_of_input ~write_line ~write_data
      | `Base64 -> B64.to_end_of_input ~write_data
-     | `Bit7 | `Bit8 | `Binary -> Rfc5322.to_end_of_input ~write_data
+     | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
      | `Ietf_token _ | `X_token _ -> assert false) >>= fun () ->
     emitter None ; return ()
   | Some boundary ->
     let end_of_body = Rfc2046.make_delimiter boundary in
-    match Content.encoding content with
+    match Header.content_encoding header with
     | `Quoted_printable ->
       Quoted_printable.with_emitter ~emitter end_of_body
       >>= fun () -> emitter None ; return ()
@@ -138,101 +108,93 @@ let light_octet ~emitter boundary content =
       B64.with_emitter ~emitter end_of_body
       >>= fun () -> emitter None ; return ()
     | `Bit7 | `Bit8 | `Binary ->
-      Rfc5322.with_emitter ~emitter end_of_body
+      with_emitter ~emitter end_of_body
       >>= fun () -> emitter None ; return ()
     | `Ietf_token _ | `X_token _ -> assert false
 
-let boundary content =
-  match Content_type.Parameters.find "boundary" (Content.parameters content) with
+let boundary header =
+  let content_type = Header.content_type header in
+  match List.assoc_opt "boundary" (Content_type.parameters content_type) with
   | Some (`Token boundary) | Some (`String boundary) -> Some boundary
   | None -> None
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
-let mail : (Header.t * mail) Angstrom.t =
-  let rec body parent content _fields =
-    match Content.ty content with
+let mail =
+  let open Angstrom in
+  let rec body parent header =
+    match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
-    | #Rfc2045.discrete -> heavy_octet parent content >>| fun body -> Part_discrete body
+    | #Content_type.Type.discrete -> heavy_octet parent header >>| fun body -> Leaf { header; body; }
     | `Message ->
-      mail parent
-      >>| fun (header', body') -> Part_message { header= header'; message= body' }
+      mail parent >>| fun (header', body') -> Message { header= header'; body= body' }
     | `Multipart ->
-      match boundary content with
+      match boundary header with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> Part_multipart parts
+        >>| List.map snd
+        >>| fun parts -> Multipart { header; body= parts; }
       | None -> fail "expected boundary"
 
   and mail parent =
-    header <* Rfc822.crlf
-    >>= fun (header, fields) ->
-    match Content.ty (Header.content header) with
+    Header.Decoder.header <* char '\r' <* char '\n'
+    >>= fun header -> match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
-    | #Rfc2045.discrete ->
-      heavy_octet parent (Header.content header)
-      >>| fun body -> header, Discrete { content= Header.content header; fields; body; }
+    | #Content_type.Type.discrete ->
+      heavy_octet parent header >>| fun body ->
+      header, Leaf { header; body; }
     | `Message ->
-      mail parent
-      >>| fun (header', message') ->
-      header, Message { content= Header.content header
-                      ; fields
-                      ; header= header'
-                      ; message= message' }
+      mail parent >>| fun (header', message') ->
+      header, Message { header= header'; body= message' }
     | `Multipart ->
-      match boundary (Header.content header)with
+      match boundary header with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
+        >>| List.map snd
+        >>| fun parts -> header, Multipart { header; body= parts; }
       | None -> fail "expected boundary" in
 
   mail None
 
-type 'id emitters = Content.t -> (string option -> unit) * 'id
+type 'id emitters = Header.t -> (string option -> unit) * 'id
 
 let stream
-  : emitters:'id emitters -> (Header.t * 'id stream) Angstrom.t
+  : emitters:'id emitters -> (Header.t * 'id t) Angstrom.t
   = fun ~emitters ->
-  let rec body parent content _fields =
-    match Content.ty content with
+  let open Angstrom in
+  let rec body parent header =
+    match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
-    | #Rfc2045.discrete ->
-      let emitter, id = emitters content in
-      light_octet ~emitter parent content >>| fun () -> Part_discrete id
+    | #Content_type.Type.discrete ->
+      let emitter, id = emitters header in
+      light_octet ~emitter parent header >>| fun () -> Leaf { header; body= id; }
     | `Message ->
-      mail parent
-      >>| fun (header', body') -> Part_message { header= header'; message= body' }
+      mail parent >>| fun (header', body') -> Message { header= header'; body= body'; }
     | `Multipart ->
-      match boundary content with
+      match boundary header with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> Part_multipart parts
+        >>| List.map (fun (_header, body) -> body)
+        >>| fun parts -> Multipart { header; body= parts; }
       | None -> fail "expected boundary"
 
   and mail parent =
-    header <* Rfc822.crlf
-    >>= fun (header, fields) ->
-    match Content.ty (Header.content header) with
+    Header.Decoder.header <* char '\r' <* char '\n' >>= fun header ->
+    match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
-    | #Rfc2045.discrete ->
-      let emitter, id = emitters (Header.content header) in
-      light_octet ~emitter parent (Header.content header)
-      >>| fun () -> header, Discrete { content= Header.content header; fields; body= id; }
+    | #Content_type.Type.discrete ->
+      let emitter, id = emitters header in
+      light_octet ~emitter parent header
+      >>| fun () -> header, Leaf { header; body= id; }
     | `Message ->
-      mail parent >>| fun (header', message') ->
-      header, Message { content= Header.content header
-                      ; fields
-                      ; header= header'
-                      ; message= message' }
+      mail parent >>| fun (header', body') ->
+      header, Message { header= header'; body= body'; }
     | `Multipart ->
-      match boundary (Header.content header) with
+      match boundary header with
       | Some boundary ->
         Rfc2046.multipart_body ?parent boundary (body (Option.some boundary))
-        >>| List.map (fun (content, fields, part) -> { content; fields; part; })
-        >>| fun parts -> header, Multipart { content= Header.content header; fields; parts; }
+        >>| List.map (fun (_header, body) -> body)
+        >>| fun parts -> header, Multipart { header; body= parts; }
       | None -> fail "expected boundary" in
 
   mail None

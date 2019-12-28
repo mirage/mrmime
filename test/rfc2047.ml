@@ -1,4 +1,4 @@
-let parse_encoded_word x = Angstrom.parse_string Mrmime.Rfc2047.encoded_word x
+let parse_encoded_word x = Angstrom.parse_string Mrmime.Encoded_word.Decoder.encoded_word x
 
 let encoded_word =
   Alcotest.testable Mrmime.Encoded_word.pp Mrmime.Encoded_word.equal

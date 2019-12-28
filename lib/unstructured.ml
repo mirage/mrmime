@@ -1,111 +1,62 @@
-open Utils
+type box = Box | TBox of int | BBox
+type elt = [ Unstrctrd.elt | `Open of box | `Close ]
+type t = elt list
 
-type t = Rfc5322.unstructured
+let pp ppf t =
+  let t =
+    List.fold_left (fun a -> function
+        | #Unstrctrd.elt as x -> x :: a
+        | _ -> a) [] t |> List.rev in
+  match Unstrctrd.of_list t with
+  | Ok l ->
+    let s = Unstrctrd.to_utf_8_string l in
+    Fmt.pf ppf "<unstrctrd:%s>" s
+  | Error _ -> Fmt.pf ppf "<invalid-unstrctrd>"
 
-let pp_atom ppf = function
-  | `Text x -> Fmt.quote Fmt.string ppf x
-  | `WSP wsp -> Fmt.pf ppf "<WSP:%s>"wsp
-  | `CR n -> Fmt.pf ppf "<CR:%d>" n
-  | `LF n -> Fmt.pf ppf "<LF:%d>" n
-  | `CRLF -> Fmt.pf ppf "<CRLF>@\n"
-  | `Encoded t -> Encoded_word.pp ppf t
-
-let pp : t Fmt.t = Fmt.list ~sep:(Fmt.always "@,") pp_atom
-
-let equal_atom a b = match a, b with
-  | `Text a, `Text b -> String.equal a b
-  | `WSP a, `WSP b -> String.equal a b
-  | `CR a, `CR b -> a = b
-  | `LF a, `LF b -> a = b
-  | `CRLF, `CRLF -> true
-  | `Encoded a, `Encoded b -> Encoded_word.equal a b
-  | _, _ -> false
-
-let equal a b =
-  try List.for_all2 equal_atom a b
-  with _ -> false
-
-let is_obs_utext_valid_string = is_utf8_valid_string_with Rfc5322.is_obs_utext
-
-let make_word ?(breakable= true) s =
-  if is_obs_utext_valid_string s && breakable
-  then Ok (`Text s)
-  else
-    let open Rresult.R in
-    Encoded_word.make ~encoding:Encoded_word.q s >>| fun e -> `Encoded e
-
-let v ?breakable str = match make_word ?breakable str with
-  | Ok elt -> elt
-  | Error (`Msg err) -> invalid_arg err
-
-let cr n = `CR n
-let lf n = `LF n
-let sp n = `WSP (String.make n ' ')
-let tb n = `WSP (String.make n '\t')
-let new_line = `CRLF
-
-let only_spaces x =
-  let res = ref true in
-  String.iter (function ' ' -> () | _ -> res := false) x ;
-  !res
-
-let of_string x =
-  match Angstrom.parse_string Rfc5322.unstructured (x ^"\r\n") with
-  | Ok v -> v
-  | Error _ -> Fmt.failwith "Impossible to craft an unstructured value from %S" x
-
-module Encoder = struct
-  include Encoder
-
-  let element ppf = function
-    | `Text x -> breakable ppf x
-    | `WSP x ->
-      if only_spaces x
-      then eval ppf [ spaces (String.length x) ]
-      else string ppf x
-    | `CR n -> string ppf (String.make n '\r')
-    | `LF n -> string ppf (String.make n '\n')
-    | `CRLF -> string ppf "\r\n"
-    | `Encoded x -> Encoded_word.Encoder.encoded_word ppf x
-
-  let cut = (fun ppf () -> eval ppf [ cut ]), ()
-  let unstructured : Rfc5322.unstructured t = list ~sep:cut element
+module Decoder = struct
+  let unstructured () =
+    let buf = Bytes.create 0x7f in
+    Unstrctrd_parser.unstrctrd buf
 end
 
-let to_unstructured ~field_name gen value =
-  let buf = Buffer.create 0x100 in
-  let emitter =
-    let write a x =
-      let open Encoder.IOVec in
-      let open Encoder.Buffer in
-      match x with
-      | { buffer= String x; off; len; } ->
-        Buffer.add_substring buf x off len ; a + len
-      | { buffer= Bytes x; off; len; } ->
-        Buffer.add_subbytes buf x off len ; a + len
-      | { buffer= Bigstring x; off; len; } ->
-        let x = Bigstringaf.substring x ~off ~len in
-        Buffer.add_string buf x ; a + len in
-    List.fold_left write 0 in
-  let encoder = Encoder.create ~margin:78 ~new_line:"\r\n" ~emitter 0x100 in
-  let () =
-    let open Encoder in
-    keval (fun encoder -> assert (Encoder.is_empty encoder) ; ()) encoder
-      [ !!Field_name.Encoder.field_name; char $ ':'
-      ; spaces 1; bbox; !!gen; close; new_line ] field_name value in
-  let res = Buffer.contents buf in
-  let parser =
-    let open Angstrom in
-    let open Rfc5322 in
-    Rfc5322.field_name
-    <* many (satisfy (function '\x09' .. '\x20' -> true | _ -> false))
-    <* char ':'
-    >>= fun field_name -> unstructured
-    >>= fun value -> return (Field_name.v field_name, value) in
-  match Angstrom.parse_string parser res with
-  | Ok (field, unstructured) ->
-    assert (Field_name.equal field field_name) ;
-    unstructured
-  | Error _ ->
-    Fmt.failwith "Normalized value %S can not be considered as a unstructured value."
-      res
+module Craft = struct
+  let sp len : elt list = [ (Unstrctrd.wsp ~len :> elt) ]
+  let v s = List.init (String.length s) (fun i -> `Uchar (Uchar.of_char s.[i]))
+  let compile : elt list list -> t = List.concat
+end
+
+module Encoder = struct
+  open Prettym
+
+  type uchar = [ `Uchar of Uchar.t ]
+  type ok_or_partial = [ `Ok | `Partial ]
+
+  let element : elt t = fun ppf -> function
+    | `CR -> string ppf "\r"
+    | `LF -> string ppf "\n"
+    | `Open Box -> eval ppf [ box ]
+    | `Open (TBox n) -> eval ppf [ tbox n ]
+    | `Open BBox -> eval ppf [ bbox ]
+    | `Close -> eval ppf [ close ]
+    | `FWS wsp -> let ppf = eval ppf [ new_line ] in string ppf (wsp :> string)
+    | `OBS_NO_WS_CTL chr -> char ppf (chr :> char)
+    | `WSP wsp -> string ppf (wsp :> string)
+    | `d0 -> char ppf '\000'
+    | #uchar as uchar ->
+      let output = Stdlib.Buffer.create 4 in
+      let encoder = Uutf.encoder `UTF_8 (`Buffer output) in
+      (* XXX(dinosaure): [Uutf.encoder_dst <> `Manual]. It's safe. *)
+      let[@warning "-8"] `Ok : ok_or_partial = Uutf.encode encoder uchar in
+      let[@warning "-8"] `Ok : ok_or_partial = Uutf.encode encoder `End in
+      string ppf (Stdlib.Buffer.contents output)
+
+  let noop = (fun ppf () -> ppf), ()
+  let unstructured : elt list t =
+    fun ppf lst -> list ~sep:noop element ppf lst
+end
+
+let of_string x = match Unstrctrd.of_string x with
+  | Ok (_consumed, v) -> Ok v
+  | Error (`Msg err) -> Error (`Msg err)
+
+let to_string x = Prettym.to_string Encoder.unstructured x

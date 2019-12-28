@@ -1,52 +1,76 @@
+(*
+ * Copyright (c) 2018-2019 Romain Calascibetta <romain.calascibetta@gmail.com>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
 type t
 (** Type of the header. *)
 
-type value = Value : 'a Field.v * 'a -> value
-(** Type of a value. *)
+val pp : t Fmt.t
+(** Pretty-printer of {!pp}. *)
 
-val field_to_value : Field.field -> value
-(** [field_to_value field] extracts value of [field] with witness type of it. *)
-
-val pp_value : value Fmt.t
-(** Pretty-printer of {!value}. *)
-
-val get : Field_name.t -> t -> (Number.t * value * Location.t) list
-(** [get field_name header] returns all values associated to [field_name]
+val assoc : Field_name.t -> t -> Field.field list
+(** [assoc field_name header] returns all values associated to [field_name]
    (several can exist into a [header]). It returns order, value and location if
    it comes from a source. *)
 
-val add : Field.field -> t -> t
-(** [add field header] adds [field] into [header]. *)
+val remove_assoc : Field_name.t -> t -> t
+(** [remove_assoc field_name t] removes all values associated to [field_name]. *)
 
-val add_or_replace : Field.field -> t -> t
-(** [add_or_replace field header] adds [field] if it does not exist in [header]
-   or replace older one by the new one. *)
+val concat : t -> t -> t
+(** [concat t0 t1] concats [t0] with [t1] - any field-name existing in both
+   are not deleted/replaced. *)
+
+val exists : Field_name.t -> t -> bool
+(** [exists field_name t] is [true] if [field_name] exists in [t]. *)
+
+val add : Field_name.t -> ('a Field.t * 'a) -> t -> t
+(** [add field_name (w, v) t] adds a new field-name with value v. [add]
+   does not replace [field_name] if it already exists into [t]. *)
+
+val replace : Field_name.t -> ('a Field.t * 'a) -> t -> t
+(** [replace field_name (w, v) t] replaces existing field-name [field_name] in [t]
+   by the new value [v]. If [field_name] does not exist, it adds it. *)
+
+val of_list : Field.field list -> t
+(** [of_list l] returns a header from the list [l] (without location). *)
+
+val of_list_with_location : Field.field Location.with_location list -> t
 
 val empty : t
 (** [empty] is an empty header which does not have any default values. *)
 
-val pp : t Fmt.t
-(** Pretty-printer of {!t}. *)
+val content_type : t -> Content_type.t
+(** [content_type header] returns {!Content_type.t} of the given header. If it does not
+   exist, it returns {!Content_type.default}. *)
 
-val content : t -> Content.t
-(** [content header] returns {!Content.t} of the given header. If it does not
-   exist, it returns {!Content.default}. *)
+val content_encoding : t -> Content_encoding.t
+(** [content_encoding header] returns {!Content_encoding.t} of the given header. If it
+   does not exist, it returns {!Content_encoding.default}. *)
 
-val ( & ) : Field.field -> t -> t
-(** Alias of {!add}. *)
+(** {2 Decoder of header.} *)
 
-val reduce : (Number.t * ([> Rfc5322.field ] as 'a) * Location.t) list -> t -> (t * (Number.t * 'a * Location.t) list)
+module Decoder : sig
+  val header : t Angstrom.t
+end
 
 (** {2 Encoder of header.} *)
 
 module Encoder : sig
-  val header : t Encoder.t
+  val header : t Prettym.t
 end
 
 val to_stream : t -> (unit -> string option)
 (** [to_stream header] returns a stream of the given header which can be used
    into protocol like SMTP. *)
-
-(** / *)
-
-val to_string : t -> string
