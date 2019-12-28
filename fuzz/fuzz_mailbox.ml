@@ -78,7 +78,7 @@ let emitter_of_buffer buf =
 
 let parser buf =
   let open Angstrom in
-  Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+  Unstrctrd_parser.unstrctrd buf >>= fun v ->
   let res =
     let open Rresult in
     R.ok v

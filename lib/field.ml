@@ -78,7 +78,7 @@ module Decoder = struct
 
   let field ?g field_name =
     let buf = Bytes.create 0x7f in (* XXX(dinosaure): fast allocation. *)
-    Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+    Unstrctrd_parser.unstrctrd buf >>= fun v ->
     let Witness w = match Option.bind (Field_name.Map.find_opt field_name) g with
       | None -> of_field_name field_name
       | Some w -> w in

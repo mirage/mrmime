@@ -4,7 +4,7 @@ let parse_content_type x =
   let parser =
     let open Angstrom in
     let buf = Bytes.create 0x7f in
-    Unstrctrd_parser.fast_unstrctrd buf >>= fun v ->
+    Unstrctrd_parser.unstrctrd buf >>= fun v ->
     let res =
       let open Rresult in
       Unstrctrd.without_comments v

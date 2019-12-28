@@ -15,8 +15,8 @@ let pp ppf t =
 
 module Decoder = struct
   let unstructured () =
-    let buf = Bytes.create 0x1000 in
-    Unstrctrd_parser.fast_unstrctrd buf
+    let buf = Bytes.create 0x7f in
+    Unstrctrd_parser.unstrctrd buf
 end
 
 module Craft = struct
