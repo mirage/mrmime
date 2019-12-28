@@ -14,27 +14,25 @@ description:  """Parser and generator of mail in OCaml"""
 build: ["dune" "build" "-p" name "-j" jobs]
 run-test: ["dune" "runtest" "-p" name "-j" jobs]
 
-pin-depends: [
-  [ "crowbar.dev" "git+https://github.com/stedolan/crowbar.git" ]
-]
-
 depends: [
-  "ocaml" {>= "4.07.0"}
+  "ocaml"           {>= "4.07.0"}
   "dune"
-  "uutf"
-  "ke" {>= "0.4"}
-  "ptime"
-  "ipaddr"
-  "uutf"
-  "rosetta"
-  "base64" {>= "3.1.0"}
-  "pecu" {>= "0.3"}
   "rresult"
   "fmt"
+  "ke"              {>= "0.4"}
+  "unstrctrd"
+  "ptime"
+  "uutf"
+  "rosetta"
+  "ipaddr"
+  "emile"
+  "base64"          {>= "3.1.0"}
+  "pecu"            {>= "0.3"}
+  "bigstringaf"
   "bigarray-compat"
-  "hxd" {with-test}
-  "angstrom" {>= "0.11.0"}
-  "alcotest" {with-test}
-  "jsonm" {with-test}
-  "crowbar" {dev & with-test}
+  "angstrom"        {>= "0.11.0"}
+  "hxd"             {with-test}
+  "alcotest"        {with-test}
+  "jsonm"           {with-test}
+  "crowbar"         {with-test}
 ]
