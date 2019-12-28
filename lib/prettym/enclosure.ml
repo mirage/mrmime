@@ -1,4 +1,4 @@
-type ('a, 'b) bigarray = ('a, 'b, Bigarray.c_layout) Bigarray.Array1.t
+type ('a, 'b) bigarray = ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
 
 external is_a_sub :
   ('a, 'b) bigarray -> int ->
@@ -24,17 +24,17 @@ end
 module RBQ (V : V) = struct
   module Queue = Ke.Fke.Weighted
 
-  type t = {a: V.t array; c: int; m: int; q: (int, Bigarray.int_elt) Queue.t}
-  (* XXX(dinosaure): [ke] is limited to [Bigarray.kind]. We make an [array]
+  type t = {a: V.t array; c: int; m: int; q: (int, Bigarray_compat.int_elt) Queue.t}
+  (* XXX(dinosaure): [ke] is limited to [Bigarray_compat.kind]. We make an [array]
      which will contain values and [q] will contain index of them. Length of [a]
      is length of [q]. By this way, length is a power of two and [a] follows
      same assertions (see [mask]) as [Ke].
 
      [c] will be the cursor in [a]. [m] is the capacity. It's a good example of
-     [ke] with something else than [Bigarray.kind]. *)
+     [ke] with something else than [Bigarray_compat.kind]. *)
 
   let make capacity =
-    let q, capacity = Queue.create ~capacity Bigarray.Int in
+    let q, capacity = Queue.create ~capacity Bigarray_compat.Int in
     { a= Array.make capacity V.sentinel
     ; c= 0
     ; m= capacity
@@ -202,7 +202,7 @@ type emitter = IOVec.t list -> int
 
 type encoder =
   { sched : RBS.t
-  ; write : (char, Bigarray.int8_unsigned_elt) RBA.t
+  ; write : (char, Bigarray_compat.int8_unsigned_elt) RBA.t
   ; flush : (int * (int -> encoder -> unit)) Ke.Fke.t
   ; written : int
   ; received : int
@@ -243,7 +243,7 @@ let is_empty t = RBS.is_empty t.sched
    physically a part of [write]. In this context, we need to shift [write]. *)
 
 let create ~emitter len =
-  let write, _ = RBA.create ~capacity:len Bigarray.Char in
+  let write, _ = RBA.create ~capacity:len Bigarray_compat.Char in
   { sched= RBS.make (len * 2)
   ; write
   ; flush = Ke.Fke.empty
@@ -255,8 +255,8 @@ let check iovec {write; _} =
   match iovec with
   | {IOVec.buffer= Buffer.Bigstring x; _} ->
     let buf = RBA.unsafe_bigarray write in
-    let len = Bigarray.Array1.dim buf in
-    is_a_sub x (Bigarray.Array1.dim x) buf len
+    let len = Bigarray_compat.Array1.dim buf in
+    is_a_sub x (Bigarray_compat.Array1.dim x) buf len
   | _ -> false
 
 let shift_buffers written t =
@@ -360,7 +360,7 @@ let kschedule_bytes =
 let schedule_bytes = kschedule_bytes identity
 
 let kschedule_bigstring =
-  let length = Bigarray.Array1.dim in
+  let length = Bigarray_compat.Array1.dim in
   let buffer x = Buffer.Bigstring x in
   fun k t ?(off = 0) ?len v -> schedule k ~length ~buffer ~off ?len v t
 
@@ -421,7 +421,7 @@ let bigarray_blit_from_bytes src src_off dst dst_off len =
   Bigstringaf.blit_from_bytes src ~src_off dst ~dst_off ~len
 
 let bigarray_blit src src_off dst dst_off len =
-  Bigarray.Array1.(blit (sub src src_off len) (sub dst dst_off len))
+  Bigarray_compat.Array1.(blit (sub src src_off len) (sub dst dst_off len))
 
 let bigarray_blit_to_bytes src src_off dst dst_off len =
   Bigstringaf.blit_to_bytes src ~src_off dst ~dst_off ~len
@@ -441,7 +441,7 @@ let kwrite_bytes =
 let write_bytes = kwrite_bytes identity
 
 let kwrite_bigstring =
-  let length = Bigarray.Array1.dim in
+  let length = Bigarray_compat.Array1.dim in
   let blit = bigarray_blit in
   fun k ?(off = 0) ?len a t -> kwrite k ~blit ~length ~off ?len a t
 
