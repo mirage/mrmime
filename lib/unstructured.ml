@@ -23,6 +23,8 @@ module Craft = struct
   let sp len : elt list = [ (Unstrctrd.wsp ~len :> elt) ]
   let v s = List.init (String.length s) (fun i -> `Uchar (Uchar.of_char s.[i]))
   let compile : elt list list -> t = List.concat
+  let concat : t -> t -> t = fun a b -> a @ b
+  let ( @ ) = concat
 end
 
 module Encoder = struct
