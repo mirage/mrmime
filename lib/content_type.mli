@@ -227,6 +227,8 @@ val equal : t -> t -> bool
 (** {2 Decoder of content-type.} *)
 
 module Decoder : sig
+  val ty : Type.t Angstrom.t
+  val subty : Type.t -> Subtype.t Angstrom.t
   val content : t Angstrom.t
 end
 
