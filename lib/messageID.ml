@@ -26,6 +26,10 @@ module Decoder = struct
     | #domain as domain -> return (local, domain)
 end
 
+let of_string x = match Angstrom.parse_string Decoder.message_id x with
+  | Ok v -> Ok v
+  | Error _ -> Rresult.R.error_msgf "Invalid message ID: %S" x
+
 module Encoder = struct
   open Prettym
 
