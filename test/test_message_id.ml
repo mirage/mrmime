@@ -21,6 +21,17 @@ let tests : (string * Mrmime.MessageID.t) list =
   ; "<mirage/irmin/pull/378/c259513470@github.com>", ([ `Atom "mirage/irmin/pull/378/c259513470" ], `Domain [ "github"; "com" ])
   ]
 
+let make_output v expect =
+  Alcotest.test_case (Fmt.to_to_string Mrmime.MessageID.pp v) `Quick @@ fun () ->
+  let res = Prettym.to_string Mrmime.MessageID.Encoder.message_id v in
+  Alcotest.(check string) "result" res expect
+
+let tests_caml : (Mrmime.MessageID.t * string) list =
+  let open Mrmime in
+  [ (Mailbox.Local.(v [ w "FE47A9B" ]), MessageID.Domain.(v domain [ a "gmail"; a "com" ])),
+    "<FE47A9B@gmail.com>" ]
+
 let () =
   Alcotest.run "msg-id"
-    [ "valid msg-id", List.map (fun (raw, expect) -> make raw expect) tests ]
+    [ "valid msg-id", List.map (fun (raw, expect) -> make raw expect) tests
+    ; "output", List.map (fun (v, expect) -> make_output v expect) tests_caml ]

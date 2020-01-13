@@ -33,7 +33,7 @@ let of_string x = match Angstrom.parse_string Decoder.message_id x with
 module Encoder = struct
   open Prettym
 
-  let dot = (fun ppf () -> eval ppf [ fws; char $ '.'; fws ]), ()
+  let dot = (fun ppf () -> eval ppf [ cut; char $ '.'; cut ]), ()
 
   let domain : domain Prettym.t = fun ppf -> function
     | `Domain domain ->
