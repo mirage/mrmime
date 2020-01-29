@@ -335,7 +335,7 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
     let day' = Ptime.weekday ~tz_offset_s:z t in
 
     match day with
-    | None -> Ok { day; date= (d, m, y); time= (hh, mm, ss); zone }
+    | None -> Ok { day= None; date= (d, m, y); time= (hh, mm, ss); zone }
     | Some day ->
       if same_day day day'
       then Ok { day= Some day; date= (d, m, y); time= (hh, mm, ss); zone }
@@ -376,7 +376,15 @@ let of_ptime ~zone ptime =
     hh * 3600 + mm * 60 in
   let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
   let date = (y, (Month.of_int_exn m), d) in
-  match make date (hh, mm, Some ss) zone with
+  let day = match Ptime.weekday ~tz_offset_s ptime with
+    | `Mon -> Day.Mon
+    | `Tue -> Day.Tue
+    | `Wed -> Day.Wed
+    | `Thu -> Day.Thu
+    | `Fri -> Day.Fri
+    | `Sat -> Day.Sat
+    | `Sun -> Day.Sun in
+  match make ~day date (hh, mm, Some ss) zone with
   | Ok date_time -> date_time
   | Error _ -> assert false
 (* XXX(dinosaure): error can reach if [Ptime.of_date_time] fails (but values
