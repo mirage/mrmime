@@ -30,6 +30,7 @@ depends: [
   "pecu"            {>= "0.3"}
   "bigstringaf"
   "bigarray-compat"
+  "bigarray-overlap"
   "angstrom"        {>= "0.11.0"}
   "hxd"             {with-test}
   "alcotest"        {with-test}
