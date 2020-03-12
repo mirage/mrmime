@@ -1,4 +1,0 @@
-(executable
- (name mr)
- (modules mr header extract common)
- (libraries fpath rresult cmdliner mrmime))
