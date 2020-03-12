@@ -1,14 +1,3 @@
-type ('a, 'b) bigarray = ('a, 'b, Bigarray_compat.c_layout) Bigarray_compat.Array1.t
-
-external is_a_sub :
-  ('a, 'b) bigarray -> int ->
-  ('a, 'b) bigarray -> int -> bool = "caml_bigarray_is_a_sub" [@@noalloc]
-external bigarray_physically_equal :
-  ('a, 'b) bigarray ->
-  ('a, 'b) bigarray -> bool = "caml_bigarray_physically_equal" [@@noalloc]
-
-(* TODO: replace by [overlap]. *)
-
 [@@@warning "-32"]
 
 module type V = sig
@@ -178,7 +167,11 @@ module IOVec = struct
   let physically_equal a b =
     match a, b with
     | {buffer= Buffer.Bytes a; _}, {buffer= Buffer.Bytes b; _} -> a == b
-    | {buffer= Buffer.Bigstring a; _}, {buffer= Buffer.Bigstring b; _} -> bigarray_physically_equal a b
+    | {buffer= Buffer.Bigstring a; _}, {buffer= Buffer.Bigstring b; _} ->
+      ( match Overlap.array1 a b with
+        | Some (len, 0, 0) ->
+          Bigstringaf.length a = len && Bigstringaf.length b = len
+        | _ -> false )
     | _, _ -> false
 
   let merge a b =
@@ -188,8 +181,7 @@ module IOVec = struct
       if a.off + a.len = b.off
       then Some {buffer= Buffer.Bytes a'; off= a.off; len= a.len + b.len}
       else None
-    | {buffer= Buffer.Bigstring a'; _}, {buffer= Buffer.Bigstring b'; _} ->
-      assert (bigarray_physically_equal a' b') ;
+    | {buffer= Buffer.Bigstring a'; _}, {buffer= Buffer.Bigstring _; _} ->
       if a.off + a.len = b.off
       then Some {buffer= Buffer.Bigstring a'; off= a.off; len= a.len + b.len}
       else None
@@ -255,8 +247,9 @@ let check iovec {write; _} =
   match iovec with
   | {IOVec.buffer= Buffer.Bigstring x; _} ->
     let buf = RBA.unsafe_bigarray write in
-    let len = Bigarray_compat.Array1.dim buf in
-    is_a_sub x (Bigarray_compat.Array1.dim x) buf len
+    ( match Overlap.array1 x buf with
+    | Some (_, _, _) -> true
+    | None -> false )
   | _ -> false
 
 let shift_buffers written t =
