@@ -1,5 +1,4 @@
 opam-version: "2.0"
-name:         "mrmime"
 version:      "dev"
 maintainer:   "Romain Calascibetta <romain.calascibetta@gmail.com>"
 authors:      "Romain Calascibetta <romain.calascibetta@gmail.com>"
@@ -11,8 +10,10 @@ license:      "MIT"
 synopsis:     "Mr. MIME"
 description:  """Parser and generator of mail in OCaml"""
 
-build: ["dune" "build" "-p" name "-j" jobs]
-run-test: ["dune" "runtest" "-p" name "-j" jobs]
+build: [
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+]
 
 depends: [
   "ocaml"           {>= "4.07.0"}
@@ -23,11 +24,11 @@ depends: [
   "unstrctrd"
   "ptime"
   "uutf"
-  "rosetta"
+  "rosetta"         {>= "0.3.0"}
   "ipaddr"
-  "emile"
+  "emile"           {>= "0.8"}
   "base64"          {>= "3.1.0"}
-  "pecu"            {>= "0.3"}
+  "pecu"            {>= "0.4"}
   "bigstringaf"
   "bigarray-compat"
   "bigarray-overlap"
@@ -35,5 +36,4 @@ depends: [
   "hxd"             {with-test}
   "alcotest"        {with-test}
   "jsonm"           {with-test}
-  "crowbar"         {with-test}
 ]

@@ -28,27 +28,27 @@
  (modules fuzz_date)
  (libraries ptime.clock.os mrmime common crowbar))
 
-(alias
- (name runtest)
- (deps (:fuzz_encoder fuzz_encoder.exe))
- (action (run %{fuzz_encoder})))
-
-(alias
- (name runtest)
- (deps (:fuzz_message_id fuzz_message_id.exe))
- (action (run %{fuzz_message_id})))
-
-(alias
- (name runtest)
- (deps (:fuzz_mailbox fuzz_mailbox.exe))
- (action (run %{fuzz_mailbox})))
-
-(alias
- (name runtest)
- (deps (:fuzz_content_type fuzz_content_type.exe))
- (action (run %{fuzz_content_type})))
-
-(alias
- (name runtest)
- (deps (:fuzz_date fuzz_date.exe))
- (action (run %{fuzz_date})))
+; (alias
+;  (name runtest)
+;  (deps (:fuzz_encoder fuzz_encoder.exe))
+;  (action (run %{fuzz_encoder})))
+; 
+; (alias
+;  (name runtest)
+;  (deps (:fuzz_message_id fuzz_message_id.exe))
+;  (action (run %{fuzz_message_id})))
+; 
+; (alias
+;  (name runtest)
+;  (deps (:fuzz_mailbox fuzz_mailbox.exe))
+;  (action (run %{fuzz_mailbox})))
+; 
+; (alias
+;  (name runtest)
+;  (deps (:fuzz_content_type fuzz_content_type.exe))
+;  (action (run %{fuzz_content_type})))
+; 
+; (alias
+;  (name runtest)
+;  (deps (:fuzz_date fuzz_date.exe))
+;  (action (run %{fuzz_date})))
