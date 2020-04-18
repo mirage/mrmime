@@ -7,7 +7,6 @@ module type V = sig
   val sentinel : t
   val weight : t -> int
   val merge : t -> t -> t option
-  val physically_equal : t -> t -> bool
 end
 
 module RBQ (V : V) = struct
@@ -163,16 +162,6 @@ module IOVec = struct
     assert (n <= len) ;
     ( {buffer= Buffer.sub buffer off n; off= 0; len= n}
     , {buffer= Buffer.sub buffer (off + n) (len - n); off= 0; len= len - n})
-
-  let physically_equal a b =
-    match a, b with
-    | {buffer= Buffer.Bytes a; _}, {buffer= Buffer.Bytes b; _} -> a == b
-    | {buffer= Buffer.Bigstring a; _}, {buffer= Buffer.Bigstring b; _} ->
-      ( match Overlap.array1 a b with
-        | Some (len, 0, 0) ->
-          Bigstringaf.length a = len && Bigstringaf.length b = len
-        | _ -> false )
-    | _, _ -> false
 
   let merge a b =
     match a, b with
