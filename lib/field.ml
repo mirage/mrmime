@@ -88,7 +88,10 @@ module Decoder = struct
       Unstrctrd.without_comments v
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
-      >>= ( R.reword_error R.msg <.> parse_string parser )
+            (* XXX(dinosaure): normalized value can have trailing whitespace
+             * such as "value (comment)" returns "value ". Given parser can
+             * ignore it (and it does not consume all inputs finally). *)
+      >>= ( R.reword_error R.msg <.> (parse_string ~consume:Consume.Prefix) parser )
       >>| fun v -> Field (field_name, w, v) in
     match res with
     | Ok v -> return v

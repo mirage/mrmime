@@ -376,7 +376,7 @@ module Decoder = struct
     >>= fun data -> string "?=" *> return { charset; encoding; data; }
 end
 
-let of_string x = match Angstrom.parse_string Decoder.encoded_word x with
+let of_string x = match Angstrom.parse_string ~consume:Angstrom.Consume.Prefix Decoder.encoded_word x with
   | Ok v -> Ok v
   | Error _ -> Rresult.R.error_msgf "%S is not a valid encoded-word" x
 

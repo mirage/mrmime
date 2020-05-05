@@ -48,7 +48,7 @@ module Decoder = struct
   open Angstrom
 
   let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
-  let of_string s a = match parse_string a s with Ok v -> Some v | Error _ -> None
+  let of_string s a = match parse_string ~consume:Consume.All a s with Ok v -> Some v | Error _ -> None
 
   (* From RFC 2045
 

@@ -12,11 +12,13 @@ let parse_date x =
       Unstrctrd.without_comments v
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
-      >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Date.Decoder.date_time ) in
+      >>= ( R.reword_error R.msg <.> Angstrom.parse_string
+              ~consume:Angstrom.Consume.All
+              Mrmime.Date.Decoder.date_time ) in
     match res with
     | Ok v -> return v
     | Error _ -> fail "Invalid date" in
-  Angstrom.parse_string parser (x ^ "\r\n")
+  Angstrom.parse_string ~consume:Angstrom.Consume.All parser (x ^ "\r\n")
 
 let make raw expect =
   Alcotest.test_case (Fmt.strf "%S" raw) `Quick @@ fun () ->
