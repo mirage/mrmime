@@ -15,24 +15,24 @@ build: [
 ]
 
 depends: [
-  "ocaml"           {>= "4.07.0"}
-  "dune"            {>= "1.2"}
+  "ocaml"            {>= "4.07.0"}
+  "dune"             {>= "1.2"}
   "rresult"
   "fmt"
-  "ke"              {>= "0.4"}
+  "ke"               {>= "0.4"}
   "unstrctrd"
   "ptime"
   "uutf"
-  "rosetta"         {>= "0.3.0"}
+  "rosetta"          {>= "0.3.0"}
   "ipaddr"
-  "emile"           {>= "0.8"}
-  "base64"          {>= "3.1.0"}
-  "pecu"            {>= "0.4"}
+  "emile"            {>= "0.8"}
+  "base64"           {>= "3.1.0"}
+  "pecu"             {>= "0.4"}
   "bigstringaf"
   "bigarray-compat"
-  "bigarray-overlap"
-  "angstrom"        {>= "0.14.0"}
-  "hxd"             {with-test}
-  "alcotest"        {with-test}
-  "jsonm"           {with-test}
+  "bigarray-overlap" {>= "0.2.0"}
+  "angstrom"         {>= "0.14.0"}
+  "hxd"              {with-test}
+  "alcotest"         {with-test}
+  "jsonm"            {with-test}
 ]
