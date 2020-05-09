@@ -392,7 +392,7 @@ module Decoder = struct
   open Angstrom
 
   let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
-  let of_string s a = match parse_string a s with Ok v -> Some v | Error _ -> None
+  let of_string s a = match parse_string ~consume:Consume.All a s with Ok v -> Some v | Error _ -> None
 
   let is_wsp = function ' ' | '\t' -> true | _ -> false
   let token = take_while1 is_token

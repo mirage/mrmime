@@ -289,7 +289,7 @@ module Zone = struct
     | "PST" -> Ok PST
     | "PDT" -> Ok PDT
     | x ->
-      match Angstrom.parse_string parser_tz x with
+      match Angstrom.parse_string ~consume:Angstrom.Consume.All parser_tz x with
       | Ok (hh, mm) -> Ok (TZ (hh, mm))
       | Error _ ->
         if String.length x = 1 && is_military_zone x.[0]

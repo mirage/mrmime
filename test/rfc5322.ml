@@ -178,7 +178,7 @@ Content-type: text/plain; charset=ISO-8859-1
   ]
 
 let parse_header x =
-  match Angstrom.parse_string Mrmime.Header.Decoder.header (x ^ "\r\n") with
+  match Angstrom.parse_string ~consume:Angstrom.Consume.Prefix Mrmime.Header.Decoder.header (x ^ "\r\n") with
   | Ok header -> Fmt.pr "header: @[<hov>%a@].\n%!" Mrmime.Header.pp header
   | Error _ -> Fmt.failwith "Invalid header"
 

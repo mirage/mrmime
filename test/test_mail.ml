@@ -96,14 +96,14 @@ let example1 =
 let test0 () =
   Alcotest.test_case "example 0" `Quick @@ fun () ->
   let res0 = stream_to_string (Mrmime.Mt.to_stream example0) in
-  match Angstrom.parse_string Mrmime.Mail.mail res0 with
+  match Angstrom.parse_string ~consume:Angstrom.Consume.All Mrmime.Mail.mail res0 with
   | Ok _ -> Fmt.epr "%s%!" res0
   | Error _ -> Fmt.invalid_arg "Generate unparsable email"
 
 let test1 () =
   Alcotest.test_case "example 1" `Quick @@ fun () ->
   let res0 = stream_to_string (Mrmime.Mt.to_stream example1) in
-  match Angstrom.parse_string Mrmime.Mail.mail res0 with
+  match Angstrom.parse_string ~consume:Angstrom.Consume.All Mrmime.Mail.mail res0 with
   | Ok mail ->
     Fmt.epr "%s%!" res0 ;
     let gemma_exists (header, _) =

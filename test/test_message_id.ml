@@ -1,4 +1,7 @@
-let parse_msg_id x = Angstrom.parse_string Mrmime.MessageID.Decoder.message_id x
+let parse_msg_id x =
+  Angstrom.parse_string
+    ~consume:Angstrom.Consume.All
+    Mrmime.MessageID.Decoder.message_id x
 let msg_id = Alcotest.testable Mrmime.MessageID.pp Mrmime.MessageID.equal
 
 let make raw expect =

@@ -3,6 +3,7 @@ let ( <.> ) f g = fun x -> f (g x)
 let parse_content_type x =
   let parser =
     let open Angstrom in
+    let failf fmt = Fmt.kstrf fail fmt in
     let buf = Bytes.create 0x7f in
     Unstrctrd_parser.unstrctrd buf >>= fun v ->
     let res =
@@ -10,11 +11,13 @@ let parse_content_type x =
       Unstrctrd.without_comments v
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
-      >>= ( R.reword_error R.msg <.> Angstrom.parse_string Mrmime.Content_type.Decoder.content ) in
+      >>= ( R.reword_error R.msg <.> Angstrom.parse_string
+              ~consume:Angstrom.Consume.Prefix
+              Mrmime.Content_type.Decoder.content ) in
     match res with
     | Ok v -> return v
-    | Error _ -> fail "Invalid Content-Type" in
-  Angstrom.parse_string parser (x ^ "\r\n")
+    | Error (`Msg err) -> failf "Invalid Content-Type (%s)" err in
+  Angstrom.parse_string ~consume:Angstrom.Consume.Prefix parser (x ^ "\r\n")
 
 let content_type =
   Alcotest.testable Mrmime.Content_type.pp Mrmime.Content_type.equal
@@ -23,7 +26,7 @@ let make raw expect =
   Alcotest.test_case raw `Quick @@ fun () ->
   match parse_content_type raw with
   | Ok value -> Alcotest.(check content_type) raw expect value
-  | Error _ -> Fmt.invalid_arg "Invalid content-type value: %s." raw
+  | Error err -> Fmt.invalid_arg "Invalid content-type value: %s (%s)." raw err
 
 let content_type_0 =
   let open Mrmime.Content_type in
