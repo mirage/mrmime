@@ -82,7 +82,7 @@ Bodies can be weight and if you want to store them by yourself, we provide an
 API which expects consumers to consume bodies (and store them, for example, into
 UNIX files).
 
-A _complex_ example is available on `ptt` to extract bodies and save them into
+A _complex_ example is available on [`ptt`][ptt] to extract bodies and save them into
 UNIX files. For this we use:
 
 ```ocaml
