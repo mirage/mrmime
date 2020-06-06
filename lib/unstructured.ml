@@ -40,10 +40,11 @@ module Encoder = struct
     | `Open (TBox n) -> eval ppf [ tbox n ]
     | `Open BBox -> eval ppf [ bbox ]
     | `Close -> eval ppf [ close ]
-    | `FWS wsp -> let ppf = eval ppf [ new_line ] in string ppf (wsp :> string)
+    | `FWS wsp -> let ppf = eval ppf [ cut; new_line ] in string ppf (wsp :> string)
     | `OBS_NO_WS_CTL chr -> char ppf (chr :> char)
-    | `WSP wsp -> string ppf (wsp :> string)
+    | `WSP wsp -> eval ppf [ spaces (String.length (wsp :> string)) ]
     | `d0 -> char ppf '\000'
+    | `Invalid_char _ -> string ppf "\xEF\xBF\xBD"
     | #uchar as uchar ->
       let output = Stdlib.Buffer.create 4 in
       let encoder = Uutf.encoder `UTF_8 (`Buffer output) in
