@@ -104,5 +104,5 @@ module Encoder = struct
   let field ppf field =
     let Field (field_name, w, v) = field in
     let e = encoder w in
-    eval ppf [ !!Field_name.Encoder.field_name; string $ ": "; !!e; new_line ] field_name v
+    eval ppf [ tbox 1; !!Field_name.Encoder.field_name; string $ ":"; spaces 1; !!e; close; new_line; ] field_name v
 end
