@@ -20,7 +20,7 @@ depends: [
   "rresult"
   "fmt"
   "ke"               {>= "0.4"}
-  "unstrctrd"
+  "unstrctrd"        {>= "0.2"}
   "ptime"
   "uutf"
   "rosetta"          {>= "0.3.0"}
