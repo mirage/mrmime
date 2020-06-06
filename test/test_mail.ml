@@ -117,6 +117,48 @@ let test1 () =
     gemma_exists mail
   | Error _ -> Fmt.invalid_arg "Generate unparsable email"
 
+let subject = "Something larger than 80 columns to see where prettym split contents.\
+               A large Subject should be split!"
+let () = Fmt.epr "<<< %S\n%!" subject
+
+let example2 =
+  let open Mrmime in
+  let _, subject = Unstrctrd.safely_decode subject in
+  let header = [ Field.(Field (Field_name.subject, Unstructured, (subject :> Unstructured.elt list))) ] in
+  let part = Mt.part (stream_of_string "Hello World!") in
+  Mt.make (Header.of_list header) Mt.simple part
+
+let to_unstrctrd acc = function
+  | #Unstrctrd.elt as elt -> elt :: acc
+  | _ -> acc
+
+let to_unstrctrd unstrctrd =
+  match List.fold_left to_unstrctrd [] unstrctrd |> List.rev |> Unstrctrd.of_list with
+  | Ok v -> v | Error (`Msg err) -> failwith err
+
+let remove_fws (unstrctrd : Unstrctrd.t) =
+  let fold acc = function
+    | `FWS _ -> acc
+    | x -> x :: acc in
+  match List.fold_left fold [] (unstrctrd :> Unstrctrd.elt list) |> List.rev |> Unstrctrd.of_list with
+  | Ok v -> v | Error (`Msg err) -> failwith err
+
+let test2 () =
+  Alcotest.test_case "large subject" `Quick @@ fun () ->
+  let res0 = stream_to_string (Mrmime.Mt.to_stream example2) in
+  match Angstrom.parse_string ~consume:Angstrom.Consume.All Mrmime.Mail.mail res0 with
+  | Ok (header, _) ->
+    let open Mrmime in
+    ( match Header.assoc Field_name.subject header with
+      | Field.Field (_, Field.Unstructured, v) :: _ ->
+        let unstrctrd = to_unstrctrd v in
+        let unstrctrd = remove_fws unstrctrd in
+        let unstrctrd = Unstrctrd.to_utf_8_string unstrctrd in
+        let unstrctrd = String.trim unstrctrd in
+        Alcotest.(check string) "Same subject" unstrctrd subject
+      | _ -> Fmt.invalid_arg "Field \"Subject\" does not exist" )
+  | Error _ -> Fmt.invalid_arg "Generate unparsable email"
+
 let () =
   Alcotest.run "mail"
-    [ "example", [ test0 (); test1 (); ] ]
+    [ "example", [ test0 (); test1 (); test2 (); ] ]
