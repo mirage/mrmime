@@ -31,7 +31,7 @@ let parser g =
   let open Angstrom in
   let crlf = char '\r' *> char '\n' in
       (with_location (field g) >>| fun v -> `Field v)
-  <|> (crlf *> crlf *> return `End)
+  <|> (crlf *> return `End)
 
 let decoder ?(p= G.empty) buffer =
   { q= Q.from buffer
