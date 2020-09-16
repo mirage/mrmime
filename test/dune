@@ -33,6 +33,11 @@
  (modules test_mail)
  (libraries alcotest ptime.clock.os mrmime))
 
+(executable
+ (name test_hd)
+ (modules test_hd)
+ (libraries alcotest mrmime))
+
 (alias
  (name runtest)
  (deps (:rfc2045 rfc2045.exe))
@@ -67,3 +72,9 @@
  (name runtest)
  (deps (:mail test_mail.exe))
  (action (run %{mail} --color=always)))
+
+(alias
+ (name runtest)
+ (deps (:hd test_hd.exe))
+ (action (run %{hd} --color=always)))
+

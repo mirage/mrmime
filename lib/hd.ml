@@ -65,8 +65,10 @@ let rec decode : decoder -> decode =
   | Angstrom.Unbuffered.Done (committed, `End) ->
     Q.N.shift_exn decoder.q committed ;
     Q.compress decoder.q ;
-    let[@warning "-8"] [ x ] = Q.N.peek decoder.q in
-    `End (Bigstringaf.to_string x)
+    ( match Q.N.peek decoder.q with
+      | [ x ] -> `End (Bigstringaf.to_string x)
+      | [] -> `End ""
+      | _ -> assert false )
   | Angstrom.Unbuffered.Done (committed, `Field v) ->
     Q.N.shift_exn decoder.q committed ;
     decoder.s <- Angstrom.Unbuffered.parse (parser decoder.p) ;
