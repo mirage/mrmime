@@ -119,7 +119,6 @@ let test1 () =
 
 let subject = "Something larger than 80 columns to see where prettym split contents.\
                A large Subject should be split!"
-let () = Fmt.epr "<<< %S\n%!" subject
 
 let example2 =
   let open Mrmime in
