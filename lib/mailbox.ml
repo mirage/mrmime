@@ -396,6 +396,6 @@ let with_name =
 
 let of_string x = match Emile.of_string x with
   | Ok v -> Ok v
-  | Error `Invalid -> Rresult.R.error_msgf "Invalid email address: %S" x
+  | Error (`Invalid _) -> Rresult.R.error_msgf "Invalid email address: %S" x
 
 let to_string = Prettym.to_string Encoder.mailbox
