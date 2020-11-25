@@ -59,6 +59,10 @@ val content_encoding : t -> Content_encoding.t
 (** [content_encoding header] returns {!Content_encoding.t} of the given header. If it
    does not exist, it returns {!Content_encoding.default}. *)
 
+val message_id : t -> MessageID.t option
+(** [message_id header] returns a {!MessageID.t} if it exists. Otherwise it returns
+   [None]. *)
+
 (** {2 Decoder of header.} *)
 
 module Decoder : sig
