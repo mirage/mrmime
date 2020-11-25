@@ -32,7 +32,9 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream = fun ?l
          line emitted by [to_quoted_printable] finish with a [CRLF]. TODO: may
          be this behavior is strictly under [Pecu] impl. *)
       Ke.Rke.cons queue 258 ;
-      (pending[@tailcall]) (Pecu.encode encoder `Line_break)
+      ( match Pecu.encode encoder `Line_break with
+        | `Ok -> go ()
+        | `Partial -> (emit[@tailcall]) () )
     | 258 (* End *) ->
       Ke.Rke.cons queue 259 ;
       (pending[@tailcall]) (Pecu.encode encoder `End)
