@@ -48,19 +48,25 @@ A _complex_ example of `Hd` is available on the [`ocaml-dkim`][ocaml-dkim]
 project which wants to extract `DKIM` signature from header.
 
 ```ocaml
+let dkim_signature = Mrmime.Field_name.v "DKIM-Signature"
+
 let extract_dkim () =
   let open Mrmime in
+  let tmp = Bytes.create 0x1000 in
   let buffer = Bigstringaf.create 0x1000 in
-  let decoder = Hd.decoder ~field_name:(Field_name.v "DKIM-Signature") Hd.Value.Unstructured buffer in
+  let decoder = Hd.decoder buffer in
   let rec decode () = match Hd.decode decoder with
-    | `Field (raw_dkim_field, raw_dkim_value) ->
-      Fmt.pr "%a: %a\n%!" Field_name.pp raw_dkim_field Unstructured.pp raw_dkim_value
-    | `Other _ -> decode ()
+    | `Field field ->
+      ( match Location.prj field with
+      | Field.Field (field_name, Unstructured, v)
+          when Field_name.equal field_name dkim_signature ->
+        Fmt.pr "%a: %a\n%!" Field_name.pp dkim_signature Unstructured.pp v
+      | _ -> decode () )
     | `Malformed err -> failwith err
     | `End rest -> ()
     | `Await ->
       let len = input stdin tmp 0 (Bytes.length tmp) in
-      ( match Hd.src decoder tmp 0 len with
+      ( match Hd.src decoder (Bytes.unsafe_to_string tmp) 0 len with
         | Ok () -> decode ()
         | Error (`Msg err) -> failwith err ) in
   decode ()
@@ -86,7 +92,7 @@ A _complex_ example is available on [`ptt`][ptt] to extract bodies and save them
 UNIX files. For this we use:
 
 ```ocaml
-val stream : emitters:(Content.t -> (string option -> unit) * 'id) -> (Header.t * 'id stream) Angstrom.t
+val stream : emitters:(Header.t -> (string option -> unit) * 'id) -> (Header.t * 'id t) Angstrom.t
 ```
 
 Which will call `emitters` at any part of your mail. _parser_ will decode
@@ -114,11 +120,12 @@ Documentation was done to help you to construct many of these values. Of course,
 
 ```ocaml
 let header =
-  let open Mrmime.Header in
-  Field.(Subject $ my_subject)
-  & Field.(To $ [ romain; anil; thomas; ])
-  & Field.(Date $ now ())
-  & empty
+  let open Mrmime in
+  Field.[ Field (Field_name.subject, Unstructured,
+                 Unstructured.Craft.(compile [ v "Simple"; sp 1; v "Email" ]))
+        ; Field (Field_name.v "To", Addresses, [ `Mailbox romain_calascibetta ])
+        ; Field (Field_name.date, Date, (Date.of_ptime ~zone:GMT (Ptime_clock.now ()))) ]
+  |> Header.of_list
 ```
 
 Then, `Header` provides a `to_stream` function which will emit your header line
