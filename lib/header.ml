@@ -56,6 +56,15 @@ let content_encoding header =
       | _ -> ()) (List.map Location.prj header) ;
   !mechanism
 
+let message_id header =
+  let rec go = function
+    | [] -> None
+    | Field.Field (field_name, Field.MessageID, (v : MessageID.t)) :: tl ->
+      if Field_name.equal field_name Field_name.message_id then Some v
+      else go tl
+    | _ :: tl -> go tl in
+  go (List.map Location.prj header)
+
 module Decoder = struct
   open Angstrom
 
