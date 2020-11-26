@@ -1,3 +1,10 @@
+### v0.3.2 2020-11-26 Paris (France)
+
+- Add `Header.message_id` (#39, @dinosaure, @hannesm)
+- Update README.md (#40, @dinosaure)
+- Update the way to generate quoted-printable contents
+  According `pecu.0.5` (#38, @dinosaure)
+
 ### v0.3.1 2020-09-24 Paris (France)
 
 - Fix unstructured values (@dinosaure, #34)
