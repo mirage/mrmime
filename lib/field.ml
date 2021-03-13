@@ -19,7 +19,7 @@ let pp ppf (Field (field_name, w, v)) =
   let of_witness : type a. a t -> a Fmt.t = function
     | Date ->
       (fun ppf v -> match Date.to_ptime v with
-         | Ok v -> Ptime.pp_human () ppf v
+         | Ok (v, tz_offset_s) -> Ptime.pp_human ~tz_offset_s () ppf v
          | Error _ -> Date.pp ppf v)
     | Mailboxes -> Fmt.list Mailbox.pp
     | Mailbox -> Mailbox.pp

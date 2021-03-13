@@ -367,7 +367,7 @@ let to_ptime date =
   let (hh, mm, ss) = date.time in
   let ss = Option.value ~default:0 ss in
   match Ptime.of_date_time ((y, m, d), ((hh, mm, ss), z)) with
-  | Some ptime -> Ok ptime
+  | Some ptime -> Ok (ptime, z)
   | None -> Rresult.R.error_msgf "Invalid date: %a" pp date
 
 let of_ptime ~zone ptime =
@@ -393,7 +393,7 @@ let of_ptime ~zone ptime =
    Of course, this call, we did not notice [?day]. *)
 
 let compare a b = match to_ptime a, to_ptime b with
-  | Ok a, Ok b -> Ptime.compare a b
+  | Ok (a, _tz_a), Ok (b, _tz_b) -> Ptime.compare a b
   | Error (`Msg err), _ -> failwith err
   | _, Error (`Msg err) -> failwith err
 

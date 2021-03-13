@@ -191,7 +191,7 @@ val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zo
    [make] relies on {!Ptime.of_date_time}. To completely understand implication
    of that, you should read basics about [ptime]. *)
 
-val to_ptime : t -> (Ptime.t, [> Rresult.R.msg ]) result
+val to_ptime : t -> (Ptime.t * int, [> Rresult.R.msg ]) result
 (** [to_ptime t] returns a POSIX timestamp {!Ptime.t}. *)
 
 val of_ptime : zone:Zone.t -> Ptime.t -> t
