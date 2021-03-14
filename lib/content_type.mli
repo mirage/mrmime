@@ -110,6 +110,8 @@ module Subtype : sig
 
   val default : t
   (** Default value of sub-type acccording to RFC 2045. *)
+
+  val to_string : t -> string
 end
 
 module Parameters : sig

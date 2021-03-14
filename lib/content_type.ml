@@ -156,6 +156,11 @@ module Subtype = struct
     | `Iana_token token -> Fmt.pf ppf "iana:%s" token
     | `X_token token -> Fmt.pf ppf "x:%s" token
 
+  let to_string = function
+    | `Ietf_token token -> token
+    | `Iana_token token -> token
+    | `X_token token -> token
+
   let compare a b =
     match (a, b)
     with
