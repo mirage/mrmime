@@ -62,6 +62,11 @@ let tests =
                 ; date = (21, Month.Nov, 1997)
                 ; time = (09, 55, Some 06)
                 ; zone = Zone.TZ (-06, 00) }
+  ; "Fri, 21 Nov 1990 00:00:00.1234 -0000",
+    Mrmime.Date.{ day = Some Day.Fri
+                ; date = (21, Month.Nov, 1990)
+                ; time = (0, 0, Some 0)
+                ; zone = Zone.TZ (0, 0) }
   ]
 
 let () =

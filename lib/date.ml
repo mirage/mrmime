@@ -518,7 +518,12 @@ module Decoder = struct
 
        second          =   2DIGIT / obs-second
   *)
-  let second = obs_second <|> (two_digit >>| int_of_string)
+  let second = obs_second <|> (two_digit >>| int_of_string) >>= fun res ->
+    (option "" (char '.' *> take_while1 is_digit)) >>= fun _ns -> return res
+  (* XXX(dinosaure): On [Received] field, the date can have nano-second. Such
+   * value does not follow any standards but we must consume it to be able to
+   * parse then zone value. It's an hot-fix to be able to accept several wrong
+   * [Received] fields. *)
 
   (* From RFC 2822
 
