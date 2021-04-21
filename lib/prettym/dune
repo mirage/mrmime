@@ -1,4 +1,0 @@
-(library
- (name prettym)
- (public_name mrmime.prettym)
- (libraries bigarray-overlap fmt ke bigstringaf bigarray-compat))

@@ -14,11 +14,6 @@
  (libraries alcotest mrmime))
 
 (executable
- (name test_encoder)
- (modules test_encoder)
- (libraries fmt jsonm alcotest mrmime.prettym))
-
-(executable
  (name test_date)
  (modules test_date)
  (libraries alcotest mrmime))
@@ -52,11 +47,6 @@
  (name runtest)
  (deps (:rfc5322 rfc5322.exe))
  (action (run %{rfc5322} --color=always)))
- 
-(alias
- (name runtest)
- (deps (:test_encoder test_encoder.exe))
- (action (run %{test_encoder} --color=always)))
 
 (alias
  (name runtest)
