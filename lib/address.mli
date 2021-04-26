@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-type t = [`Group of Group.t | `Mailbox of Mailbox.t]
+type t = [ `Group of Group.t | `Mailbox of Mailbox.t ]
 (** Type of address, an address may either be an individual mailbox, or a group
    of mailboxes. *)
 

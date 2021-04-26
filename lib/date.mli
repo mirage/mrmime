@@ -16,10 +16,13 @@
 
 module Day : sig
   type t =
-    | Mon | Tue | Wed
-    | Thu | Fri | Sat
-    | Sun
-    (** Type of day according RFC 822 / RFC 2822 / RFC 5322. *)
+    | Mon
+    | Tue
+    | Wed
+    | Thu
+    | Fri
+    | Sat
+    | Sun  (** Type of day according RFC 822 / RFC 2822 / RFC 5322. *)
 
   (** {3 Constructors.} *)
 
@@ -58,9 +61,18 @@ end
 
 module Month : sig
   type t =
-    | Jan | Feb | Mar | Apr | May | Jun
-    | Jul | Aug | Sep | Oct | Nov | Dec
-    (** Type of month according RFC 822 / RFC 2822 / RFC 5322. *)
+    | Jan
+    | Feb
+    | Mar
+    | Apr
+    | May
+    | Jun
+    | Jul
+    | Aug
+    | Sep
+    | Oct
+    | Nov
+    | Dec  (** Type of month according RFC 822 / RFC 2822 / RFC 5322. *)
 
   (** {3 Constructors.} *)
 
@@ -115,14 +127,19 @@ end
 
 module Zone : sig
   type t =
-    | UT  | GMT
-    | EST | EDT
-    | CST | CDT
-    | MST | MDT
-    | PST | PDT
+    | UT
+    | GMT
+    | EST
+    | EDT
+    | CST
+    | CDT
+    | MST
+    | MDT
+    | PST
+    | PDT
     | Military_zone of char
     | TZ of int * int
-    (** Type of zone according RFC 822 / RFC 2822 / RFC 5322. *)
+        (** Type of zone according RFC 822 / RFC 2822 / RFC 5322. *)
 
   (** {3 Constructors.} *)
 
@@ -164,16 +181,22 @@ module Zone : sig
   val equal : t -> t -> bool
 end
 
-type t =
-  { day  : Day.t option
-  ; date : int * Month.t * int
-  ; time : int * int * int option
-  ; zone : Zone.t }
+type t = {
+  day : Day.t option;
+  date : int * Month.t * int;
+  time : int * int * int option;
+  zone : Zone.t;
+}
 (** Type of date according RFC 822 / RFC 2822 / RFC 5322. *)
 
 (** {2 Constructors.} *)
 
-val make : ?day:Day.t -> (int * Month.t * int) -> (int * int * int option) -> Zone.t -> (t, [> Rresult.R.msg ]) result
+val make :
+  ?day:Day.t ->
+  int * Month.t * int ->
+  int * int * int option ->
+  Zone.t ->
+  (t, [> Rresult.R.msg ]) result
 (** [make ?day (year, month, day) (hh, mm, ss) tz] returns a date corresponding
    to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
    the day in the 7-day week) and [day] must correspond according of timestamp

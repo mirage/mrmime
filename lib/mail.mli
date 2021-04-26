@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-type 'a elt = { header : Header.t; body : 'a; }
+type 'a elt = { header : Header.t; body : 'a }
 
 type 'a t =
   | Leaf of 'a elt
@@ -24,7 +24,11 @@ type 'a t =
 val heavy_octet : string option -> Header.t -> string Angstrom.t
 (** {i Heavy} parser of a body - it will stores bodies into [string]. *)
 
-val light_octet : emitter:(string option -> unit) -> string option -> Header.t -> unit Angstrom.t
+val light_octet :
+  emitter:(string option -> unit) ->
+  string option ->
+  Header.t ->
+  unit Angstrom.t
 (** {i Light} parser of body - it sends contents to given [emitter]. *)
 
 val mail : (Header.t * string t) Angstrom.t
@@ -32,6 +36,8 @@ val mail : (Header.t * string t) Angstrom.t
 
 type 'id emitters = Header.t -> (string option -> unit) * 'id
 
-val stream : emitters:(Header.t -> (string option -> unit) * 'id) -> (Header.t * 'id t) Angstrom.t
+val stream :
+  emitters:(Header.t -> (string option -> unit) * 'id) ->
+  (Header.t * 'id t) Angstrom.t
 (** [stream ~emitters] is an Angstrom parser of an entire RFC 5322 mail which
    will use given emitters by [emitters] to store bodies. *)

@@ -19,7 +19,8 @@ type t = Emile.t
 let group group = `Group group
 let mailbox mailbox = `Mailbox mailbox
 
-let equal a b = match a, b with
+let equal a b =
+  match (a, b) with
   | `Group a, `Group b -> Group.equal a b
   | `Mailbox a, `Mailbox b -> Mailbox.equal a b
   | _ -> false
@@ -36,7 +37,7 @@ module Encoder = struct
 
   let mailbox = Mailbox.Encoder.mailbox
   let group = Group.Encoder.group
-  let comma = (fun ppf () -> eval ppf [ char $ ','; fws ]), ()
+  let comma = ((fun ppf () -> eval ppf [ char $ ','; fws ]), ())
 
   let address ppf = function
     | `Mailbox m -> mailbox ppf m

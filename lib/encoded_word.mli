@@ -31,10 +31,11 @@ val b : encoding
 val q : encoding
 (** Inline quoted-printable encoding. *)
 
-type t =
-  { charset : charset
-  ; encoding : encoding
-  ; data : (string, Rresult.R.msg) result }
+type t = {
+  charset : charset;
+  encoding : encoding;
+  data : (string, Rresult.R.msg) result;
+}
 
 val is_normalized : t -> bool
 
@@ -74,7 +75,8 @@ val charset_of_string : string -> charset
 
 val charset_to_string : charset -> string
 
-val normalize_to_utf8 : charset:charset -> string -> (string, Rresult.R.msg) result
+val normalize_to_utf8 :
+  charset:charset -> string -> (string, Rresult.R.msg) result
 (** [normalize_to_utf8 ~charset s] maps a source [s] which is encoded with the
    charset {!charset} and try to map/normalize it to UTF-8. *)
 

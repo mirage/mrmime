@@ -14,11 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-type 'x stream = (unit -> 'x option)
+type 'x stream = unit -> 'x option
 type buffer = string * int * int
-
 type field = Field_name.t * Unstructured.t
-
 type part
 type multipart
 type 'g rng = ?g:'g -> int -> string
@@ -32,7 +30,8 @@ val part : ?header:Header.t -> buffer stream -> part
    use {!Content.default}. [stream] while be mapped according
    [Content-Transfer-Encoding] of [content]. *)
 
-val multipart : rng:'g rng -> ?header:Header.t -> ?boundary:string -> part list -> multipart
+val multipart :
+  rng:'g rng -> ?header:Header.t -> ?boundary:string -> part list -> multipart
 (** [multipart ~rng ~content ~boundary ~fields parts] makes a new multipart from
    a bunch of parts, specified [Content-*] fields, others [fields] and a
    specified [boundary]. If [boundary] is not specifed, we use [rng] to make a

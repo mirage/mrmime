@@ -15,22 +15,22 @@
  *)
 
 type 'a t =
-  | Date         : Date.t t
-  | Mailboxes    : Mailbox.t list t
-  | Mailbox      : Mailbox.t t
-  | Addresses    : Address.t list t
-  | MessageID    : MessageID.t t
+  | Date : Date.t t
+  | Mailboxes : Mailbox.t list t
+  | Mailbox : Mailbox.t t
+  | Addresses : Address.t list t
+  | MessageID : MessageID.t t
   | Unstructured : Unstructured.t t
-  | Phrases      : Emile.phrase list t
-  | Content      : Content_type.t t
-  | Encoding     : Content_encoding.t t
-(** Type of kind of values according RFC2045/RFC5322. *)
+  | Phrases : Emile.phrase list t
+  | Content : Content_type.t t
+  | Encoding : Content_encoding.t t
+      (** Type of kind of values according RFC2045/RFC5322. *)
 
-type witness = Witness : 'a t -> witness
-(** Witness type to be able to manipulate {!t}. *)
+type witness =
+  | Witness : 'a t -> witness
+      (** Witness type to be able to manipulate {!t}. *)
 
-type field = Field : Field_name.t * 'a t * 'a -> field
-(** Type of field. *)
+type field = Field : Field_name.t * 'a t * 'a -> field  (** Type of field. *)
 
 val make : Field_name.t -> 'a t -> 'a -> field
 (** [make field_name w v] returns a field. *)

@@ -35,35 +35,49 @@
 
 (rule
  (alias runtest)
- (deps (:rfc2045 rfc2045.exe))
- (action (run %{rfc2045} --color=always)))
+ (deps
+  (:rfc2045 rfc2045.exe))
+ (action
+  (run %{rfc2045} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:rfc2047 rfc2047.exe))
- (action (run %{rfc2047} --color=always)))
+ (deps
+  (:rfc2047 rfc2047.exe))
+ (action
+  (run %{rfc2047} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:rfc5322 rfc5322.exe))
- (action (run %{rfc5322} --color=always)))
+ (deps
+  (:rfc5322 rfc5322.exe))
+ (action
+  (run %{rfc5322} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:date test_date.exe))
- (action (run %{date} --color=always)))
+ (deps
+  (:date test_date.exe))
+ (action
+  (run %{date} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:message_id test_message_id.exe))
- (action (run %{message_id} --color=always)))
+ (deps
+  (:message_id test_message_id.exe))
+ (action
+  (run %{message_id} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:mail test_mail.exe))
- (action (run %{mail} --color=always)))
+ (deps
+  (:mail test_mail.exe))
+ (action
+  (run %{mail} --color=always)))
 
 (rule
  (alias runtest)
- (deps (:hd test_hd.exe))
- (action (run %{hd} --color=always)))
+ (deps
+  (:hd test_hd.exe))
+ (action
+  (run %{hd} --color=always)))

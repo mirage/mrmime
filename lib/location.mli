@@ -19,7 +19,7 @@
 type point = int
 (** Type of point to a flow. *)
 
-type zone = { a : int; b : int; }
+type zone = { a : int; b : int }
 (** Type of zone to a flow. *)
 
 type t
@@ -69,7 +69,7 @@ val inj : location:t -> 'a -> 'a with_location
 (** Alias of {!with_location}. *)
 
 val without_location : 'a with_location -> 'a
-  (** [without_location x] extracts value without location meta-data. *)
+(** [without_location x] extracts value without location meta-data. *)
 
 val prj : 'a with_location -> 'a
 (** Alias of {!without_location}. *)

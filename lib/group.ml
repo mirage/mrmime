@@ -21,27 +21,29 @@ module Phrase = Mailbox.Phrase
 let equal = Emile.equal_group
 
 let make ~name:group mailboxes =
-  if List.length mailboxes = 0 then None
-  else Some { Emile.group; mailboxes; }
+  if List.length mailboxes = 0 then None else Some { Emile.group; mailboxes }
 
-let v ~name mailboxes = match make ~name mailboxes with
+let v ~name mailboxes =
+  match make ~name mailboxes with
   | None -> Fmt.invalid_arg "A group contains at least one mailbox"
   | Some t -> t
 
 let pp = Emile.pp_group
 
-module Decoder = struct
-  let group = Emile.Parser.group
-end
+module Decoder = struct let group = Emile.Parser.group end
 
 module Encoder = struct
   open Prettym
 
-  let comma = (fun ppf () -> eval ppf [ char $ ','; fws ]), ()
+  let comma = ((fun ppf () -> eval ppf [ char $ ','; fws ]), ())
   let phrase = Mailbox.Encoder.phrase
   let mailbox = Mailbox.Encoder.mailbox
 
   let group ppf t =
-    eval ppf [ box; !!phrase; char $ ':'; spaces 1; box; !!(list ~sep:comma mailbox); close; char $ ';'; close ]
+    eval ppf
+      [
+        box; !!phrase; char $ ':'; spaces 1; box; !!(list ~sep:comma mailbox);
+        close; char $ ';'; close;
+      ]
       t.Emile.group t.Emile.mailboxes
 end

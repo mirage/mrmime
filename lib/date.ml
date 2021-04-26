@@ -1,8 +1,5 @@
 module Day = struct
-  type t =
-    | Mon | Tue | Wed
-    | Thu | Fri | Sat
-    | Sun
+  type t = Mon | Tue | Wed | Thu | Fri | Sat | Sun
 
   let mon = Mon
   let tue = Tue
@@ -13,13 +10,13 @@ module Day = struct
   let sun = Sun
 
   let pp ppf = function
-    | Mon  -> Fmt.pf ppf "Mon"
-    | Tue  -> Fmt.pf ppf "Tue"
-    | Wed  -> Fmt.pf ppf "Wed"
-    | Thu  -> Fmt.pf ppf "Thu"
-    | Fri  -> Fmt.pf ppf "Fri"
-    | Sat  -> Fmt.pf ppf "Sat"
-    | Sun  -> Fmt.pf ppf "Sun"
+    | Mon -> Fmt.pf ppf "Mon"
+    | Tue -> Fmt.pf ppf "Tue"
+    | Wed -> Fmt.pf ppf "Wed"
+    | Thu -> Fmt.pf ppf "Thu"
+    | Fri -> Fmt.pf ppf "Fri"
+    | Sat -> Fmt.pf ppf "Sat"
+    | Sun -> Fmt.pf ppf "Sun"
 
   let to_string = Fmt.to_to_string pp
 
@@ -33,13 +30,13 @@ module Day = struct
     | "Sun" -> Ok Sun
     | x -> Rresult.R.error_msgf "invalid day %s" x
 
-  let of_string_exn x = match of_string x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let of_string_exn x =
+    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let v x = of_string_exn x
 
-  let equal a b = match a, b with
+  let equal a b =
+    match (a, b) with
     | Mon, Mon -> true
     | Tue, Tue -> true
     | Wed, Wed -> true
@@ -52,8 +49,18 @@ end
 
 module Month = struct
   type t =
-    | Jan | Feb | Mar | Apr | May | Jun
-    | Jul | Aug | Sep | Oct | Nov | Dec
+    | Jan
+    | Feb
+    | Mar
+    | Apr
+    | May
+    | Jun
+    | Jul
+    | Aug
+    | Sep
+    | Oct
+    | Nov
+    | Dec
 
   let jan = Jan
   let feb = Feb
@@ -68,7 +75,8 @@ module Month = struct
   let nov = Nov
   let dec = Dec
 
-  let equal a b = match a, b with
+  let equal a b =
+    match (a, b) with
     | Jan, Jan -> true
     | Feb, Feb -> true
     | Mar, Mar -> true
@@ -84,26 +92,32 @@ module Month = struct
     | _, _ -> false
 
   let pp ppf = function
-    | Jan  -> Fmt.pf ppf "Jan"
-    | Feb  -> Fmt.pf ppf "Feb"
-    | Mar  -> Fmt.pf ppf "Mar"
-    | Apr  -> Fmt.pf ppf "Apr"
-    | May  -> Fmt.pf ppf "May"
-    | Jun  -> Fmt.pf ppf "Jun"
-    | Jul  -> Fmt.pf ppf "Jul"
-    | Aug  -> Fmt.pf ppf "Aug"
-    | Sep  -> Fmt.pf ppf "Sep"
-    | Oct  -> Fmt.pf ppf "Oct"
-    | Nov  -> Fmt.pf ppf "Nov"
-    | Dec  -> Fmt.pf ppf "Dec"
+    | Jan -> Fmt.pf ppf "Jan"
+    | Feb -> Fmt.pf ppf "Feb"
+    | Mar -> Fmt.pf ppf "Mar"
+    | Apr -> Fmt.pf ppf "Apr"
+    | May -> Fmt.pf ppf "May"
+    | Jun -> Fmt.pf ppf "Jun"
+    | Jul -> Fmt.pf ppf "Jul"
+    | Aug -> Fmt.pf ppf "Aug"
+    | Sep -> Fmt.pf ppf "Sep"
+    | Oct -> Fmt.pf ppf "Oct"
+    | Nov -> Fmt.pf ppf "Nov"
+    | Dec -> Fmt.pf ppf "Dec"
 
   let to_int = function
-    | Jan -> 1 | Feb -> 2
-    | Mar -> 3 | Apr -> 4
-    | May -> 5 | Jun -> 6
-    | Jul -> 7 | Aug -> 8
-    | Sep -> 9 | Oct -> 10
-    | Nov -> 11 | Dec -> 12
+    | Jan -> 1
+    | Feb -> 2
+    | Mar -> 3
+    | Apr -> 4
+    | May -> 5
+    | Jun -> 6
+    | Jul -> 7
+    | Aug -> 8
+    | Sep -> 9
+    | Oct -> 10
+    | Nov -> 11
+    | Dec -> 12
 
   let of_int = function
     | 1 -> Ok Jan
@@ -120,9 +134,8 @@ module Month = struct
     | 12 -> Ok Dec
     | n -> Rresult.R.error_msgf "Invalid number of month: %d" n
 
-  let of_int_exn x = match of_int x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let of_int_exn x =
+    match of_int x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let to_string = Fmt.to_to_string pp
 
@@ -141,24 +154,29 @@ module Month = struct
     | "Dec" -> Ok Dec
     | x -> Rresult.R.error_msgf "Invalid month %s" x
 
-  let of_string_exn x = match of_string x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let of_string_exn x =
+    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let v x = of_string_exn x
 end
 
 module Zone = struct
   type t =
-    | UT  | GMT
-    | EST | EDT
-    | CST | CDT
-    | MST | MDT
-    | PST | PDT
+    | UT
+    | GMT
+    | EST
+    | EDT
+    | CST
+    | CDT
+    | MST
+    | MDT
+    | PST
+    | PDT
     | Military_zone of char
     | TZ of int * int
 
-  let equal a b = match a, b with
+  let equal a b =
+    match (a, b) with
     | UT, UT -> true
     | GMT, GMT -> true
     | EST, EST -> true
@@ -185,96 +203,108 @@ module Zone = struct
   let pdt = PDT
 
   let is_military_zone = function
-    | '\065' .. '\073' | '\075' .. '\090' | '\097' .. '\105' | '\107' .. '\122' -> true
+    | '\065' .. '\073' | '\075' .. '\090' | '\097' .. '\105' | '\107' .. '\122'
+      ->
+        true
     | _ -> false
 
   let military_zone = function
     | ('A' .. 'I' | 'K' .. 'Z') as chr -> Ok (Military_zone chr)
     | ('a' .. 'i' | 'k' .. 'z') as chr ->
-      let chr = Char.chr (Char.code chr - 32) in
-      Ok (Military_zone chr)
+        let chr = Char.chr (Char.code chr - 32) in
+        Ok (Military_zone chr)
     | chr -> Rresult.R.error_msgf "Invalid military zone '%c'" chr
 
   let tz hh mm =
-    if (abs hh) >= 0 && (abs hh) < 24
-       && mm >= 0 && mm < 60
-    then Ok (TZ (hh, mm))
+    if abs hh >= 0 && abs hh < 24 && mm >= 0 && mm < 60 then Ok (TZ (hh, mm))
     else Rresult.R.error_msgf "Invalid time-zone (hours: %d, minutes: %d)" hh mm
 
   let pp ppf = function
-    | UT   -> Fmt.pf ppf "UT"
-    | GMT  -> Fmt.pf ppf "GMT"
-    | EST  -> Fmt.pf ppf "EST"
-    | EDT  -> Fmt.pf ppf "EDT"
-    | CST  -> Fmt.pf ppf "CST"
-    | CDT  -> Fmt.pf ppf "CDT"
-    | MST  -> Fmt.pf ppf "MST"
-    | MDT  -> Fmt.pf ppf "MDT"
-    | PST  -> Fmt.pf ppf "PST"
-    | PDT  -> Fmt.pf ppf "PDT"
+    | UT -> Fmt.pf ppf "UT"
+    | GMT -> Fmt.pf ppf "GMT"
+    | EST -> Fmt.pf ppf "EST"
+    | EDT -> Fmt.pf ppf "EDT"
+    | CST -> Fmt.pf ppf "CST"
+    | CDT -> Fmt.pf ppf "CDT"
+    | MST -> Fmt.pf ppf "MST"
+    | MDT -> Fmt.pf ppf "MDT"
+    | PST -> Fmt.pf ppf "PST"
+    | PDT -> Fmt.pf ppf "PDT"
     | TZ (hh, mm) -> Fmt.pf ppf "(TZ %02d%02d)" hh mm
     | Military_zone c -> Fmt.pf ppf "(Military_zone %c)" c
 
   let to_string = function
-    | TZ (hh, mm) -> if hh >= 0 then Fmt.strf "+%02d%02d" hh mm else Fmt.strf "-%02d%02d" (abs hh) mm
+    | TZ (hh, mm) ->
+        if hh >= 0 then Fmt.strf "+%02d%02d" hh mm
+        else Fmt.strf "-%02d%02d" (abs hh) mm
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
   let to_int = function
-    | UT | GMT -> 00, 00
-    | EST -> -05, 00
-    | EDT -> -04, 00
-    | CST -> -06, 00
-    | CDT -> -05, 00
-    | MST -> -07, 00
-    | MDT -> -06, 00
-    | PST -> -08, 00
-    | PDT -> -07, 00
-    | TZ (hh, mm) -> hh, mm
-    | Military_zone c -> match c with
-      | 'A' -> 01, 00
-      | 'B' -> 02, 00
-      | 'C' -> 03, 00
-      | 'D' -> 04, 00
-      | 'E' -> 05, 00
-      | 'F' -> 06, 00
-      | 'G' -> 07, 00
-      | 'H' -> 08, 00
-      | 'I' -> 09, 00
-      | 'K' -> 10, 00
-      | 'L' -> 11, 00
-      | 'M' -> 12, 00
-      | 'N' -> -01, 00
-      | 'O' -> -02, 00
-      | 'P' -> -03, 00
-      | 'Q' -> -04, 00
-      | 'R' -> -05, 00
-      | 'S' -> -06, 00
-      | 'T' -> -07, 00
-      | 'U' -> -08, 00
-      | 'V' -> -09, 00
-      | 'W' -> -10, 00
-      | 'X' -> -11, 00
-      | 'Y' -> -12, 00
-      | 'Z' -> 00, 00
-      | c -> Fmt.invalid_arg "Invalid military zone %c" c
+    | UT | GMT -> (00, 00)
+    | EST -> (-05, 00)
+    | EDT -> (-04, 00)
+    | CST -> (-06, 00)
+    | CDT -> (-05, 00)
+    | MST -> (-07, 00)
+    | MDT -> (-06, 00)
+    | PST -> (-08, 00)
+    | PDT -> (-07, 00)
+    | TZ (hh, mm) -> (hh, mm)
+    | Military_zone c -> (
+        match c with
+        | 'A' -> (01, 00)
+        | 'B' -> (02, 00)
+        | 'C' -> (03, 00)
+        | 'D' -> (04, 00)
+        | 'E' -> (05, 00)
+        | 'F' -> (06, 00)
+        | 'G' -> (07, 00)
+        | 'H' -> (08, 00)
+        | 'I' -> (09, 00)
+        | 'K' -> (10, 00)
+        | 'L' -> (11, 00)
+        | 'M' -> (12, 00)
+        | 'N' -> (-01, 00)
+        | 'O' -> (-02, 00)
+        | 'P' -> (-03, 00)
+        | 'Q' -> (-04, 00)
+        | 'R' -> (-05, 00)
+        | 'S' -> (-06, 00)
+        | 'T' -> (-07, 00)
+        | 'U' -> (-08, 00)
+        | 'V' -> (-09, 00)
+        | 'W' -> (-10, 00)
+        | 'X' -> (-11, 00)
+        | 'Y' -> (-12, 00)
+        | 'Z' -> (00, 00)
+        | c -> Fmt.invalid_arg "Invalid military zone %c" c)
 
   let parser_tz =
     let open Angstrom in
     let is_digit = function '0' .. '9' -> true | _ -> false in
     option '+' (satisfy (function '+' | '-' -> true | _ -> false))
-    >>= fun sign -> satisfy is_digit
-    >>= fun z0 -> satisfy is_digit
-    >>= fun z1 -> satisfy is_digit
-    >>= fun z2 -> satisfy is_digit
-    >>= fun z3 ->
-    let one = let res = Bytes.create 2 in Bytes.set res 0 z0 ; Bytes.set res 1 z1 ; Bytes.unsafe_to_string res in
-    let two = let res = Bytes.create 2 in Bytes.set res 0 z2 ; Bytes.set res 1 z3 ; Bytes.unsafe_to_string res in
-    let one = if sign = '-' then - int_of_string one else int_of_string one in
+    >>= fun sign ->
+    satisfy is_digit >>= fun z0 ->
+    satisfy is_digit >>= fun z1 ->
+    satisfy is_digit >>= fun z2 ->
+    satisfy is_digit >>= fun z3 ->
+    let one =
+      let res = Bytes.create 2 in
+      Bytes.set res 0 z0;
+      Bytes.set res 1 z1;
+      Bytes.unsafe_to_string res
+    in
+    let two =
+      let res = Bytes.create 2 in
+      Bytes.set res 0 z2;
+      Bytes.set res 1 z3;
+      Bytes.unsafe_to_string res
+    in
+    let one = if sign = '-' then -int_of_string one else int_of_string one in
     let two = int_of_string two in
-    if (abs one) >= 0 && (abs one) < 24
-       && two >= 0 && two < 60
-    then return (one, two)
+    if abs one >= 0 && abs one < 24 && two >= 0 && two < 60 then
+      return (one, two)
     else fail "Invalid time-zone"
 
   let of_string = function
@@ -288,38 +318,48 @@ module Zone = struct
     | "MDT" -> Ok MDT
     | "PST" -> Ok PST
     | "PDT" -> Ok PDT
-    | x ->
-      match Angstrom.parse_string ~consume:Angstrom.Consume.All parser_tz x with
-      | Ok (hh, mm) -> Ok (TZ (hh, mm))
-      | Error _ ->
-        if String.length x = 1 && is_military_zone x.[0]
-        then Ok (Military_zone x.[0])
-        else Rresult.R.error_msgf "Invalid time-zone: %S" x
+    | x -> (
+        match
+          Angstrom.parse_string ~consume:Angstrom.Consume.All parser_tz x
+        with
+        | Ok (hh, mm) -> Ok (TZ (hh, mm))
+        | Error _ ->
+            if String.length x = 1 && is_military_zone x.[0] then
+              Ok (Military_zone x.[0])
+            else Rresult.R.error_msgf "Invalid time-zone: %S" x)
 
-  let of_string_exn x = match of_string x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let of_string_exn x =
+    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let v x = of_string_exn x
 end
 
-type t =
-  { day  : Day.t option
-  ; date : int * Month.t * int
-  ; time : int * int * int option
-  ; zone : Zone.t }
+type t = {
+  day : Day.t option;
+  date : int * Month.t * int;
+  time : int * int * int option;
+  zone : Zone.t;
+}
 
 let pp_ptime_day =
   let f = function
-    | `Mon -> Day.Mon | `Thu -> Day.Thu | `Tue -> Day.Tue
-    | `Wed -> Day.Wed | `Fri -> Day.Fri | `Sat -> Day.Sat | `Sun -> Day.Sun in
+    | `Mon -> Day.Mon
+    | `Thu -> Day.Thu
+    | `Tue -> Day.Tue
+    | `Wed -> Day.Wed
+    | `Fri -> Day.Fri
+    | `Sat -> Day.Sat
+    | `Sun -> Day.Sun
+  in
   Fmt.using f Day.pp
 
 let make ?day (y, m, d) (hh, mm, ss) zone =
   let z =
     let hh, mm = Zone.to_int zone in
-    hh * 3600 + mm * 60 in
-  let same_day a ptime_b = match a, ptime_b with
+    (hh * 3600) + (mm * 60)
+  in
+  let same_day a ptime_b =
+    match (a, ptime_b) with
     | Day.Mon, `Mon -> true
     | Day.Thu, `Thu -> true
     | Day.Tue, `Tue -> true
@@ -327,44 +367,52 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
     | Day.Fri, `Fri -> true
     | Day.Sat, `Sat -> true
     | Day.Sun, `Sun -> true
-    | _, _ -> false in
+    | _, _ -> false
+  in
   let m' = Month.to_int m in
-  match Ptime.of_date_time ((y, m', d), ((hh, mm, Option.value ~default:0 ss), z)) with
+  match
+    Ptime.of_date_time ((y, m', d), ((hh, mm, Option.value ~default:0 ss), z))
+  with
   | None -> Rresult.R.error_msgf "Invalid date"
-  | Some t ->
-    let day' = Ptime.weekday ~tz_offset_s:z t in
+  | Some t -> (
+      let day' = Ptime.weekday ~tz_offset_s:z t in
 
-    match day with
-    | None -> Ok { day= None; date= (d, m, y); time= (hh, mm, ss); zone }
-    | Some day ->
-      if same_day day day'
-      then Ok { day= Some day; date= (d, m, y); time= (hh, mm, ss); zone }
-      else Rresult.R.error_msgf "Expected day mismatch (%a <> %a)" Day.pp day pp_ptime_day day'
+      match day with
+      | None -> Ok { day = None; date = (d, m, y); time = (hh, mm, ss); zone }
+      | Some day ->
+          if same_day day day' then
+            Ok { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone }
+          else
+            Rresult.R.error_msgf "Expected day mismatch (%a <> %a)" Day.pp day
+              pp_ptime_day day')
 
 let pp ppf = function
-  | { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone; } ->
-    Fmt.pf ppf "{@[<hov>day = %a;@ \
-                        date = (@[<hov>%d,@ %a,@ %d@]);@ \
-                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
-                        zone = %a@]}"
-      Day.pp day d Month.pp m y hh mm (Option.value ~default:0 ss)
-      Zone.pp zone
-  | { day = None; date = (d, m, y); time = (hh, mm, ss); zone; } ->
-    Fmt.pf ppf "{@[<hov>date = (@[<hov>%d,@ %a,@ %d@]);@ \
-                        time = (@[<hov>%d,@ %d,@ %d@]);@ \
-                        zone = %a@]}"
-      d Month.pp m y hh mm (Option.value ~default:0 ss)
-      Zone.pp zone
+  | { day = Some day; date = d, m, y; time = hh, mm, ss; zone } ->
+      Fmt.pf ppf
+        "{@[<hov>day = %a;@ date = (@[<hov>%d,@ %a,@ %d@]);@ time = \
+         (@[<hov>%d,@ %d,@ %d@]);@ zone = %a@]}"
+        Day.pp day d Month.pp m y hh mm
+        (Option.value ~default:0 ss)
+        Zone.pp zone
+  | { day = None; date = d, m, y; time = hh, mm, ss; zone } ->
+      Fmt.pf ppf
+        "{@[<hov>date = (@[<hov>%d,@ %a,@ %d@]);@ time = (@[<hov>%d,@ %d,@ \
+         %d@]);@ zone = %a@]}"
+        d Month.pp m y hh mm
+        (Option.value ~default:0 ss)
+        Zone.pp zone
 
 let to_ptime date =
   let z =
     let hh, mm = Zone.to_int date.zone in
-    hh * 3600 + mm * 60 in
+    (hh * 3600) + (mm * 60)
+  in
   let m =
-    let (_, m, _) = date.date in
-    Month.to_int m in
-  let (d, _, y) = date.date in
-  let (hh, mm, ss) = date.time in
+    let _, m, _ = date.date in
+    Month.to_int m
+  in
+  let d, _, y = date.date in
+  let hh, mm, ss = date.time in
   let ss = Option.value ~default:0 ss in
   match Ptime.of_date_time ((y, m, d), ((hh, mm, ss), z)) with
   | Some ptime -> Ok (ptime, z)
@@ -372,18 +420,21 @@ let to_ptime date =
 
 let of_ptime ~zone ptime =
   let tz_offset_s =
-    let (hh, mm) = Zone.to_int zone in
-    hh * 3600 + mm * 60 in
+    let hh, mm = Zone.to_int zone in
+    (hh * 3600) + (mm * 60)
+  in
   let (y, m, d), ((hh, mm, ss), _) = Ptime.to_date_time ~tz_offset_s ptime in
-  let date = (y, (Month.of_int_exn m), d) in
-  let day = match Ptime.weekday ~tz_offset_s ptime with
+  let date = (y, Month.of_int_exn m, d) in
+  let day =
+    match Ptime.weekday ~tz_offset_s ptime with
     | `Mon -> Day.Mon
     | `Tue -> Day.Tue
     | `Wed -> Day.Wed
     | `Thu -> Day.Thu
     | `Fri -> Day.Fri
     | `Sat -> Day.Sat
-    | `Sun -> Day.Sun in
+    | `Sun -> Day.Sun
+  in
   match make ~day date (hh, mm, Some ss) zone with
   | Ok date_time -> date_time
   | Error _ -> assert false
@@ -392,12 +443,14 @@ let of_ptime ~zone ptime =
    is when we define a [?day] and it does not correspond to what [Ptime] expecs.
    Of course, this call, we did not notice [?day]. *)
 
-let compare a b = match to_ptime a, to_ptime b with
+let compare a b =
+  match (to_ptime a, to_ptime b) with
   | Ok (a, _tz_a), Ok (b, _tz_b) -> Ptime.compare a b
   | Error (`Msg err), _ -> failwith err
   | _, Error (`Msg err) -> failwith err
 
-let equal_option equal a b = match a, b with
+let equal_option equal a b =
+  match (a, b) with
   | Some a, Some b -> equal a b
   | None, None -> true
   | _, _ -> false
@@ -426,36 +479,34 @@ module Decoder = struct
     lift2
       (fun a b ->
         let res = Bytes.create 2 in
-        Bytes.unsafe_set res 0 a ;
-        Bytes.unsafe_set res 1 b ;
-        Bytes.unsafe_to_string res )
+        Bytes.unsafe_set res 0 a;
+        Bytes.unsafe_set res 1 b;
+        Bytes.unsafe_to_string res)
       (satisfy is_digit) (satisfy is_digit)
 
   let four_digit =
     lift4
       (fun a b c d ->
         let res = Bytes.create 4 in
-        Bytes.unsafe_set res 0 a ;
-        Bytes.unsafe_set res 1 b ;
-        Bytes.unsafe_set res 2 c ;
-        Bytes.unsafe_set res 3 d ;
-        Bytes.unsafe_to_string res )
-      (satisfy is_digit) (satisfy is_digit) (satisfy is_digit) (satisfy is_digit)
+        Bytes.unsafe_set res 0 a;
+        Bytes.unsafe_set res 1 b;
+        Bytes.unsafe_set res 2 c;
+        Bytes.unsafe_set res 3 d;
+        Bytes.unsafe_to_string res)
+      (satisfy is_digit) (satisfy is_digit) (satisfy is_digit)
+      (satisfy is_digit)
 
   let at_least_n_digit n =
-    take_while1 is_digit
-    >>= fun res ->
+    take_while1 is_digit >>= fun res ->
     if String.length res >= n then return res else fail "at_least_n_digit"
 
   let one_or_two_digit =
-    satisfy is_digit
-    >>= fun one ->
-    peek_char
-    >>= function
+    satisfy is_digit >>= fun one ->
+    peek_char >>= function
     | Some two when is_digit two ->
         let res = Bytes.create 2 in
-        Bytes.unsafe_set res 0 one ;
-        Bytes.unsafe_set res 1 two ;
+        Bytes.unsafe_set res 0 one;
+        Bytes.unsafe_set res 1 two;
         advance 1 *> return (Bytes.unsafe_to_string res)
     | _ -> return (String.make 1 one)
 
@@ -478,7 +529,8 @@ module Decoder = struct
 
        obs-minute      =   [CFWS] 2DIGIT [CFWS]
   *)
-  let obs_minute = skip_while is_wsp *> two_digit <* skip_while is_wsp >>| int_of_string
+  let obs_minute =
+    skip_while is_wsp *> two_digit <* skip_while is_wsp >>| int_of_string
 
   (* From RFC 2822
 
@@ -488,7 +540,8 @@ module Decoder = struct
 
        obs-second      =   [CFWS] 2DIGIT [CFWS]
   *)
-  let obs_second = skip_while is_wsp *> two_digit <* skip_while is_wsp >>| int_of_string
+  let obs_second =
+    skip_while is_wsp *> two_digit <* skip_while is_wsp >>| int_of_string
 
   (* From RFC 2822
 
@@ -518,8 +571,9 @@ module Decoder = struct
 
        second          =   2DIGIT / obs-second
   *)
-  let second = obs_second <|> (two_digit >>| int_of_string) >>= fun res ->
-    (option "" (char '.' *> take_while1 is_digit)) >>= fun _ns -> return res
+  let second =
+    obs_second <|> (two_digit >>| int_of_string) >>= fun res ->
+    option "" (char '.' *> take_while1 is_digit) >>= fun _ns -> return res
   (* XXX(dinosaure): On [Received] field, the date can have nano-second. Such
    * value does not follow any standards but we must consume it to be able to
    * parse then zone value. It's an hot-fix to be able to accept several wrong
@@ -571,7 +625,10 @@ module Decoder = struct
        16.  Three digit years interpreted, but not allowed for generation.*
   *)
   let year =
-    skip_while is_wsp *> at_least_n_digit 4 <* skip_while is_wsp >>| int_of_string <|> obs_year
+    skip_while is_wsp *> at_least_n_digit 4
+    <* skip_while is_wsp
+    >>| int_of_string
+    <|> obs_year
 
   (* From RFC 2822
 
@@ -582,8 +639,7 @@ module Decoder = struct
        obs-day         =   [CFWS] 1*2DIGIT [CFWS]
   *)
   let obs_day =
-    skip_while is_wsp *> one_or_two_digit <* skip_while is_wsp
-    >>| int_of_string
+    skip_while is_wsp *> one_or_two_digit <* skip_while is_wsp >>| int_of_string
 
   (* From RFC 2822
 
@@ -595,9 +651,9 @@ module Decoder = struct
   *)
   let day =
     obs_day
-    <|> ( skip_while is_wsp *> one_or_two_digit
+    <|> (skip_while is_wsp *> one_or_two_digit
         <* skip_while is_wsp
-        >>| int_of_string )
+        >>| int_of_string)
 
   (* From RFC 822
 
@@ -665,8 +721,7 @@ module Decoder = struct
 
        obs-day-of-week =   [CFWS] day-name [CFWS]
   *)
-  let obs_day_of_week =
-    skip_while is_wsp *> day_name <* skip_while is_wsp
+  let obs_day_of_week = skip_while is_wsp *> day_name <* skip_while is_wsp
 
   (* From RFC 2822
 
@@ -676,8 +731,7 @@ module Decoder = struct
 
        day-of-week     =   ([FWS] day-name) / obs-day-of-week
   *)
-  let day_of_week =
-    obs_day_of_week <|> skip_while is_wsp *> day_name
+  let day_of_week = obs_day_of_week <|> skip_while is_wsp *> day_name
 
   (* From RFC 822
 
@@ -692,7 +746,10 @@ module Decoder = struct
 
        date            =   day month year
   *)
-  let date = lift3 (fun day month year -> (day, month, year)) (day <?> "day") (month <?> "month") (year <?> "year")
+  let date =
+    lift3
+      (fun day month year -> (day, month, year))
+      (day <?> "day") (month <?> "month") (year <?> "year")
 
   (* From RFC 822
 
@@ -707,142 +764,141 @@ module Decoder = struct
        time-of-day     =   hour ":" minute [ ":" second ]
   *)
   let time_of_day =
-    hour <?> "hour"
-    >>= fun hour ->
-    char ':' *> minute <?> "minute"
-    >>= fun minute ->
+    hour <?> "hour" >>= fun hour ->
+    char ':' *> minute <?> "minute" >>= fun minute ->
     option None
-      (skip_while is_wsp *> char ':' *> second <?> "second" >>| fun second -> Some second)
+      ( skip_while is_wsp *> char ':' *> second <?> "second" >>| fun second ->
+        Some second )
     >>| fun second -> (hour, minute, second)
 
-(* From RFC 822
+  (* From RFC 822
 
-     zone        =  "UT"  / "GMT"                ; Universal Time
-                                                 ; North American : UT
-                 /  "EST" / "EDT"                ;  Eastern:  - 5/ - 4
-                 /  "CST" / "CDT"                ;  Central:  - 6/ - 5
-                 /  "MST" / "MDT"                ;  Mountain: - 7/ - 6
-                 /  "PST" / "PDT"                ;  Pacific:  - 8/ - 7
-                 /  1ALPHA                       ; Military: Z = UT;
-                                                 ;  A:-1; (J not used)
-                                                 ;  M:-12; N:+1; Y:+12
-                 / ( ("+" / "-") 4DIGIT )        ; Local differential
-                                                 ;  hours+min. (HHMM)
+       zone        =  "UT"  / "GMT"                ; Universal Time
+                                                   ; North American : UT
+                   /  "EST" / "EDT"                ;  Eastern:  - 5/ - 4
+                   /  "CST" / "CDT"                ;  Central:  - 6/ - 5
+                   /  "MST" / "MDT"                ;  Mountain: - 7/ - 6
+                   /  "PST" / "PDT"                ;  Pacific:  - 8/ - 7
+                   /  1ALPHA                       ; Military: Z = UT;
+                                                   ;  A:-1; (J not used)
+                                                   ;  M:-12; N:+1; Y:+12
+                   / ( ("+" / "-") 4DIGIT )        ; Local differential
+                                                   ;  hours+min. (HHMM)
 
-     Time zone may be indicated in several ways.  "UT" is Univer-
-     sal  Time  (formerly called "Greenwich Mean Time"); "GMT" is per-
-     mitted as a reference to Universal Time.  The  military  standard
-     uses  a  single  character for each zone.  "Z" is Universal Time.
-     "A" indicates one hour earlier, and "M" indicates 12  hours  ear-
-     lier;  "N"  is  one  hour  later, and "Y" is 12 hours later.  The
-     letter "J" is not used.  The other remaining two forms are  taken
-     from ANSI standard X3.51-1975.  One allows explicit indication of
-     the amount of offset from UT; the other uses  common  3-character
-     strings for indicating time zones in North America.
+       Time zone may be indicated in several ways.  "UT" is Univer-
+       sal  Time  (formerly called "Greenwich Mean Time"); "GMT" is per-
+       mitted as a reference to Universal Time.  The  military  standard
+       uses  a  single  character for each zone.  "Z" is Universal Time.
+       "A" indicates one hour earlier, and "M" indicates 12  hours  ear-
+       lier;  "N"  is  one  hour  later, and "Y" is 12 hours later.  The
+       letter "J" is not used.  The other remaining two forms are  taken
+       from ANSI standard X3.51-1975.  One allows explicit indication of
+       the amount of offset from UT; the other uses  common  3-character
+       strings for indicating time zones in North America.
 
-   From RFC 2822
+     From RFC 2822
 
-     obs-zone        =       "UT" / "GMT" /          ; Universal Time
-                             "EST" / "EDT" /         ; Eastern:  - 5/ - 4
-                             "CST" / "CDT" /         ; Central:  - 6/ - 5
-                             "MST" / "MDT" /         ; Mountain: - 7/ - 6
-                             "PST" / "PDT" /         ; Pacific:  - 8/ - 7
-                                                     ;
-                             %d65-73 /               ; Military zones - "A"
-                             %d75-90 /               ; through "I" and "K"
-                             %d97-105 /              ; through "Z", both
-                             %d107-122               ; upper and lower case
+       obs-zone        =       "UT" / "GMT" /          ; Universal Time
+                               "EST" / "EDT" /         ; Eastern:  - 5/ - 4
+                               "CST" / "CDT" /         ; Central:  - 6/ - 5
+                               "MST" / "MDT" /         ; Mountain: - 7/ - 6
+                               "PST" / "PDT" /         ; Pacific:  - 8/ - 7
+                                                       ;
+                               %d65-73 /               ; Military zones - "A"
+                               %d75-90 /               ; through "I" and "K"
+                               %d97-105 /              ; through "Z", both
+                               %d107-122               ; upper and lower case
 
-     In the obsolete time zone, "UT" and "GMT" are indications of
-     "Universal Time" and "Greenwich Mean Time" respectively and are both
-     semantically identical to "+0000".
+       In the obsolete time zone, "UT" and "GMT" are indications of
+       "Universal Time" and "Greenwich Mean Time" respectively and are both
+       semantically identical to "+0000".
 
-     The remaining three character zones are the US time zones.  The first
-     letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
-     "Mountain" and "Pacific".  The second letter is either "S" for
-     "Standard" time, or "D" for "Daylight" (or summer) time.  Their
-     interpretations are as follows:
+       The remaining three character zones are the US time zones.  The first
+       letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
+       "Mountain" and "Pacific".  The second letter is either "S" for
+       "Standard" time, or "D" for "Daylight" (or summer) time.  Their
+       interpretations are as follows:
 
-     EDT is semantically equivalent to -0400
-     EST is semantically equivalent to -0500
-     CDT is semantically equivalent to -0500
-     CST is semantically equivalent to -0600
-     MDT is semantically equivalent to -0600
-     MST is semantically equivalent to -0700
-     PDT is semantically equivalent to -0700
-     PST is semantically equivalent to -0800
-
-     The 1 character military time zones were defined in a non-standard
-     way in [RFC822] and are therefore unpredictable in their meaning.
-     The original definitions of the military zones "A" through "I" are
-     equivalent to "+0100" through "+0900" respectively; "K", "L", and "M"
-     are equivalent to  "+1000", "+1100", and "+1200" respectively; "N"
-     through "Y" are equivalent to "-0100" through "-1200" respectively;
-     and "Z" is equivalent to "+0000".  However, because of the error in
-     [RFC822], they SHOULD all be considered equivalent to "-0000" unless
-     there is out-of-band information confirming their meaning.
-
-     Other multi-character (usually between 3 and 5) alphabetic time zones
-     have been used in Internet messages.  Any such time zone whose
-     meaning is not known SHOULD be considered equivalent to "-0000"
-     unless there is out-of-band information confirming their meaning.
-
-   From RFC 5322
-
-     obs-zone        =   "UT" / "GMT" /     ; Universal Time
-                                            ; North American UT
-                                            ; offsets
-                         "EST" / "EDT" /    ; Eastern:  - 5/ - 4
-                         "CST" / "CDT" /    ; Central:  - 6/ - 5
-                         "MST" / "MDT" /    ; Mountain: - 7/ - 6
-                         "PST" / "PDT" /    ; Pacific:  - 8/ - 7
-                                            ;
-                         %d65-73 /          ; Military zones - "A"
-                         %d75-90 /          ; through "I" and "K"
-                         %d97-105 /         ; through "Z", both
-                         %d107-122          ; upper and lower case
-
-     Where a two or three digit year occurs in a date, the year is to be
-     interpreted as follows: If a two digit year is encountered whose
-     value is between 00 and 49, the year is interpreted by adding 2000,
-     ending up with a value between 2000 and 2049.  If a two digit year is
-     encountered with a value between 50 and 99, or any three digit year
-     is encountered, the year is interpreted by adding 1900.
-
-     In the obsolete time zone, "UT" and "GMT" are indications of
-     "Universal Time" and "Greenwich Mean Time", respectively, and are
-     both semantically identical to "+0000".
-
-     The remaining three character zones are the US time zones.  The first
-     letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
-     "Mountain", and "Pacific".  The second letter is either "S" for
-     "Standard" time, or "D" for "Daylight Savings" (or summer) time.
-     Their interpretations are as follows:
-
-        EDT is semantically equivalent to -0400
-        EST is semantically equivalent to -0500
-        CDT is semantically equivalent to -0500
-        CST is semantically equivalent to -0600
-        MDT is semantically equivalent to -0600
-        MST is semantically equivalent to -0700
-        PDT is semantically equivalent to -0700
-        PST is semantically equivalent to -0800
+       EDT is semantically equivalent to -0400
+       EST is semantically equivalent to -0500
+       CDT is semantically equivalent to -0500
+       CST is semantically equivalent to -0600
+       MDT is semantically equivalent to -0600
+       MST is semantically equivalent to -0700
+       PDT is semantically equivalent to -0700
+       PST is semantically equivalent to -0800
 
        The 1 character military time zones were defined in a non-standard
-       way in [RFC0822] and are therefore unpredictable in their meaning.
+       way in [RFC822] and are therefore unpredictable in their meaning.
        The original definitions of the military zones "A" through "I" are
-       equivalent to "+0100" through "+0900", respectively; "K", "L", and
-       "M" are equivalent to "+1000", "+1100", and "+1200", respectively;
-       "N" through "Y" are equivalent to "-0100" through "-1200".
-       respectively; and "Z" is equivalent to "+0000".  However, because of
-       the error in [RFC0822], they SHOULD all be considered equivalent to
-       "-0000" unless there is out-of-band information confirming their
-       meaning.
+       equivalent to "+0100" through "+0900" respectively; "K", "L", and "M"
+       are equivalent to  "+1000", "+1100", and "+1200" respectively; "N"
+       through "Y" are equivalent to "-0100" through "-1200" respectively;
+       and "Z" is equivalent to "+0000".  However, because of the error in
+       [RFC822], they SHOULD all be considered equivalent to "-0000" unless
+       there is out-of-band information confirming their meaning.
 
        Other multi-character (usually between 3 and 5) alphabetic time zones
        have been used in Internet messages.  Any such time zone whose
        meaning is not known SHOULD be considered equivalent to "-0000"
        unless there is out-of-band information confirming their meaning.
+
+     From RFC 5322
+
+       obs-zone        =   "UT" / "GMT" /     ; Universal Time
+                                              ; North American UT
+                                              ; offsets
+                           "EST" / "EDT" /    ; Eastern:  - 5/ - 4
+                           "CST" / "CDT" /    ; Central:  - 6/ - 5
+                           "MST" / "MDT" /    ; Mountain: - 7/ - 6
+                           "PST" / "PDT" /    ; Pacific:  - 8/ - 7
+                                              ;
+                           %d65-73 /          ; Military zones - "A"
+                           %d75-90 /          ; through "I" and "K"
+                           %d97-105 /         ; through "Z", both
+                           %d107-122          ; upper and lower case
+
+       Where a two or three digit year occurs in a date, the year is to be
+       interpreted as follows: If a two digit year is encountered whose
+       value is between 00 and 49, the year is interpreted by adding 2000,
+       ending up with a value between 2000 and 2049.  If a two digit year is
+       encountered with a value between 50 and 99, or any three digit year
+       is encountered, the year is interpreted by adding 1900.
+
+       In the obsolete time zone, "UT" and "GMT" are indications of
+       "Universal Time" and "Greenwich Mean Time", respectively, and are
+       both semantically identical to "+0000".
+
+       The remaining three character zones are the US time zones.  The first
+       letter, "E", "C", "M", or "P" stands for "Eastern", "Central",
+       "Mountain", and "Pacific".  The second letter is either "S" for
+       "Standard" time, or "D" for "Daylight Savings" (or summer) time.
+       Their interpretations are as follows:
+
+          EDT is semantically equivalent to -0400
+          EST is semantically equivalent to -0500
+          CDT is semantically equivalent to -0500
+          CST is semantically equivalent to -0600
+          MDT is semantically equivalent to -0600
+          MST is semantically equivalent to -0700
+          PDT is semantically equivalent to -0700
+          PST is semantically equivalent to -0800
+
+         The 1 character military time zones were defined in a non-standard
+         way in [RFC0822] and are therefore unpredictable in their meaning.
+         The original definitions of the military zones "A" through "I" are
+         equivalent to "+0100" through "+0900", respectively; "K", "L", and
+         "M" are equivalent to "+1000", "+1100", and "+1200", respectively;
+         "N" through "Y" are equivalent to "-0100" through "-1200".
+         respectively; and "Z" is equivalent to "+0000".  However, because of
+         the error in [RFC0822], they SHOULD all be considered equivalent to
+         "-0000" unless there is out-of-band information confirming their
+         meaning.
+
+         Other multi-character (usually between 3 and 5) alphabetic time zones
+         have been used in Internet messages.  Any such time zone whose
+         meaning is not known SHOULD be considered equivalent to "-0000"
+         unless there is out-of-band information confirming their meaning.
   *)
   let obs_zone =
     string "UT" *> return Zone.UT
@@ -855,7 +911,8 @@ module Decoder = struct
     <|> string "MDT" *> return Zone.MDT
     <|> string "PST" *> return Zone.PST
     <|> string "PDT" *> return Zone.PDT
-    <|> (satisfy Zone.is_military_zone >>= fun z -> return (Zone.Military_zone z))
+    <|> ( satisfy Zone.is_military_zone >>= fun z ->
+          return (Zone.Military_zone z) )
 
   (* From RFC 2822
 
@@ -902,14 +959,17 @@ module Decoder = struct
        mostly because this expected space is a part of [minute] or [second]. To
        avoid an error, [FWS] is optional but a better way should to check if we
        consumed at least one space before [zone]. *)
-    (skip_while is_wsp *> satisfy (function '+' | '-' -> true | _ -> false) <?> "sign"
-     >>= (fun sign ->
-         four_digit <?> "four-digit"
-         >>| fun zone ->
-         let one = if sign = '-' then - int_of_string (String.sub zone 0 2) else int_of_string (String.sub zone 0 2) in
-         let two = int_of_string (String.sub zone 2 2) in
-         Zone.TZ (one, two)))
-    <|> (skip_while is_wsp *> obs_zone)
+    skip_while is_wsp *> satisfy (function '+' | '-' -> true | _ -> false)
+    <?> "sign"
+    >>= (fun sign ->
+          four_digit <?> "four-digit" >>| fun zone ->
+          let one =
+            if sign = '-' then -int_of_string (String.sub zone 0 2)
+            else int_of_string (String.sub zone 0 2)
+          in
+          let two = int_of_string (String.sub zone 2 2) in
+          Zone.TZ (one, two))
+    <|> skip_while is_wsp *> obs_zone
 
   (* From RFC 822
 
@@ -923,7 +983,11 @@ module Decoder = struct
 
        time            =   time-of-day zone
   *)
-  let time = lift2 (fun time zone -> (time, zone)) (time_of_day <?> "time-of-day") (zone <?> "zone")
+  let time =
+    lift2
+      (fun time zone -> (time, zone))
+      (time_of_day <?> "time-of-day")
+      (zone <?> "zone")
 
   (* From RFC 822
 
@@ -956,7 +1020,7 @@ module Decoder = struct
   *)
   let date_time =
     lift3
-      (fun day date (time, zone) -> {day; date; time; zone})
+      (fun day date (time, zone) -> { day; date; time; zone })
       (option None (day_of_week >>= fun day -> char ',' *> return (Some day)))
       date time
     <* skip_while is_wsp
@@ -973,20 +1037,28 @@ module Encoder = struct
 
   let time ppf (hours, minutes, seconds) =
     let string_of_number = Fmt.strf "%02d" in
-    let number ppf x = eval ppf [ cut; !!(using string_of_number string); cut ] x in
+    let number ppf x =
+      eval ppf [ cut; !!(using string_of_number string); cut ] x
+    in
     match seconds with
     | Some seconds ->
-      eval ppf [ tbox 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close ]
-        hours minutes seconds
+        eval ppf
+          [
+            tbox 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close;
+          ]
+          hours minutes seconds
     | None ->
-      eval ppf [ tbox 1; !!number; char $ ':'; !!number; close ]
-        hours minutes
+        eval ppf [ tbox 1; !!number; char $ ':'; !!number; close ] hours minutes
 
   let zone = using Zone.to_string string
   let int = using string_of_int string
 
   let date ppf t =
-    let (d, m, y) = t.date in
-    eval ppf [ tbox 1; !!(option day); !!int; fws; !!month; fws; !!int; fws; !!time; fws; !!zone; close ]
+    let d, m, y = t.date in
+    eval ppf
+      [
+        tbox 1; !!(option day); !!int; fws; !!month; fws; !!int; fws; !!time;
+        fws; !!zone; close;
+      ]
       t.day d m y t.time t.zone
 end

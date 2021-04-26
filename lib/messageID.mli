@@ -38,8 +38,8 @@ module Domain : sig
         - : string = "[x25519]"
       ]} *)
 
-  type atom = [`Atom of string]
-  type literal = [`Literal of string]
+  type atom = [ `Atom of string ]
+  type literal = [ `Literal of string ]
 
   type 'a domain =
     | ( :: ) : atom * 'a domain -> 'a Peano.s domain
@@ -77,7 +77,8 @@ module Domain : sig
   val default : string t
   (** Kind of {!literal}. *)
 
-  val make : 'a t -> 'a -> [ `Literal of string | `Domain of string list ] option
+  val make :
+    'a t -> 'a -> [ `Literal of string | `Domain of string list ] option
   (** [make kind v] returns a safe domain. It can fail if an user-defined
      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
      {!domain} don't follow standards:
