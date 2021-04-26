@@ -2,4 +2,3 @@ _build
 *.merlin
 *.install
 .*.swp
-examples/*

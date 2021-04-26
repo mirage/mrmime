@@ -29,6 +29,5 @@ module Address = Address
 module Group = Group
 module Unstructured = Unstructured
 module Mail = Mail
-
 module Hd = Hd
 module Mt = Mt

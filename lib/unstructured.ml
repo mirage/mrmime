@@ -4,13 +4,15 @@ type t = elt list
 
 let pp ppf t =
   let t =
-    List.fold_left (fun a -> function
-        | #Unstrctrd.elt as x -> x :: a
-        | _ -> a) [] t |> List.rev in
+    List.fold_left
+      (fun a -> function #Unstrctrd.elt as x -> x :: a | _ -> a)
+      [] t
+    |> List.rev
+  in
   match Unstrctrd.of_list t with
   | Ok l ->
-    let s = Unstrctrd.to_utf_8_string l in
-    Fmt.pf ppf "<unstrctrd:%s>" s
+      let s = Unstrctrd.to_utf_8_string l in
+      Fmt.pf ppf "<unstrctrd:%s>" s
   | Error _ -> Fmt.pf ppf "<invalid-unstrctrd>"
 
 module Decoder = struct
@@ -33,32 +35,35 @@ module Encoder = struct
   type uchar = [ `Uchar of Uchar.t ]
   type ok_or_partial = [ `Ok | `Partial ]
 
-  let element : elt t = fun ppf -> function
+  let element : elt t =
+   fun ppf -> function
     | `CR -> string ppf "\r"
     | `LF -> string ppf "\n"
     | `Open Box -> eval ppf [ box ]
     | `Open (TBox n) -> eval ppf [ tbox n ]
     | `Open BBox -> eval ppf [ bbox ]
     | `Close -> eval ppf [ close ]
-    | `FWS wsp -> let ppf = eval ppf [ cut; new_line ] in string ppf (wsp :> string)
+    | `FWS wsp ->
+        let ppf = eval ppf [ cut; new_line ] in
+        string ppf (wsp :> string)
     | `OBS_NO_WS_CTL chr -> char ppf (chr :> char)
     | `WSP wsp -> eval ppf [ spaces (String.length (wsp :> string)) ]
     | `d0 -> char ppf '\000'
     | `Invalid_char _ -> string ppf "\xEF\xBF\xBD"
     | #uchar as uchar ->
-      let output = Stdlib.Buffer.create 4 in
-      let encoder = Uutf.encoder `UTF_8 (`Buffer output) in
-      (* XXX(dinosaure): [Uutf.encoder_dst <> `Manual]. It's safe. *)
-      let[@warning "-8"] `Ok : ok_or_partial = Uutf.encode encoder uchar in
-      let[@warning "-8"] `Ok : ok_or_partial = Uutf.encode encoder `End in
-      string ppf (Stdlib.Buffer.contents output)
+        let output = Stdlib.Buffer.create 4 in
+        let encoder = Uutf.encoder `UTF_8 (`Buffer output) in
+        (* XXX(dinosaure): [Uutf.encoder_dst <> `Manual]. It's safe. *)
+        let[@warning "-8"] (`Ok : ok_or_partial) = Uutf.encode encoder uchar in
+        let[@warning "-8"] (`Ok : ok_or_partial) = Uutf.encode encoder `End in
+        string ppf (Stdlib.Buffer.contents output)
 
-  let noop = (fun ppf () -> ppf), ()
-  let unstructured : elt list t =
-    fun ppf lst -> list ~sep:noop element ppf lst
+  let noop = ((fun ppf () -> ppf), ())
+  let unstructured : elt list t = fun ppf lst -> list ~sep:noop element ppf lst
 end
 
-let of_string x = match Unstrctrd.of_string x with
+let of_string x =
+  match Unstrctrd.of_string x with
   | Ok (_consumed, v) -> Ok v
   | Error (`Msg err) -> Error (`Msg err)
 

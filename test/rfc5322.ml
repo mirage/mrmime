@@ -1,31 +1,28 @@
 let header_tests =
   [
-(* See RFC 5322 § Appendix A.1.1 *)
-{|From: John Doe <jdoe@machine.example>
+    (* See RFC 5322 § Appendix A.1.1 *)
+    {|From: John Doe <jdoe@machine.example>
 To: Mary Smith <mary@example.net>
 Subject: Saying Hello
 Date: Fri, 21 Nov 1997 09:55:06 -0600
 Message-ID: <1234@local.machine.example>
 |};
-
-(* See RFC 5322 § Appendix A.1.2 *)
-{|From: "Joe Q. Public" <john.q.public@example.com>
+    (* See RFC 5322 § Appendix A.1.2 *)
+    {|From: "Joe Q. Public" <john.q.public@example.com>
 To: Mary Smith <mary@x.test>, jdoe@example.org, Who? <one@y.test>
 Cc: <boss@nil.test>, "Giant; \"Big\" Box" <sysservices@example.net>
 Date: Tue, 1 Jul 2003 10:52:37 +0200
 Message-ID: <5678.21-Nov-1997@example.com>
 |};
-
-(* See RFC 5322 § Appendix A.1.3 *)
-{|From: Pete <pete@silly.example>
+    (* See RFC 5322 § Appendix A.1.3 *)
+    {|From: Pete <pete@silly.example>
 To: A Group:Ed Jones <c@a.test>,joe@where.test,John <jdoe@one.test>;
 Cc: Undisclosed recipients:;
 Date: Thu, 13 Feb 1969 23:32:54 -0330
 Message-ID: <testabcd.1234@silly.example>
 |};
-
-(* See RFC 5322 § Appendix A.2 *)
-{|From: Mary Smith <mary@example.net>
+    (* See RFC 5322 § Appendix A.2 *)
+    {|From: Mary Smith <mary@example.net>
 To: John Doe <jdoe@machine.example>
 Reply-To: "Mary Smith: Personal Account" <smith@home.example>
 Subject: Re: Saying Hello
@@ -34,9 +31,8 @@ Message-ID: <3456@example.net>
 In-Reply-To: <1234@local.machine.example>
 References: <1234@local.machine.example>
 |};
-
-(* See RFC 5322 § Appendix A.3 *)
-{|Resent-From: Mary Smith <mary@example.net>
+    (* See RFC 5322 § Appendix A.3 *)
+    {|Resent-From: Mary Smith <mary@example.net>
 Resent-To: Jane Brown <j-brown@other.example>
 Resent-Date: Mon, 24 Nov 1997 14:22:01 -0800
 Resent-Message-ID: <78910@example.net>
@@ -46,9 +42,8 @@ Subject: Saying Hello
 Date: Fri, 21 Nov 1997 09:55:06 -0600
 Message-ID: <1234@local.machine.example>
 |};
-
-(* See RFC 5322 § Appendix A.4 *)
-{|Received: from x.y.test
+    (* See RFC 5322 § Appendix A.4 *)
+    {|Received: from x.y.test
    by example.net
    via TCP
    with ESMTP
@@ -61,9 +56,8 @@ Subject: Saying Hello
 Date: Fri, 21 Nov 1997 09:55:06 -0600
 Message-ID: <1234@local.node.example>
 |};
-
-(* See RFC 5322 § Appendix A.5 *)
-{|From: Pete(A nice \) chap) <pete(his account)@silly.test(his host)>
+    (* See RFC 5322 § Appendix A.5 *)
+    {|From: Pete(A nice \) chap) <pete(his account)@silly.test(his host)>
 To:A Group(Some people)
      :Chris Jones <c@(Chris's host.)public.example>,
          joe@example.org,
@@ -77,24 +71,21 @@ Date: Thu,
                -0330 (Newfoundland Time)
 Message-ID:              <testabcd.1234@silly.test>
 |};
-
-(* See RFC 5322 § Appendix A.6.1 *)
-{|From: Joe Q. Public <john.q.public@example.com>
+    (* See RFC 5322 § Appendix A.6.1 *)
+    {|From: Joe Q. Public <john.q.public@example.com>
 To: Mary Smith <@node.test:mary@example.net>, , jdoe@test  . example
 Date: Tue, 1 Jul 2003 10:52:37 +0200
 Message-ID: <5678.21-Nov-1997@example.com>
 |};
-
-(* See RFC 5322 § Appendix A.6.2 *)
-{|From: John Doe <jdoe@machine.example>
+    (* See RFC 5322 § Appendix A.6.2 *)
+    {|From: John Doe <jdoe@machine.example>
 To: Mary Smith <mary@example.net>
 Subject: Saying Hello
 Date: 21 Nov 97 09:55:06 GMT
 Message-ID: <1234@local.machine.example>
 |};
-
-(* See RFC 5322 § Appendix A.6.3 *)
-{|From  : John Doe <jdoe@machine(comment).  example>
+    (* See RFC 5322 § Appendix A.6.3 *)
+    {|From  : John Doe <jdoe@machine(comment).  example>
 To    : Mary Smith
   
           <mary@example.net>
@@ -102,24 +93,21 @@ Subject     : Saying Hello
 Date  : Fri, 21 Nov 1997 09(comment):   55  :  06 -0600
 Message-ID  : <1234   @   local(blah)  .machine .example>
 |};
-
-(* See RFC 822 § A.3.1 *)
-{|Date:     26 Aug 76 14:29 EDT
+    (* See RFC 822 § A.3.1 *)
+    {|Date:     26 Aug 76 14:29 EDT
 From:     Jones@Registry.Org
 Bcc:
 |};
-
-(* See RFC 822 § A.3.2 *)
-{|Date:     26 Aug 76 14:30 EDT
+    (* See RFC 822 § A.3.2 *)
+    {|Date:     26 Aug 76 14:30 EDT
 From:     George Jones<Group@Host>
 Sender:   Secy@SHOST
 To:       "Al Neuman"@Mad-Host,
           Sam.Irving@Other-Host
 Message-ID:  <some.string@SHOST>
 |};
-
-(* See RFC 822 § A.3.3 *)
-{|Date     :  27 Aug 76 09:32 PDT
+    (* See RFC 822 § A.3.3 *)
+    {|Date     :  27 Aug 76 09:32 PDT
 From     :  Ken Davis <KDavis@This-Host.This-net>
 Subject  :  Re: The Syntax in the RFC
 Sender   :  KSecy@Other-Host
@@ -143,31 +131,27 @@ X-Special-action:  This is a sample of user-defined field-
             preempted
 Message-ID: <4231.629.XYzi-What@Other-Host>
 |};
-
-(* See RFC 2047 § 8 *)
-{|From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>
+    (* See RFC 2047 § 8 *)
+    {|From: =?US-ASCII?Q?Keith_Moore?= <moore@cs.utk.edu>
 Date     :  27 Aug 76 09:32 PDT
 To: =?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?= <keld@dkuug.dk>
 CC: =?ISO-8859-1?Q?Andr=E9?= Pirard <PIRARD@vm1.ulg.ac.be>
 Subject: =?ISO-8859-1?B?SWYgeW91IGNhbiByZWFkIHRoaXMgeW8=?=
  =?ISO-8859-2?B?dSB1bmRlcnN0YW5kIHRoZSBleGFtcGxlLg==?=
 |};
-
-(* See RFC 2047 § 8 *)
-{|From: =?ISO-8859-1?Q?Olle_J=E4rnefors?= <ojarnef@admin.kth.se>
+    (* See RFC 2047 § 8 *)
+    {|From: =?ISO-8859-1?Q?Olle_J=E4rnefors?= <ojarnef@admin.kth.se>
 To: ietf-822@dimacs.rutgers.edu, ojarnef@admin.kth.se
 Subject: Time for ISO 10646?
 |};
-
-(* See RFC 2047 § 8 *)
-{|To: Dave Crocker <dcrocker@mordor.stanford.edu>
+    (* See RFC 2047 § 8 *)
+    {|To: Dave Crocker <dcrocker@mordor.stanford.edu>
 Cc: ietf-822@dimacs.rutgers.edu, paf@comsol.se
 From: =?ISO-8859-1?Q?Patrik_F=E4ltstr=F6m?= <paf@nada.kth.se>
 Subject: Re: RFC-HDR care and feeding
 |};
-
-(* See RFC 2047 § 8 *)
-{|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>
+    (* See RFC 2047 § 8 *)
+    {|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>
       (=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?=)
 To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed
    <ned@innosoft.com>, Keith Moore <moore@cs.utk.edu>
@@ -178,15 +162,18 @@ Content-type: text/plain; charset=ISO-8859-1
   ]
 
 let parse_header x =
-  match Angstrom.parse_string ~consume:Angstrom.Consume.Prefix Mrmime.Header.Decoder.header (x ^ "\r\n") with
+  match
+    Angstrom.parse_string ~consume:Angstrom.Consume.Prefix
+      Mrmime.Header.Decoder.header (x ^ "\r\n")
+  with
   | Ok header -> Fmt.pr "header: @[<hov>%a@].\n%!" Mrmime.Header.pp header
   | Error _ -> Fmt.failwith "Invalid header"
 
 let header_tests =
   let make idx input =
     Alcotest.test_case (Fmt.strf "header %d" idx) `Quick @@ fun () ->
-    Alcotest.(check pass) input (parse_header input) () in
+    Alcotest.(check pass) input (parse_header input) ()
+  in
   List.mapi make header_tests
 
-let () =
-  Alcotest.run "rfc5322" [ ("header", header_tests) ]
+let () = Alcotest.run "rfc5322" [ ("header", header_tests) ]

@@ -16,7 +16,6 @@
 
 (** Content-Transfer-Encoding value *)
 
-(** Type for standard mechanism for encoding. *)
 type t =
   [ `Bit7
   | `Bit8
@@ -25,6 +24,7 @@ type t =
   | `Base64
   | `Ietf_token of string
   | `X_token of string ]
+(** Type for standard mechanism for encoding. *)
 
 (** {2 Basic encodings.} *)
 

@@ -13,8 +13,9 @@ exception Invalid_token
       "/", "?", and "=", and the removal of ".".
 *)
 let is_tspecials = function
-  | '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '['
-  | ']' | '?' | '=' -> true
+  | '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '[' | ']'
+  | '?' | '=' ->
+      true
   | _ -> false
 
 let is_ctl = function '\000' .. '\031' | '\127' -> true | _ -> false
@@ -26,11 +27,9 @@ let is_space = ( = ) ' '
                     or tspecials>
 *)
 let is_ascii = function '\000' .. '\127' -> true | _ -> false
+
 let is_token c =
-  (is_ascii c)
-  && (not (is_tspecials c))
-  && (not (is_ctl c))
-  && (not (is_space c))
+  is_ascii c && (not (is_tspecials c)) && (not (is_ctl c)) && not (is_space c)
 
 let is_obs_no_ws_ctl = function
   | '\001' .. '\008' | '\011' | '\012' | '\014' .. '\031' | '\127' -> true
@@ -53,38 +52,33 @@ module Type = struct
   let application = `Application
   let message = `Message
   let multipart = `Multipart
-
-  let is_discrete = function
-    | #discrete -> true
-    | _ -> false
-
-  let is_multipart = function
-    | `Multipart -> true
-    | _ -> false
-
-  let is_message = function
-    | `Message -> true
-    | _ -> false
+  let is_discrete = function #discrete -> true | _ -> false
+  let is_multipart = function `Multipart -> true | _ -> false
+  let is_message = function `Message -> true | _ -> false
 
   let ietf token =
-    if Iana.Map.mem (String.lowercase_ascii token) Iana.database
-    then Ok (`Ietf_token token)
+    if Iana.Map.mem (String.lowercase_ascii token) Iana.database then
+      Ok (`Ietf_token token)
     else Rresult.R.error_msgf "%S is not an IETF token" token
 
   let extension token =
-    if String.length token < 3
-    then Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
+    if String.length token < 3 then
+      Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S"
+        token
     else
       match (token.[0], token.[1]) with
-      | ('x' | 'X'), '-' ->
-        ( try
-          String.iter
-            (fun chr -> if not (is_token chr) then raise Invalid_token)
-            (String.sub token 2 (String.length token - 2)) ;
-          Ok (`X_token token)
-        with Invalid_token ->
-          Rresult.R.error_msgf "Extension token %S does not respect standards" token )
-      | _ -> Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S" token
+      | ('x' | 'X'), '-' -> (
+          try
+            String.iter
+              (fun chr -> if not (is_token chr) then raise Invalid_token)
+              (String.sub token 2 (String.length token - 2));
+            Ok (`X_token token)
+          with Invalid_token ->
+            Rresult.R.error_msgf "Extension token %S does not respect standards"
+              token)
+      | _ ->
+          Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S"
+            token
 
   let pp ppf = function
     | `Text -> Fmt.string ppf "text"
@@ -108,7 +102,8 @@ module Type = struct
     | `Ietf_token token | `X_token token -> token
 
   let compare a b =
-    String.(compare (lowercase_ascii (to_string a)) (lowercase_ascii (to_string b)))
+    String.(
+      compare (lowercase_ascii (to_string a)) (lowercase_ascii (to_string b)))
 
   let equal a b = compare a b = 0
   let default = `Text
@@ -130,26 +125,29 @@ module Subtype = struct
         else Rresult.R.error_msgf "Subtype %S does not exist" token
     | exception Not_found -> Rresult.R.error_msgf "Type %S does not exist" ty
 
-  let iana_exn ty token = match iana ty token with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let iana_exn ty token =
+    match iana ty token with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let v ty token = iana_exn ty token
 
   let extension token =
-    if String.length token < 3
-    then Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
+    if String.length token < 3 then
+      Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S"
+        token
     else
       match (token.[0], token.[1]) with
       | ('x' | 'X'), '-' -> (
-        try
-          String.iter
-            (fun chr -> if not (is_token chr) then raise Invalid_token)
-            (String.sub token 2 (String.length token - 2)) ;
-          Ok (`X_token token)
-        with Invalid_token ->
-          Rresult.R.error_msgf "Extension token %S does not respect standards" token)
-      | _ -> Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S" token
+          try
+            String.iter
+              (fun chr -> if not (is_token chr) then raise Invalid_token)
+              (String.sub token 2 (String.length token - 2));
+            Ok (`X_token token)
+          with Invalid_token ->
+            Rresult.R.error_msgf "Extension token %S does not respect standards"
+              token)
+      | _ ->
+          Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S"
+            token
 
   let pp ppf = function
     | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
@@ -162,11 +160,10 @@ module Subtype = struct
     | `X_token token -> token
 
   let compare a b =
-    match (a, b)
-    with
-    | ( (`Ietf_token a | `Iana_token a | `X_token a)
-      , (`Ietf_token b | `Iana_token b | `X_token b) )
-    -> String.(compare (lowercase_ascii a) (lowercase_ascii b))
+    match (a, b) with
+    | ( (`Ietf_token a | `Iana_token a | `X_token a),
+        (`Ietf_token b | `Iana_token b | `X_token b) ) ->
+        String.(compare (lowercase_ascii a) (lowercase_ascii b))
 
   let equal a b = compare a b = 0
   let default = `Iana_token "plain"
@@ -187,14 +184,13 @@ module Parameters = struct
     try
       String.iter
         (fun chr -> if not (is_token chr) then raise Invalid_token)
-        key ;
+        key;
       Ok (String.lowercase_ascii key)
     with Invalid_token ->
       Rresult.R.error_msgf "Key %S does not respect standards" key
 
-  let key_exn x = match key x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let key_exn x =
+    match key x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let k x = key_exn x
 
@@ -205,10 +201,11 @@ module Parameters = struct
       try
         String.iter
           (fun chr -> if not (is_token chr) then raise Invalid_token)
-          x ;
+          x;
         Ok (`Token x)
       with Invalid_token ->
-        Rresult.R.error_msgf "Value %S does not respect standards" v in
+        Rresult.R.error_msgf "Value %S does not respect standards" v
+    in
     (* XXX(dinosaure): [is_quoted_pair] accepts characters \000-\127. UTF-8
        extends to \000-\255. However, qtext invalids some of them: \009, \010,
        \013, \032, \034 and \092. Most of them need to be escaped.
@@ -218,57 +215,60 @@ module Parameters = struct
        does not look significant - so we don't try to escape it. *)
     let need_to_escape = function
       | '\009' | '\010' | '\013' | '\034' | '\092' -> true
-      | _ -> false in
+      | _ -> false
+    in
     let of_escaped_character = function
       | '\009' -> 't'
       | '\010' -> 'n'
       | '\013' -> 'r'
-      | c -> c in
+      | c -> c
+    in
     let escape_characters x =
       let len = String.length x in
       let buf = Buffer.create len in
       String.iter
         (fun chr ->
           if need_to_escape chr then (
-            Buffer.add_char buf '\\' ;
-            Buffer.add_char buf (of_escaped_character chr) )
-          else Buffer.add_char buf chr )
-        x ;
-      Buffer.contents buf in
+            Buffer.add_char buf '\\';
+            Buffer.add_char buf (of_escaped_character chr))
+          else Buffer.add_char buf chr)
+        x;
+      Buffer.contents buf
+    in
     let utf_8 x =
       try
         Uutf.String.fold_utf_8
-          (fun () _pos -> function `Malformed _ -> raise Invalid_utf_8
-            | `Uchar _ -> () )
-          () x ;
+          (fun () _pos -> function
+            | `Malformed _ -> raise Invalid_utf_8
+            | `Uchar _ -> ())
+          () x;
         Ok x
       with Invalid_utf_8 ->
-        Rresult.R.error_msgf "Value %S is not a valid UTF-8 string" x in
+        Rresult.R.error_msgf "Value %S is not a valid UTF-8 string" x
+    in
     match to_token v with
     | Ok _ as v -> v
     | Error _ ->
-      (* UTF-8 respects an interval of values and it's possible to have an
-         invalid UTF-8 string. So we need to check it. UTF-8 is a superset of
-         ASCII, so we need, firstly to check if it's a valid UTF-8 string. In
-         this case, and mostly because we can escape anything (see
-         [is_quoted_pair]), we do a pass to escape some of ASCII characters only
-         then.
+        (* UTF-8 respects an interval of values and it's possible to have an
+           invalid UTF-8 string. So we need to check it. UTF-8 is a superset of
+           ASCII, so we need, firstly to check if it's a valid UTF-8 string. In
+           this case, and mostly because we can escape anything (see
+           [is_quoted_pair]), we do a pass to escape some of ASCII characters only
+           then.
 
-         At the end, if [value] is a valid UTF-8 string, we will don't have a
-         problem to encode it if we take care to escape invalid [qtext]
-         characters.
+           At the end, if [value] is a valid UTF-8 string, we will don't have a
+           problem to encode it if we take care to escape invalid [qtext]
+           characters.
 
-         However, order is really important semantically. UTF-8 -> escape
-         expects a special process to decoder (escape -> UTF-8). About history,
-         unicorn and so on, it should be the best to keep this order. *)
-      Rresult.R.(utf_8 v >>| escape_characters >>| fun x -> `String x)
+           However, order is really important semantically. UTF-8 -> escape
+           expects a special process to decoder (escape -> UTF-8). About history,
+           unicorn and so on, it should be the best to keep this order. *)
+        Rresult.R.(utf_8 v >>| escape_characters >>| fun x -> `String x)
 
-  let value_exn x = match value x with
-    | Ok v -> v
-    | Error (`Msg err) -> invalid_arg err
+  let value_exn x =
+    match value x with Ok v -> v | Error (`Msg err) -> invalid_arg err
 
   let v x = value_exn x
-
   let empty = Map.empty
 
   let mem key t =
@@ -312,13 +312,13 @@ module Parameters = struct
       if
         x.[!pos] = '\\' && !pos < len - 1
         (* XXX(dinosaure): we can avoid this check when [value] takes care about that. *)
-      then
-        ( Buffer.add_char res (of_escaped_character x.[!pos + 1])
-        ; pos := !pos + 2 )
-      else
-        ( Buffer.add_char res x.[!pos]
-        ; incr pos )
-    done ;
+      then (
+        Buffer.add_char res (of_escaped_character x.[!pos + 1]);
+        pos := !pos + 2)
+      else (
+        Buffer.add_char res x.[!pos];
+        incr pos)
+    done;
     Buffer.contents res
 
   let value_compare a b =
@@ -334,8 +334,7 @@ module Parameters = struct
     | `Token a, `Token b -> String.equal a b
     | `String a, `Token b | `Token b, `String a ->
         String.equal (value_unescape a) b
-    | `String a, `String b ->
-        String.equal (value_unescape a) (value_unescape b)
+    | `String a, `String b -> String.equal (value_unescape a) (value_unescape b)
 
   let compare = Map.compare value_compare
   let equal = Map.equal value_equal
@@ -344,35 +343,35 @@ module Parameters = struct
     List.fold_left (fun a (key, value) -> Map.add key value a) Map.empty lst
 
   let to_list t = Map.bindings t
-
   let default = Map.add "charset" (`Token "us-ascii") Map.empty
 end
 
-type t =
-  { ty : Type.t
-  ; subty : Subtype.t
-  ; parameters : (string * Parameters.value) list }
+type t = {
+  ty : Type.t;
+  subty : Subtype.t;
+  parameters : (string * Parameters.value) list;
+}
 
 let default =
-  { ty = Type.default
-  ; subty = Subtype.default
-  ; parameters = Parameters.to_list Parameters.default }
+  {
+    ty = Type.default;
+    subty = Subtype.default;
+    parameters = Parameters.to_list Parameters.default;
+  }
 
 let ty { ty; _ } = ty
 let subty { subty; _ } = subty
 let parameters { parameters; _ } = parameters
-
 let is_discrete { ty; _ } = Type.is_discrete ty
 let is_multipart { ty; _ } = Type.is_multipart ty
 let is_message { ty; _ } = Type.is_message ty
-
-let with_type : t -> Type.t -> t = fun t ty ->  { t with ty }
+let with_type : t -> Type.t -> t = fun t ty -> { t with ty }
 let with_subtype : t -> Subtype.t -> t = fun t subty -> { t with subty }
-let with_parameter
-  : t -> (Parameters.key * Parameters.value) -> t
-  = fun t (k, v) ->
-    let parameters = Parameters.of_list ((k, v) :: t.parameters) in
-    { t with parameters= Parameters.to_list parameters }
+
+let with_parameter : t -> Parameters.key * Parameters.value -> t =
+ fun t (k, v) ->
+  let parameters = Parameters.of_list ((k, v) :: t.parameters) in
+  { t with parameters = Parameters.to_list parameters }
 
 let boundary { parameters; _ } =
   match List.assoc_opt "boundary" parameters with
@@ -380,13 +379,11 @@ let boundary { parameters; _ } =
   | None -> None
 
 let make ty subty parameters =
-  { ty; subty; parameters= Parameters.to_list parameters }
+  { ty; subty; parameters = Parameters.to_list parameters }
 
 let pp ppf { ty; subty; parameters } =
-  Fmt.pf ppf "%a/%a %a"
-    Type.pp ty
-    Subtype.pp subty
-    (Fmt.hvbox Parameters.pp) (Parameters.of_list parameters)
+  Fmt.pf ppf "%a/%a %a" Type.pp ty Subtype.pp subty (Fmt.hvbox Parameters.pp)
+    (Parameters.of_list parameters)
 
 let equal a b =
   Type.equal a.ty b.ty
@@ -397,7 +394,11 @@ module Decoder = struct
   open Angstrom
 
   let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
-  let of_string s a = match parse_string ~consume:Consume.All a s with Ok v -> Some v | Error _ -> None
+
+  let of_string s a =
+    match parse_string ~consume:Consume.All a s with
+    | Ok v -> Some v
+    | Error _ -> None
 
   let is_wsp = function ' ' | '\t' -> true | _ -> false
   let token = take_while1 is_token
@@ -436,8 +437,7 @@ module Decoder = struct
           extension-token := ietf-token / x-token
   *)
   let extension_token =
-    peek_char
-    >>= function
+    peek_char >>= function
     | Some 'X' | Some 'x' -> x_token >>| fun v -> `X_token v
     | _ -> ietf_token >>| fun v -> `Ietf_token v
 
@@ -459,10 +459,10 @@ module Decoder = struct
     | "application" -> return `Application
     | "message" -> return `Message
     | "multipart" -> return `Multipart
-    | _ ->
-      match of_string s extension_token with
-      | Some v -> return v
-      | None -> invalid_token s
+    | _ -> (
+        match of_string s extension_token with
+        | Some v -> return v
+        | None -> invalid_token s)
 
   (* From RFC 2045
 
@@ -470,64 +470,89 @@ module Decoder = struct
   *)
   let subty ty =
     token >>= fun s ->
-    try let v = `Iana_token (Iana.Set.find s (Iana.Map.find (Type.to_string ty) Iana.database)) in return v
-    with Not_found -> match of_string s extension_token with
+    try
+      let v =
+        `Iana_token
+          (Iana.Set.find s (Iana.Map.find (Type.to_string ty) Iana.database))
+      in
+      return v
+    with Not_found -> (
+      match of_string s extension_token with
       | Some v -> return v
-      | None -> invalid_token s
+      | None -> invalid_token s)
 
   let _3 x y z = (x, y, z)
   let _4 a b c d = (a, b, c, d)
   let ( .![]<- ) = Bytes.set
-
-  let utf_8_tail =
-    satisfy @@ function '\x80' .. '\xbf' -> true | _ -> false
+  let utf_8_tail = satisfy @@ function '\x80' .. '\xbf' -> true | _ -> false
 
   let utf_8_0 =
     satisfy (function '\xc2' .. '\xdf' -> true | _ -> false) >>= fun b0 ->
-    utf_8_tail >>= fun b1 -> let res = Bytes.create 2 in
-    res.![0] <- b0 ; res.![1] <- b1 ; return (Bytes.unsafe_to_string res)
+    utf_8_tail >>= fun b1 ->
+    let res = Bytes.create 2 in
+    res.![0] <- b0;
+    res.![1] <- b1;
+    return (Bytes.unsafe_to_string res)
 
   let utf_8_1 =
-        (lift3 _3 (char '\xe0') (satisfy @@ function '\xa0' .. '\xbf' -> true | _ -> false) utf_8_tail)
-    <|> (lift3 _3 (satisfy @@ function '\xe1' .. '\xec' -> true | _ -> false) utf_8_tail utf_8_tail)
-    <|> (lift3 _3 (char '\xed') (satisfy @@ function '\x80' .. '\x9f' -> true | _ -> false) utf_8_tail)
-    <|> (lift3 _3 (satisfy @@ function '\xee' .. '\xef' -> true | _ -> false) utf_8_tail utf_8_tail)
+    lift3 _3 (char '\xe0')
+      (satisfy @@ function '\xa0' .. '\xbf' -> true | _ -> false)
+      utf_8_tail
+    <|> lift3 _3
+          (satisfy @@ function '\xe1' .. '\xec' -> true | _ -> false)
+          utf_8_tail utf_8_tail
+    <|> lift3 _3 (char '\xed')
+          (satisfy @@ function '\x80' .. '\x9f' -> true | _ -> false)
+          utf_8_tail
+    <|> lift3 _3
+          (satisfy @@ function '\xee' .. '\xef' -> true | _ -> false)
+          utf_8_tail utf_8_tail
 
   let utf_8_1 =
     utf_8_1 >>= fun (b0, b1, b2) ->
     let res = Bytes.create 3 in
-    res.![0] <- b0 ; res.![1] <- b1 ; res.![2] <- b2 ; return (Bytes.unsafe_to_string res)
+    res.![0] <- b0;
+    res.![1] <- b1;
+    res.![2] <- b2;
+    return (Bytes.unsafe_to_string res)
 
   let utf_8_2 =
-        (lift4 _4 (char '\xf0') (satisfy @@ function '\x90' .. '\xbf' -> true | _ -> false) utf_8_tail utf_8_tail)
-    <|> (lift4 _4 (satisfy @@ function '\xf1' .. '\xf3' -> true | _ -> false) utf_8_tail utf_8_tail utf_8_tail)
-    <|> (lift4 _4 (char '\xf4') (satisfy @@ function '\x80' .. '\x8f' -> true | _ -> false) utf_8_tail utf_8_tail)
+    lift4 _4 (char '\xf0')
+      (satisfy @@ function '\x90' .. '\xbf' -> true | _ -> false)
+      utf_8_tail utf_8_tail
+    <|> lift4 _4
+          (satisfy @@ function '\xf1' .. '\xf3' -> true | _ -> false)
+          utf_8_tail utf_8_tail utf_8_tail
+    <|> lift4 _4 (char '\xf4')
+          (satisfy @@ function '\x80' .. '\x8f' -> true | _ -> false)
+          utf_8_tail utf_8_tail
 
   let utf_8_2 =
     utf_8_2 >>= fun (b0, b1, b2, b3) ->
     let res = Bytes.create 4 in
-    res.![0] <- b0 ; res.![1] <- b1 ; res.![2] <- b2 ; res.![3] <- b3 ; return (Bytes.unsafe_to_string res)
-
+    res.![0] <- b0;
+    res.![1] <- b1;
+    res.![2] <- b2;
+    res.![3] <- b3;
+    return (Bytes.unsafe_to_string res)
 
   let utf_8_and is =
-    (satisfy is >>| String.make 1)
-    <|> utf_8_0
-    <|> utf_8_1
-    <|> utf_8_2
+    satisfy is >>| String.make 1 <|> utf_8_0 <|> utf_8_1 <|> utf_8_2
 
   let quoted_pair =
     char '\\' *> any_char >>| Parameters.of_escaped_character >>| String.make 1
 
   let quoted_string =
-    char '"' *> (many (quoted_pair <|> utf_8_and is_qtext)) <* char '"' >>| String.concat ""
+    char '"' *> many (quoted_pair <|> utf_8_and is_qtext)
+    <* char '"'
+    >>| String.concat ""
 
   (* From RFC 2045
 
           value := token / quoted-string
   *)
   let value =
-        (quoted_string >>| fun v -> `String v)
-    <|> (token >>| fun v -> `Token v)
+    quoted_string >>| (fun v -> `String v) <|> (token >>| fun v -> `Token v)
 
   (* From RFC 2045
 
@@ -593,8 +618,7 @@ module Encoder = struct
       Mailbox.Encoder.word
 
   let parameter ppf (key, v) =
-    eval ppf [ box; !!string; cut; char $ '='; cut; !!value; close ]
-      key v
+    eval ppf [ box; !!string; cut; char $ '='; cut; !!value; close ] key v
 
   let parameters ppf parameters =
     let sep ppf () = eval ppf [ char $ ';'; fws ] in
@@ -603,11 +627,14 @@ module Encoder = struct
   let content_type ppf t =
     match t.parameters with
     | [] ->
-      eval ppf
-        [ bbox; !!ty; cut; char $ '/'; cut; !!subty; close ]
-        t.ty t.subty
+        eval ppf
+          [ bbox; !!ty; cut; char $ '/'; cut; !!subty; close ]
+          t.ty t.subty
     | _ ->
-      eval ppf
-        [ bbox; !!ty; cut; char $ '/'; cut; !!subty; cut; char $ ';'; fws; !!parameters; close ]
-        t.ty t.subty t.parameters
+        eval ppf
+          [
+            bbox; !!ty; cut; char $ '/'; cut; !!subty; cut; char $ ';'; fws;
+            !!parameters; close;
+          ]
+          t.ty t.subty t.parameters
 end

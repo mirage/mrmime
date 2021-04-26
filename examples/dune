@@ -1,0 +1,6 @@
+(executable
+ (name attachment)
+ (libraries ptime.clock.os mrmime))
+
+(cram
+ (deps attachment.exe mrmime.png))

@@ -34,21 +34,28 @@ let of_string = function
    - let the user to craft an extension token.
    - check IETF database *)
 
-let equal a b = match a, b with
+let equal a b =
+  match (a, b) with
   | `Bit7, `Bit7 -> true
   | `Bit8, `Bit8 -> true
   | `Binary, `Binary -> true
   | `Quoted_printable, `Quoted_printable -> true
   | `Base64, `Base64 -> true
-  | `Ietf_token a, `Ietf_token b -> String.(equal (lowercase_ascii a) (lowercase_ascii b))
-  | `X_token a, `X_token b -> String.(equal (lowercase_ascii a) (lowercase_ascii b))
+  | `Ietf_token a, `Ietf_token b ->
+      String.(equal (lowercase_ascii a) (lowercase_ascii b))
+  | `X_token a, `X_token b ->
+      String.(equal (lowercase_ascii a) (lowercase_ascii b))
   | _, _ -> false
 
 module Decoder = struct
   open Angstrom
 
   let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
-  let of_string s a = match parse_string ~consume:Consume.All a s with Ok v -> Some v | Error _ -> None
+
+  let of_string s a =
+    match parse_string ~consume:Consume.All a s with
+    | Ok v -> Some v
+    | Error _ -> None
 
   (* From RFC 2045
 
@@ -64,7 +71,8 @@ module Decoder = struct
   *)
   let is_tspecials = function
     | '(' | ')' | '<' | '>' | '@' | ',' | ';' | ':' | '\\' | '"' | '/' | '['
-    | ']' | '?' | '=' -> true
+    | ']' | '?' | '=' ->
+        true
     | _ -> false
 
   let is_ctl = function '\000' .. '\031' | '\127' -> true | _ -> false
@@ -76,7 +84,9 @@ module Decoder = struct
                       or tspecials>
   *)
   let is_ascii = function '\000' .. '\127' -> true | _ -> false
-  let is_token c = (is_ascii c) && (not (is_tspecials c)) && (not (is_ctl c)) && (not (is_space c))
+
+  let is_token c =
+    is_ascii c && (not (is_tspecials c)) && (not (is_ctl c)) && not (is_space c)
 
   let token = take_while1 is_token
 
@@ -103,8 +113,7 @@ module Decoder = struct
           extension-token := ietf-token / x-token
   *)
   let extension_token =
-    peek_char
-    >>= function
+    peek_char >>= function
     | Some 'X' | Some 'x' -> x_token >>| fun v -> `X_token v
     | _ -> ietf_token >>| fun v -> `Ietf_token v
 
@@ -129,10 +138,10 @@ module Decoder = struct
     | "binary" -> return `Binary
     | "quoted-printable" -> return `Quoted_printable
     | "base64" -> return `Base64
-    | _ ->
-      match of_string s extension_token with
-      | Some v -> return v
-      | None -> invalid_token s
+    | _ -> (
+        match of_string s extension_token with
+        | Some v -> return v
+        | None -> invalid_token s)
 end
 
 module Encoder = struct

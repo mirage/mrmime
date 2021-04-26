@@ -35,11 +35,11 @@ val concat : t -> t -> t
 val exists : Field_name.t -> t -> bool
 (** [exists field_name t] is [true] if [field_name] exists in [t]. *)
 
-val add : Field_name.t -> ('a Field.t * 'a) -> t -> t
+val add : Field_name.t -> 'a Field.t * 'a -> t -> t
 (** [add field_name (w, v) t] adds a new field-name with value v. [add]
    does not replace [field_name] if it already exists into [t]. *)
 
-val replace : Field_name.t -> ('a Field.t * 'a) -> t -> t
+val replace : Field_name.t -> 'a Field.t * 'a -> t -> t
 (** [replace field_name (w, v) t] replaces existing field-name [field_name] in [t]
    by the new value [v]. If [field_name] does not exist, it adds it. *)
 
@@ -75,6 +75,6 @@ module Encoder : sig
   val header : t Prettym.t
 end
 
-val to_stream : t -> (unit -> string option)
+val to_stream : t -> unit -> string option
 (** [to_stream header] returns a stream of the given header which can be used
    into protocol like SMTP. *)

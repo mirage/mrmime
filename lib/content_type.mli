@@ -78,7 +78,6 @@ module Type : sig
   val is_discrete : t -> bool
   val is_multipart : t -> bool
   val is_message : t -> bool
-
   val to_string : t -> string
 end
 
@@ -115,7 +114,7 @@ module Subtype : sig
 end
 
 module Parameters : sig
-  module Map : module type of Map.Make(String)
+  module Map : module type of Map.Make (String)
 
   type key = string
   (** Type of parameter key. *)
@@ -185,10 +184,11 @@ module Parameters : sig
   val to_list : t -> (key * value) list
 end
 
-type t =
-  { ty : Type.t
-  ; subty : Subtype.t
-  ; parameters : (string * Parameters.value) list }
+type t = {
+  ty : Type.t;
+  subty : Subtype.t;
+  parameters : (string * Parameters.value) list;
+}
 (** Type of Content-Type value. *)
 
 val default : t
@@ -209,11 +209,9 @@ val parameters : t -> (Parameters.key * Parameters.value) list
 val is_discrete : t -> bool
 val is_multipart : t -> bool
 val is_message : t -> bool
-
 val with_type : t -> Type.t -> t
 val with_subtype : t -> Subtype.t -> t
-val with_parameter : t -> (Parameters.key * Parameters.value) -> t
-
+val with_parameter : t -> Parameters.key * Parameters.value -> t
 val boundary : t -> string option
 
 (** {2 Pretty-printers.} *)

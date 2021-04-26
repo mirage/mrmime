@@ -61,10 +61,12 @@ module Phrase : sig
      are NOT allowed - we can compute them but we choose to never produce them.
   *)
 
-
   type elt = [ `Dot | `Word of Emile.word | `Encoded of string * Emile.raw ]
-  type 'a t = [] : Peano.z t | ( :: ) : elt * 'a t -> 'a Peano.s t
-  (** Phrase, according RFC 5322, is a non-empty list of three
+
+  type 'a t =
+    | [] : Peano.z t
+    | ( :: ) : elt * 'a t -> 'a Peano.s t
+        (** Phrase, according RFC 5322, is a non-empty list of three
       elements ({!elt}):
 
       {ul
@@ -180,8 +182,8 @@ module Domain : sig
       However, this last kind conforms only RFC 5322 - RFC 5321 (SMTP protocol)
       does not recognize this kind of domain. *)
 
-  type atom = [`Atom of string]
-  type literal = [`Literal of string]
+  type atom = [ `Atom of string ]
+  type literal = [ `Literal of string ]
 
   type 'a domain =
     | ( :: ) : atom * 'a domain -> 'a Peano.s domain
@@ -312,7 +314,12 @@ module Local : sig
   (** [to_string x] returns a string which represents [x] as it is in an e-mail. *)
 end
 
-val make : ?name:Emile.phrase -> Emile.local -> ?domains:Emile.domain list -> Emile.domain -> t
+val make :
+  ?name:Emile.phrase ->
+  Emile.local ->
+  ?domains:Emile.domain list ->
+  Emile.domain ->
+  t
 (** [make ?name local ?domains domain] returns a {!mailbox} with local-part [local],
     first domain [domain], others domains [domains] (default is an empty list) and
     an optional name.
