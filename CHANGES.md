@@ -1,3 +1,19 @@
+### v0.4.0 2021-04-27 Paris (France)
+
+- Return the zone of the date (#41, @dinosaure)
+- Add `Content_type.to_string` (#43, @dinosaure)
+- Be resilient on date (accept nano-seconds) (#44, @dinosaure)
+- Add a simple example to craft an email with an attachment (#47, @dinosaure)
+- Drop the support of OCaml 4.08.0 (#47, @dinosaure)
+- `mrmime.prettym` is not a part of the distribution
+  **breaking changes**
+  We decided to split `mrmime` and `prettym` mostly because this
+  part (`prettym`) is used by some others packages and they should
+  not follow the release cycle of `mrmime` when they are not about
+  email stuffs. The package is available here:
+
+  https://github.com/dinosaure/prettym
+
 ### v0.3.2 2020-11-26 Paris (France)
 
 - Add `Header.message_id` (#39, @dinosaure, @hannesm)
