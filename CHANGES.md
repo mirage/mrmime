@@ -1,3 +1,11 @@
+### v0.4.0 2021-04-27 Paris (France)
+
+- Return the zone of the date (#41, @dinosaure)
+- Add `Content_type.to_string` (#43, @dinosaure)
+- Be resilient on date (accept nano-seconds) (#44, @dinosaure)
+- Add a simple example to craft an email with an attachment (#47, @dinosaure)
+- Drop the support of OCaml 4.08.0 (#47, @dinosaure)
+
 ### v0.3.2 2020-11-26 Paris (France)
 
 - Add `Header.message_id` (#39, @dinosaure, @hannesm)
