@@ -110,8 +110,7 @@ let parser buf =
        [Emile]. *)
     >>| Unstrctrd.to_utf_8_string
     >>= (R.reword_error R.msg
-        <.> Angstrom.parse_string ~consume:Prefix Mrmime.Mailbox.Decoder.mailbox
-        )
+         <.> Angstrom.parse_string ~consume:Prefix Mrmime.Mailbox.Decoder.mailbox)
   in
   match res with Ok v -> return v | Error (`Msg err) -> fail err
 
