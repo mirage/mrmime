@@ -241,4 +241,5 @@ module Make (Fuzz : S) = struct
         const `Bit7; const `Bit8; const `Binary; const `Quoted_printable;
         const `Base64; map [ x_token ] (fun v -> `X_token v);
       ]
+
 end
