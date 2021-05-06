@@ -1,15 +1,16 @@
 module type S = sig
   type 'a t
 
+  val pair : 'a t -> 'b t -> ('a * 'b) t
   val char : char t
   val float : float t
   val string : string t
   val bool : bool t
+  val int : int t
   val range : ?min:int -> int -> int t
   val choose : 'a t list -> 'a t
   val const : 'a -> 'a t
   val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
-  val range : ?min:int -> int -> int t
   val concat : sep:string t -> string t list -> string t
   val list : 'a t -> 'a list t
   val list1 : 'a t -> 'a list t
@@ -25,6 +26,7 @@ module type S = sig
 end
 
 let ( <.> ) f g = fun x -> f (g x)
+let identity x = x
 
 module Make (Fuzz : S) = struct
   open Fuzz
@@ -104,9 +106,99 @@ module Make (Fuzz : S) = struct
       | Ok elt -> elt | Error _ -> bad_test () in
     map [ word; list (choose [ const `Dot; word ]) ] @@ List.cons
 
+  let domain =
+    let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
+    let word = map [ range ~min:1 78 >>= string_from_alphabet dtext ] identity in
+    map [ list1 word ] @@ fun lst -> match Mailbox.Domain.of_list lst with
+    | Ok v -> v | Error _ -> bad_test ()
+
+  let ipv4 =
+    map [ int; int; int; int ] @@ fun a b c d ->
+    let v = Ipaddr.V4.make a b c d in
+    Mailbox.Domain.v Mailbox.Domain.ipv4 v
+
+  let ipv6 =
+    map [ int; int; int; int; int; int; int; int ] @@ fun a b c d e f g h ->
+    let v = Ipaddr.V6.make a b c d e f g h in
+    Mailbox.Domain.v Mailbox.Domain.ipv6 v
+
+  let domain = choose [ domain; ipv4; ipv6 ]
+
   let mailbox =
     map [ option phrase; local; list1 domain ] @@ fun name local vs ->
     match vs with
     | hd :: tl -> Emile.{ name; local; domain= (hd, tl) }
-    | [] -> assert false
+    | [] -> bad_test ()
+
+  let mailboxes = list1 mailbox
+
+  let group : Emile.t t = map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
+    match Group.make ~name mailboxes with
+    | Some v -> (`Group v :> Emile.t) | None -> bad_test ()
+
+  let address : Emile.t t =
+    let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> (`Mailbox v :> Emile.t) in
+    choose [ group; mailbox ]
+
+  let addresses : Emile.t List.t t = list1 address
+
+  let token = alphabet_from_predicate Mrmime.Content_type.is_token
+  let token = range ~min:1 32 >>= string_from_alphabet token
+
+  let x_token =
+    map [ choose [ const "x"; const "X" ]; token ] @@ fun x token ->
+    x ^ "-" ^ token
+
+  let ty =
+    choose
+      [ const `Text
+      ; const `Image
+      ; const `Audio
+      ; const `Video
+      ; const `Application
+      ; const `Message
+      ; const `Multipart
+      ; map [ x_token ] @@ fun v -> `X_token v ]
+
+  let subty ty =
+    choose
+      (Mrmime.Iana.Map.find
+          (Mrmime.Content_type.Type.to_string ty)
+          Mrmime.Iana.database
+       |> Mrmime.Iana.Set.elements
+       |> List.map const)
+
+  let subty ty = map [ subty ty ] @@ fun subty ->
+    ty, Content_type.Subtype.v ty subty
+
+  let key = map [ token ] @@ fun v ->
+    match Mrmime.Content_type.Parameters.key v with
+    | Ok v -> v | Error _ -> bad_test ()
+
+  let token =
+    alphabet_from_predicate @@ fun chr ->
+    Content_type.is_token chr || Content_type.is_qtext chr
+
+  let token = range ~min:1 32 >>= string_from_alphabet token
+
+  let value =
+    map [ token ] @@ fun v ->
+    match Content_type.Parameters.value v with
+    | Ok v -> v | Error _ -> bad_test ()
+
+  let parameters =
+    map [ list (pair key value) ] Content_type.Parameters.of_list
+
+  let content_type =
+    map [ ty >>= subty; parameters ] @@ fun (ty, subty) parameters ->
+    Content_type.make ty subty parameters
+
+  let content_encoding : Content_encoding.t t =
+    choose
+      [ const `Base64
+      ; const `Bit8
+      ; const `Bit7
+      ; const `Binary
+      ; const `Quoted_printable
+      ; map [ x_token ] (fun v -> `X_token v) ]
 end
