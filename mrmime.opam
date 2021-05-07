@@ -36,4 +36,5 @@ depends: [
   "hxd"              {with-test}
   "alcotest"         {with-test}
   "jsonm"            {with-test}
+  "crowbar"          {with-test}
 ]
