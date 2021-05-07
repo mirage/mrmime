@@ -76,8 +76,17 @@ module Encoder = struct
     | `Atom x -> eval ppf atom x
     | `String x -> eval ppf str (escape_string x)
 
-  let dot = ((fun ppf () -> eval ppf [ cut; char $ '.'; cut ]), ())
-  let comma = ((fun ppf () -> eval ppf [ cut; char $ ','; cut ]), ())
+  let cut : type a. unit -> (a, a) order = fun () -> break ~indent:1 ~len:0
+  (* XXX(dinosaure): we must ensure that a break insert (if we really apply
+   * it) a space at the beginning of the new line! [Prettym.cut] does not do
+   * that, it only gives the opportunity to break a new line without indentation.
+   *
+   * It safe to use [Prettym.cut] only inside a [tbox] in this context - to not
+   * really break the mailbox. Note that such point is due to the release of
+   * [prettym.0.0.1] which slightly change the semantic of [fws] and [cut]. *)
+
+  let dot = ((fun ppf () -> eval ppf [ cut (); char $ '.'; cut () ]), ())
+  let comma = ((fun ppf () -> eval ppf [ cut (); char $ ','; cut () ]), ())
   let local ppf lst = eval ppf [ box; !!(list ~sep:dot word); close ] lst
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
@@ -88,24 +97,24 @@ module Encoder = struct
         eval ppf [ box; !!(list ~sep:dot boxed_string); close ] domain
     | `Literal literal ->
         eval ppf
-          [ box; char $ '['; cut; !!string; cut; char $ ']'; close ]
+          [ box; char $ '['; cut (); !!string; cut (); char $ ']'; close ]
           literal
     | `Addr (Emile.IPv4 ip) ->
         eval ppf
-          [ box; char $ '['; cut; !!ipaddr_v4; cut; char $ ']'; close ]
+          [ box; char $ '['; cut (); !!ipaddr_v4; cut (); char $ ']'; close ]
           ip
     | `Addr (Emile.IPv6 ip) ->
         eval ppf
           [
-            box; char $ '['; cut; string $ "IPv6:"; cut; !!ipaddr_v6; cut;
-            char $ ']'; close;
+            box; char $ '['; cut (); string $ "IPv6:"; cut (); !!ipaddr_v6;
+            cut (); char $ ']'; close;
           ]
           ip
     | `Addr (Emile.Ext (ldh, v)) ->
         eval ppf
           [
-            box; char $ '['; cut; !!string; cut; char $ ':'; cut; !!string; cut;
-            char $ ']'; close;
+            box; char $ '['; cut (); !!string; cut (); char $ ':'; cut ();
+            !!string; cut (); char $ ']'; close;
           ]
           ldh v
 
@@ -136,13 +145,13 @@ module Encoder = struct
     | Some name, (x, []) ->
         eval ppf
           [
-            box; !!phrase; spaces 1; char $ '<'; cut; !!local; cut; char $ '@';
-            cut; !!domain; cut; char $ '>'; close;
+            box; !!phrase; spaces 1; char $ '<'; cut (); !!local; cut ();
+            char $ '@'; cut (); !!domain; cut (); char $ '>'; close;
           ]
           name t.Emile.local x
     | None, (x, []) ->
         eval ppf
-          [ box; !!local; cut; char $ '@'; cut; !!domain; close ]
+          [ !!local; cut (); char $ '@'; cut (); !!domain ]
           t.Emile.local x
     | name, (x, r) ->
         let domains ppf lst =
@@ -155,9 +164,9 @@ module Encoder = struct
 
         eval ppf
           [
-            box; !!(option phrase); cut; char $ '<'; cut; !!domains; cut;
-            char $ ':'; cut; !!local; cut; char $ '@'; cut; !!domain; cut;
-            char $ '>'; close;
+            box; !!(option phrase); cut (); char $ '<'; cut (); !!domains;
+            cut (); char $ ':'; cut (); !!local; cut (); char $ '@'; cut ();
+            !!domain; cut (); char $ '>'; close;
           ]
           name r t.Emile.local x
 
