@@ -201,4 +201,25 @@ module Make (Fuzz : S) = struct
       ; const `Binary
       ; const `Quoted_printable
       ; map [ x_token ] (fun v -> `X_token v) ]
+
+  let value =
+    let date = map [ date ] @@ fun v -> `Date v in
+    let mailboxes = map [ list1 mailbox ] @@ fun v -> `Mailboxes v in
+    let mailbox = map [ mailbox ] @@ fun v -> `Mailbox v in
+    let addresses = map [ list1 address ] @@ fun v -> `Addresses v in
+    let phrases = map [ list1 phrase ] @@ fun v -> `Phrases v in
+    let content = map [ content_type ] @@ fun v -> `Content v in
+    let encoding = map [ content_encoding ] @@ fun v -> `Encoding v in
+    choose [ date; mailboxes; mailbox; addresses; phrases; content; encoding; ]
+
+  let field = map [ field_name; value ] @@ fun field_name -> function
+    | `Date v -> Field.Field (field_name, Field.Date, v)
+    | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
+    | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
+    | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
+    | `Phrases v -> Field.Field (field_name, Field.Phrases, v)
+    | `Content v -> Field.Field (field_name, Field.Content, v)
+    | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
+
+  let header = map [ list1 field ] @@ Header.of_list
 end
