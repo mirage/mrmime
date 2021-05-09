@@ -1,3 +1,4 @@
+(** Fuzzer monad  *)
 module type S = sig
   type 'a t
 
@@ -25,18 +26,51 @@ module type S = sig
   val bad_test : unit -> 'a
 end
 
-let ( <.> ) f g = fun x -> f (g x)
+let ( <.> ) f g x = f (g x)
 let identity x = x
 
 module Make (Fuzz : S) = struct
   open Fuzz
   open Mrmime
 
-  let field_name =
-    map [ string ] @@ fun v ->
-    match Field_name.of_string v with Ok v -> v | Error _ -> bad_test ()
+  let char_from_alphabet alphabet =
+    map
+      [ range (String.length alphabet) ]
+      (String.make 1 <.> String.get alphabet)
 
+  let string_from_alphabet alphabet len =
+    let rec go acc = function
+      | 0 -> concat ~sep:(const "") acc
+      | n -> go (char_from_alphabet alphabet :: acc) (pred n)
+    in
+    go [] len
+
+  let alphabet_from_predicate predicate =
+    let len = ref 0 in
+    for i = 0 to 255 do
+      if predicate (Char.chr i) then incr len
+    done;
+    let res = Bytes.create !len in
+    let pos = ref 0 in
+    for i = 0 to 255 do
+      if predicate (Char.chr i) then (
+        Bytes.set res !pos (Char.chr i);
+        incr pos)
+    done;
+    Bytes.unsafe_to_string res
+
+  (** Header generator: an Header is a pair of a name and a value.  *)
+
+  (** [field_name] generates a field name (either a random string or a
+     prefined field name). *)
   let field_name =
+    (* generate a random field name *)
+    let field_name =
+      map [ string ] @@ fun v ->
+      match Field_name.of_string v with Ok v -> v | Error _ -> bad_test ()
+    in
+    (* the field name is either in a predefined list of name ("Date",
+       "From", "Sender" etc .. or a random one *)
     choose
       [
         const Field_name.date; const Field_name.from; const Field_name.sender;
@@ -54,6 +88,18 @@ module Make (Fuzz : S) = struct
         const Field_name.resent_reply_to; field_name;
       ]
 
+  (** As mrmime parses the value of some headers, the generator must
+     be able to generate these values properly. These values have types :
+     {ul
+     {- [Date.t]}
+     {- [Maibox.t] and [Mailbox.t list]}
+     {- [Address.t]}
+     {- [MessageID.t]}
+     {- [Emile.phrase list]}
+     {- [Content_type.t]}
+     {- [Content_encoding.t]}}
+
+     The following generators are for values of all those types. *)
   let zone =
     choose
       [
@@ -69,136 +115,130 @@ module Make (Fuzz : S) = struct
           | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
       ]
 
-  let date =
+  (** Date *)
+  let date : Date.t t =
     map [ float; zone ] @@ fun v zone ->
     match Ptime.of_float_s v with
     | None -> bad_test ()
     | Some ptime -> Date.of_ptime ~zone ptime
 
-  let char_from_alphabet alphabet =
-    map [ range (String.length alphabet) ] (String.make 1 <.> String.get alphabet)
-
-  let string_from_alphabet alphabet len =
-    let rec go acc = function
-      | 0 -> concat ~sep:(const "") acc
-      | n -> go (char_from_alphabet alphabet :: acc) (pred n) in
-    go [] len
-
-  let alphabet_from_predicate predicate =
-    let len = ref 0 in
-    for i = 0 to 255 do if predicate (Char.chr i) then incr len done ;
-    let res = Bytes.create !len in
-    let pos = ref 0 in
-    for i = 0 to 255 do if predicate (Char.chr i)
-      then ( Bytes.set res !pos (Char.chr i) ; incr pos ) done ;
-    Bytes.unsafe_to_string res
-
+  (** Mailbox : a maibox is composed of three parts: a phrase (optional display name),
+       a local part (username) and a domain part. *)
   let local =
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
-    let word = map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
-      match Mrmime.Mailbox.Local.word str with
-      | Ok str -> str | Error _ -> bad_test () in
+    let word =
+      map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
+      match Mailbox.Local.word str with Ok str -> str | Error _ -> bad_test ()
+    in
     list1 word
 
   let phrase =
-    let word = map [ range ~min:1 78 >>= fixed ] @@ fun str ->
-      match Mrmime.Mailbox.Phrase.word str with
-      | Ok elt -> elt | Error _ -> bad_test () in
+    let word =
+      map [ range ~min:1 78 >>= fixed ] @@ fun str ->
+      match Mailbox.Phrase.word str with
+      | Ok elt -> elt
+      | Error _ -> bad_test ()
+    in
     map [ word; list (choose [ const `Dot; word ]) ] @@ List.cons
 
   let domain =
-    let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
-    let word = map [ range ~min:1 78 >>= string_from_alphabet dtext ] identity in
-    map [ list1 word ] @@ fun lst -> match Mailbox.Domain.of_list lst with
-    | Ok v -> v | Error _ -> bad_test ()
+    let domain =
+      let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
+      let word = range ~min:1 78 >>= string_from_alphabet dtext in
+      map [ list1 word ] @@ fun lst ->
+      match Mailbox.Domain.of_list lst with Ok v -> v | Error _ -> bad_test ()
+    in
+    let ipv4 =
+      map [ int; int; int; int ] @@ fun a b c d ->
+      let v = Ipaddr.V4.make a b c d in
+      Mailbox.Domain.v Mailbox.Domain.ipv4 v
+    in
+    let ipv6 =
+      map [ int; int; int; int; int; int; int; int ] @@ fun a b c d e f g h ->
+      let v = Ipaddr.V6.make a b c d e f g h in
+      Mailbox.Domain.v Mailbox.Domain.ipv6 v
+    in
+    choose [ domain; ipv4; ipv6 ]
 
-  let ipv4 =
-    map [ int; int; int; int ] @@ fun a b c d ->
-    let v = Ipaddr.V4.make a b c d in
-    Mailbox.Domain.v Mailbox.Domain.ipv4 v
-
-  let ipv6 =
-    map [ int; int; int; int; int; int; int; int ] @@ fun a b c d e f g h ->
-    let v = Ipaddr.V6.make a b c d e f g h in
-    Mailbox.Domain.v Mailbox.Domain.ipv6 v
-
-  let domain = choose [ domain; ipv4; ipv6 ]
-
-  let mailbox =
+  let mailbox : Mailbox.t t =
     map [ option phrase; local; list1 domain ] @@ fun name local vs ->
     match vs with
-    | hd :: tl -> Emile.{ name; local; domain= (hd, tl) }
+    | hd :: tl -> Emile.{ name; local; domain = (hd, tl) }
     | [] -> bad_test ()
 
-  let mailboxes = list1 mailbox
+  let mailboxes : Mailbox.t List.t t = list1 mailbox
 
-  let group : Emile.t t = map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
-    match Group.make ~name mailboxes with
-    | Some v -> (`Group v :> Emile.t) | None -> bad_test ()
-
-  let address : Emile.t t =
-    let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> (`Mailbox v :> Emile.t) in
+  (** Address *)
+  let address : Address.t t =
+    let group =
+      map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
+      match Group.make ~name mailboxes with
+      | Some v -> Address.group v
+      | None -> bad_test ()
+    in
+    let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> Address.mailbox v in
     choose [ group; mailbox ]
 
-  let addresses : Emile.t List.t t = list1 address
+  (*let addresses : Address.t List.t t = list1 address*)
 
-  let token = alphabet_from_predicate Mrmime.Content_type.is_token
-  let token = range ~min:1 32 >>= string_from_alphabet token
+  (** Content-encoding: [ty/subty;q=value] *)
+  let token =
+    let alphabet = alphabet_from_predicate Mrmime.Content_type.is_token in
+    range ~min:1 32 >>= string_from_alphabet alphabet
 
   let x_token =
     map [ choose [ const "x"; const "X" ]; token ] @@ fun x token ->
     x ^ "-" ^ token
 
-  let ty =
+  let ty : Content_type.Type.t t =
     choose
-      [ const `Text
-      ; const `Image
-      ; const `Audio
-      ; const `Video
-      ; const `Application
-      ; const `Message
-      ; const `Multipart
-      ; map [ x_token ] @@ fun v -> `X_token v ]
+      [
+        const `Text; const `Image; const `Audio; const `Video;
+        const `Application; const `Message; const `Multipart;
+        (map [ x_token ] @@ fun v -> `X_token v);
+      ]
 
   let subty ty =
-    choose
-      (Mrmime.Iana.Map.find
-          (Mrmime.Content_type.Type.to_string ty)
-          Mrmime.Iana.database
-       |> Mrmime.Iana.Set.elements
-       |> List.map const)
-
-  let subty ty = map [ subty ty ] @@ fun subty ->
-    ty, Content_type.Subtype.v ty subty
-
-  let key = map [ token ] @@ fun v ->
-    match Mrmime.Content_type.Parameters.key v with
-    | Ok v -> v | Error _ -> bad_test ()
-
-  let token =
-    alphabet_from_predicate @@ fun chr ->
-    Content_type.is_token chr || Content_type.is_qtext chr
-
-  let token = range ~min:1 32 >>= string_from_alphabet token
-
-  let value =
-    map [ token ] @@ fun v ->
-    match Content_type.Parameters.value v with
-    | Ok v -> v | Error _ -> bad_test ()
+    let possible_subty =
+      Iana.Map.find (Content_type.Type.to_string ty) Iana.database
+      |> Iana.Set.elements
+    in
+    map [ choose (List.map const possible_subty) ] @@ fun subty ->
+    (ty, Content_type.Subtype.v ty subty)
 
   let parameters =
+    let key =
+      map [ token ] @@ fun v ->
+      match Content_type.Parameters.key v with
+      | Ok v -> v
+      | Error _ -> bad_test ()
+    in
+    let value =
+      let abc =
+        alphabet_from_predicate @@ fun chr ->
+        Content_type.is_token chr || Content_type.is_qtext chr
+      in
+      let token = range ~min:1 32 >>= string_from_alphabet abc in
+      map [ token ] @@ fun v ->
+      match Content_type.Parameters.value v with
+      | Ok v -> v
+      | Error _ -> bad_test ()
+    in
     map [ list (pair key value) ] Content_type.Parameters.of_list
 
   let content_type =
     map [ ty >>= subty; parameters ] @@ fun (ty, subty) parameters ->
     Content_type.make ty subty parameters
 
+  (** Content-encoding : `Bit7, `Bit8, `Binary, `Quoted_printable,
+     `Base64, `X_token of string and `Ietf_token.
+
+     Ietf_token is not parsed (assert false) so we avoid generating such
+     an encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
-      [ const `Base64
-      ; const `Bit8
-      ; const `Bit7
-      ; const `Binary
-      ; const `Quoted_printable
-      ; map [ x_token ] (fun v -> `X_token v) ]
+      [
+        const `Bit7; const `Bit8; const `Binary; const `Quoted_printable;
+        const `Base64; map [ x_token ] (fun v -> `X_token v);
+      ]
 end
