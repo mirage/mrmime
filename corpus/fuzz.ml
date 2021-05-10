@@ -22,10 +22,10 @@ module type S = sig
     | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
 
   val map : ('f, 'a) list -> 'f -> 'a t
-  val bad_test : unit -> 'a
+  val bad_test : string -> 'a
 end
 
-let ( <.> ) f g = fun x -> f (g x)
+let ( <.> ) f g x = f (g x)
 let identity x = x
 
 module Make (Fuzz : S) = struct
@@ -34,7 +34,9 @@ module Make (Fuzz : S) = struct
 
   let field_name =
     map [ string ] @@ fun v ->
-    match Field_name.of_string v with Ok v -> v | Error _ -> bad_test ()
+    match Field_name.of_string v with
+    | Ok v -> v
+    | Error _ -> bad_test "field_name"
 
   let field_name =
     choose
@@ -64,53 +66,72 @@ module Make (Fuzz : S) = struct
         map [ char ] (fun chr ->
             match Date.Zone.military_zone chr with
             | Ok v -> v
-            | Error _ -> bad_test ());
+            | Error _ -> bad_test "military_zone");
         ( map [ range 24; range 60; bool ] @@ fun mm hh -> function
           | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
       ]
 
   let date =
     map [ float; zone ] @@ fun v zone ->
-    match Ptime.of_float_s v with
-    | None -> bad_test ()
+    match Ptime.of_float_s (Float.abs v) with
+    | None -> Fmt.kstrf bad_test "ptime (%f)" v
     | Some ptime -> Date.of_ptime ~zone ptime
 
   let char_from_alphabet alphabet =
-    map [ range (String.length alphabet) ] (String.make 1 <.> String.get alphabet)
+    map
+      [ range (String.length alphabet) ]
+      (String.make 1 <.> String.get alphabet)
 
   let string_from_alphabet alphabet len =
     let rec go acc = function
       | 0 -> concat ~sep:(const "") acc
-      | n -> go (char_from_alphabet alphabet :: acc) (pred n) in
+      | n -> go (char_from_alphabet alphabet :: acc) (pred n)
+    in
     go [] len
 
   let alphabet_from_predicate predicate =
     let len = ref 0 in
-    for i = 0 to 255 do if predicate (Char.chr i) then incr len done ;
+    for i = 0 to 255 do
+      if predicate (Char.chr i) then incr len
+    done;
     let res = Bytes.create !len in
     let pos = ref 0 in
-    for i = 0 to 255 do if predicate (Char.chr i)
-      then ( Bytes.set res !pos (Char.chr i) ; incr pos ) done ;
+    for i = 0 to 255 do
+      if predicate (Char.chr i) then (
+        Bytes.set res !pos (Char.chr i);
+        incr pos)
+    done;
     Bytes.unsafe_to_string res
 
   let local =
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
-    let word = map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
+    let word =
+      map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
       match Mrmime.Mailbox.Local.word str with
-      | Ok str -> str | Error _ -> bad_test () in
+      | Ok str -> str
+      | Error _ -> bad_test "local/word"
+    in
     list1 word
 
   let phrase =
-    let word = map [ range ~min:1 78 >>= fixed ] @@ fun str ->
+    let atext = alphabet_from_predicate Emile.Parser.is_atext in
+    let word =
+      map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
       match Mrmime.Mailbox.Phrase.word str with
-      | Ok elt -> elt | Error _ -> bad_test () in
+      | Ok elt -> elt
+      | Error _ -> bad_test "phrase/word"
+    in
     map [ word; list (choose [ const `Dot; word ]) ] @@ List.cons
 
   let domain =
-    let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
-    let word = map [ range ~min:1 78 >>= string_from_alphabet dtext ] identity in
-    map [ list1 word ] @@ fun lst -> match Mailbox.Domain.of_list lst with
-    | Ok v -> v | Error _ -> bad_test ()
+    let atext = alphabet_from_predicate Emile.Parser.is_atext in
+    let word =
+      map [ range ~min:1 78 >>= string_from_alphabet atext ] identity
+    in
+    map [ list1 word ] @@ fun lst ->
+    match Mailbox.Domain.of_list lst with
+    | Ok v -> v
+    | Error _ -> bad_test "domain"
 
   let ipv4 =
     map [ int; int; int; int ] @@ fun a b c d ->
@@ -127,21 +148,24 @@ module Make (Fuzz : S) = struct
   let mailbox =
     map [ option phrase; local; list1 domain ] @@ fun name local vs ->
     match vs with
-    | hd :: tl -> Emile.{ name; local; domain= (hd, tl) }
-    | [] -> bad_test ()
+    | hd :: tl -> Emile.{ name; local; domain = (hd, tl) }
+    | [] -> bad_test "mailbox"
 
   let mailboxes = list1 mailbox
 
-  let group : Emile.t t = map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
+  let group : Emile.t t =
+    map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
     match Group.make ~name mailboxes with
-    | Some v -> (`Group v :> Emile.t) | None -> bad_test ()
+    | Some v -> (`Group v :> Emile.t)
+    | None -> bad_test "group"
 
   let address : Emile.t t =
-    let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> (`Mailbox v :> Emile.t) in
+    let mailbox : Emile.t t =
+      map [ mailbox ] @@ fun v -> (`Mailbox v :> Emile.t)
+    in
     choose [ group; mailbox ]
 
   let addresses : Emile.t List.t t = list1 address
-
   let token = alphabet_from_predicate Mrmime.Content_type.is_token
   let token = range ~min:1 32 >>= string_from_alphabet token
 
@@ -151,29 +175,28 @@ module Make (Fuzz : S) = struct
 
   let ty =
     choose
-      [ const `Text
-      ; const `Image
-      ; const `Audio
-      ; const `Video
-      ; const `Application
-      ; const `Message
-      ; const `Multipart
-      ; map [ x_token ] @@ fun v -> `X_token v ]
+      [
+        const `Text; const `Image; const `Audio; const `Video;
+        const `Application; const `Message; const `Multipart;
+        (map [ x_token ] @@ fun v -> `X_token v);
+      ]
 
   let subty ty =
     choose
       (Mrmime.Iana.Map.find
-          (Mrmime.Content_type.Type.to_string ty)
-          Mrmime.Iana.database
-       |> Mrmime.Iana.Set.elements
-       |> List.map const)
+         (Mrmime.Content_type.Type.to_string ty)
+         Mrmime.Iana.database
+      |> Mrmime.Iana.Set.elements
+      |> List.map const)
 
-  let subty ty = map [ subty ty ] @@ fun subty ->
-    ty, Content_type.Subtype.v ty subty
+  let subty ty =
+    map [ subty ty ] @@ fun subty -> (ty, Content_type.Subtype.v ty subty)
 
-  let key = map [ token ] @@ fun v ->
+  let key =
+    map [ token ] @@ fun v ->
     match Mrmime.Content_type.Parameters.key v with
-    | Ok v -> v | Error _ -> bad_test ()
+    | Ok v -> v
+    | Error _ -> bad_test "content-type/key"
 
   let token =
     alphabet_from_predicate @@ fun chr ->
@@ -184,10 +207,10 @@ module Make (Fuzz : S) = struct
   let value =
     map [ token ] @@ fun v ->
     match Content_type.Parameters.value v with
-    | Ok v -> v | Error _ -> bad_test ()
+    | Ok v -> v
+    | Error _ -> bad_test "content-type/value"
 
-  let parameters =
-    map [ list (pair key value) ] Content_type.Parameters.of_list
+  let parameters = map [ list (pair key value) ] Content_type.Parameters.of_list
 
   let content_type =
     map [ ty >>= subty; parameters ] @@ fun (ty, subty) parameters ->
@@ -195,29 +218,26 @@ module Make (Fuzz : S) = struct
 
   let content_encoding : Content_encoding.t t =
     choose
-      [ const `Base64
-      ; const `Bit8
-      ; const `Bit7
-      ; const `Binary
-      ; const `Quoted_printable
-      ; map [ x_token ] (fun v -> `X_token v) ]
+      [
+        const `Base64; const `Bit8; const `Bit7; const `Binary;
+        const `Quoted_printable; map [ x_token ] (fun v -> `X_token v);
+      ]
 
   let value =
     let date = map [ date ] @@ fun v -> `Date v in
     let mailboxes = map [ list1 mailbox ] @@ fun v -> `Mailboxes v in
     let mailbox = map [ mailbox ] @@ fun v -> `Mailbox v in
     let addresses = map [ list1 address ] @@ fun v -> `Addresses v in
-    let phrases = map [ list1 phrase ] @@ fun v -> `Phrases v in
     let content = map [ content_type ] @@ fun v -> `Content v in
     let encoding = map [ content_encoding ] @@ fun v -> `Encoding v in
-    choose [ date; mailboxes; mailbox; addresses; phrases; content; encoding; ]
+    choose [ date; mailboxes; mailbox; addresses; content; encoding ]
 
-  let field = map [ field_name; value ] @@ fun field_name -> function
+  let field =
+    map [ field_name; value ] @@ fun field_name -> function
     | `Date v -> Field.Field (field_name, Field.Date, v)
     | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
     | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
     | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
-    | `Phrases v -> Field.Field (field_name, Field.Phrases, v)
     | `Content v -> Field.Field (field_name, Field.Content, v)
     | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
 

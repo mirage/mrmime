@@ -1,5 +1,16 @@
-module Map = Map.Make (String)
-module Set = Set.Make (String)
+module Map = Map.Make (struct
+  type t = string
+
+  let compare a b =
+    String.compare (String.lowercase_ascii a) (String.lowercase_ascii b)
+end)
+
+module Set = Set.Make (struct
+  type t = string
+
+  let compare a b =
+    String.compare (String.lowercase_ascii a) (String.lowercase_ascii b)
+end)
 
 (* last update 2016-06-01 *)
 
