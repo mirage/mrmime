@@ -21,7 +21,6 @@ type 'a t =
   | Addresses : Address.t list t
   | MessageID : MessageID.t t
   | Unstructured : Unstructured.t t
-  | Phrases : Emile.phrase list t
   | Content : Content_type.t t
   | Encoding : Content_encoding.t t
       (** Type of kind of values according RFC2045/RFC5322. *)

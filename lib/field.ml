@@ -5,7 +5,6 @@ type 'a t =
   | Addresses : Address.t list t
   | MessageID : MessageID.t t
   | Unstructured : Unstructured.t t
-  | Phrases : Emile.phrase list t
   | Content : Content_type.t t
   | Encoding : Content_encoding.t t
 
@@ -27,7 +26,6 @@ let pp ppf (Field (field_name, w, v)) =
     | Addresses -> Fmt.list Address.pp
     | MessageID -> MessageID.pp
     | Unstructured -> Unstructured.pp
-    | Phrases -> Fmt.list Emile.pp_phrase
     | Content -> Content_type.pp
     | Encoding -> Content_encoding.pp
   in
@@ -62,7 +60,6 @@ let parser : type a. a t -> a Angstrom.t = function
       return (v :> Unstructured.t)
   | Content -> Content_type.Decoder.content
   | Encoding -> Content_encoding.Decoder.mechanism
-  | _ -> assert false
 
 let encoder : type a. a t -> a Prettym.t = function
   | Date -> Date.Encoder.date
@@ -73,7 +70,6 @@ let encoder : type a. a t -> a Prettym.t = function
   | Unstructured -> Unstructured.Encoder.unstructured
   | Content -> Content_type.Encoder.content_type
   | Encoding -> Content_encoding.Encoder.mechanism
-  | _ -> assert false
 
 let ( <.> ) f g x = f (g x)
 
