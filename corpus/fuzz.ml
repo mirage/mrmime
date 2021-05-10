@@ -23,7 +23,7 @@ module type S = sig
     | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
 
   val map : ('f, 'a) list -> 'f -> 'a t
-  val bad_test : unit -> 'a
+  val bad_test : string -> 'a
 end
 
 let ( <.> ) f g x = f (g x)
@@ -67,7 +67,9 @@ module Make (Fuzz : S) = struct
     (* generate a random field name *)
     let field_name =
       map [ string ] @@ fun v ->
-      match Field_name.of_string v with Ok v -> v | Error _ -> bad_test ()
+      match Field_name.of_string v with
+      | Ok v -> v
+      | Error _ -> bad_test "field_name"
     in
     (* the field name is either in a predefined list of name ("Date",
        "From", "Sender" etc .. or a random one *)
@@ -110,7 +112,7 @@ module Make (Fuzz : S) = struct
         map [ char ] (fun chr ->
             match Date.Zone.military_zone chr with
             | Ok v -> v
-            | Error _ -> bad_test ());
+            | Error _ -> bad_test "military_zone");
         ( map [ range 24; range 60; bool ] @@ fun mm hh -> function
           | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
       ]
@@ -118,8 +120,8 @@ module Make (Fuzz : S) = struct
   (** Date *)
   let date : Date.t t =
     map [ float; zone ] @@ fun v zone ->
-    match Ptime.of_float_s v with
-    | None -> bad_test ()
+    match Ptime.of_float_s (Float.abs v) with
+    | None -> Fmt.kstrf bad_test "ptime (%f)" v
     | Some ptime -> Date.of_ptime ~zone ptime
 
   (** Mailbox : a maibox is composed of three parts: a phrase (optional display name),
@@ -128,16 +130,19 @@ module Make (Fuzz : S) = struct
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
     let word =
       map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
-      match Mailbox.Local.word str with Ok str -> str | Error _ -> bad_test ()
+      match Mrmime.Mailbox.Local.word str with
+      | Ok str -> str
+      | Error _ -> bad_test "local/word"
     in
     list1 word
 
   let phrase =
+    let atext = alphabet_from_predicate Emile.Parser.is_atext in
     let word =
-      map [ range ~min:1 78 >>= fixed ] @@ fun str ->
-      match Mailbox.Phrase.word str with
+      map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
+      match Mrmime.Mailbox.Phrase.word str with
       | Ok elt -> elt
-      | Error _ -> bad_test ()
+      | Error _ -> bad_test "phrase/word"
     in
     map [ word; list (choose [ const `Dot; word ]) ] @@ List.cons
 
@@ -146,7 +151,9 @@ module Make (Fuzz : S) = struct
       let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
       let word = range ~min:1 78 >>= string_from_alphabet dtext in
       map [ list1 word ] @@ fun lst ->
-      match Mailbox.Domain.of_list lst with Ok v -> v | Error _ -> bad_test ()
+      match Mailbox.Domain.of_list lst with
+      | Ok v -> v
+      | Error _ -> bad_test "domain"
     in
     let ipv4 =
       map [ int; int; int; int ] @@ fun a b c d ->
@@ -164,7 +171,7 @@ module Make (Fuzz : S) = struct
     map [ option phrase; local; list1 domain ] @@ fun name local vs ->
     match vs with
     | hd :: tl -> Emile.{ name; local; domain = (hd, tl) }
-    | [] -> bad_test ()
+    | [] -> bad_test "mailbox"
 
   let mailboxes : Mailbox.t List.t t = list1 mailbox
 
@@ -174,7 +181,7 @@ module Make (Fuzz : S) = struct
       map [ phrase; list1 mailbox ] @@ fun name mailboxes ->
       match Group.make ~name mailboxes with
       | Some v -> Address.group v
-      | None -> bad_test ()
+      | None -> bad_test "group"
     in
     let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> Address.mailbox v in
     choose [ group; mailbox ]
@@ -211,18 +218,20 @@ module Make (Fuzz : S) = struct
       map [ token ] @@ fun v ->
       match Content_type.Parameters.key v with
       | Ok v -> v
-      | Error _ -> bad_test ()
+      | Error _ -> bad_test "content-type/key"
     in
-    let value =
+    let token =
       let abc =
         alphabet_from_predicate @@ fun chr ->
         Content_type.is_token chr || Content_type.is_qtext chr
       in
-      let token = range ~min:1 32 >>= string_from_alphabet abc in
+      range ~min:1 32 >>= string_from_alphabet abc
+    in
+    let value =
       map [ token ] @@ fun v ->
       match Content_type.Parameters.value v with
       | Ok v -> v
-      | Error _ -> bad_test ()
+      | Error _ -> bad_test "content-type/value"
     in
     map [ list (pair key value) ] Content_type.Parameters.of_list
 
@@ -237,29 +246,26 @@ module Make (Fuzz : S) = struct
      an encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
-      [ const `Base64
-      ; const `Bit8
-      ; const `Bit7
-      ; const `Binary
-      ; const `Quoted_printable
-      ; map [ x_token ] (fun v -> `X_token v) ]
+      [
+        const `Base64; const `Bit8; const `Bit7; const `Binary;
+        const `Quoted_printable; map [ x_token ] (fun v -> `X_token v);
+      ]
 
   let value =
     let date = map [ date ] @@ fun v -> `Date v in
     let mailboxes = map [ list1 mailbox ] @@ fun v -> `Mailboxes v in
     let mailbox = map [ mailbox ] @@ fun v -> `Mailbox v in
     let addresses = map [ list1 address ] @@ fun v -> `Addresses v in
-    let phrases = map [ list1 phrase ] @@ fun v -> `Phrases v in
     let content = map [ content_type ] @@ fun v -> `Content v in
     let encoding = map [ content_encoding ] @@ fun v -> `Encoding v in
-    choose [ date; mailboxes; mailbox; addresses; phrases; content; encoding; ]
+    choose [ date; mailboxes; mailbox; addresses; content; encoding ]
 
-  let field = map [ field_name; value ] @@ fun field_name -> function
+  let field =
+    map [ field_name; value ] @@ fun field_name -> function
     | `Date v -> Field.Field (field_name, Field.Date, v)
     | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
     | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
     | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
-    | `Phrases v -> Field.Field (field_name, Field.Phrases, v)
     | `Content v -> Field.Field (field_name, Field.Content, v)
     | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
 

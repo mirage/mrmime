@@ -47,7 +47,7 @@ let rec decode : decoder -> decode =
   match decoder.state with
   | Angstrom.Unbuffered.Partial { committed; continue } ->
       Ke.Rke.N.shift_exn decoder.queue committed;
-      if committed = 0 then Ke.Rke.compress decoder.queue;
+      if committed = 0 then Ke.Rke.compress decoder.queue ; 
       let more =
         match decoder.closed with
         | true -> Angstrom.Unbuffered.Complete
