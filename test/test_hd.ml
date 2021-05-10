@@ -1,6 +1,6 @@
 open Mrmime
 
-let p =
+let parsers =
   let unstructured = Field.(Witness Unstructured) in
   let open Field_name in
   Map.empty
@@ -40,9 +40,8 @@ let add k v m =
   with Not_found -> Map.add k [ v ] m
 
 let parse str =
-  let tmp = Bigstringaf.create 0x1000 in
   let pos = ref 0 in
-  let decoder = Hd.decoder ~p tmp in
+  let decoder = Hd.decoder parsers in
   let rec go acc =
     match Hd.decode decoder with
     | `End prelude ->
@@ -56,13 +55,11 @@ let parse str =
             go (add field_name v acc)
         | _ -> assert false)
     | `Malformed err -> Alcotest.failf "Hd.decode: %s" err
-    | `Await -> (
+    | `Await ->
         let len = min (String.length str - !pos) 0x100 in
-        match Hd.src decoder str !pos len with
-        | Ok () ->
-            pos := !pos + len;
-            go acc
-        | Error (`Msg err) -> Alcotest.failf "Hd.src: %s" err)
+        Hd.src decoder str !pos len;
+        pos := !pos + len;
+        go acc
   in
   go Map.empty
 

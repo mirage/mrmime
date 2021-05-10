@@ -1,17 +1,12 @@
-module G = Field_name.Map
-module Q = Ke.Rke.Weighted
-
-type q = (char, Bigarray.int8_unsigned_elt) Q.t
-type g = Field.witness G.t
-type v = [ `Field of Field.field Location.with_location | `End ]
-type s = v Angstrom.Unbuffered.state
+type parsers = Field.witness Field_name.Map.t
+type value = [ `Field of Field.field Location.with_location | `End ]
+type state = value Angstrom.Unbuffered.state
 
 type decoder = {
-  q : q;
-  b : Bigstringaf.t;
-  p : g;
-  mutable c : bool;
-  mutable s : s;
+  queue : (char, Bigarray.int8_unsigned_elt) Ke.Rke.t;
+  parsers : parsers;
+  mutable closed : bool;
+  mutable state : state;
 }
 
 let field g =
@@ -28,18 +23,17 @@ let with_location p =
   let location = Location.make a b in
   Location.inj ~location v
 
-let parser g =
+let parser parsers =
   let open Angstrom in
   let crlf = char '\r' *> char '\n' in
-  with_location (field g) >>| (fun v -> `Field v) <|> crlf *> return `End
+  with_location (field parsers) >>| (fun v -> `Field v) <|> crlf *> return `End
 
-let decoder ?(p = G.empty) buffer =
+let decoder parsers =
   {
-    q = Q.from buffer;
-    b = buffer;
-    p;
-    c = false;
-    s = Angstrom.Unbuffered.parse (parser p);
+    queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char;
+    parsers;
+    closed = false;
+    state = Angstrom.Unbuffered.parse (parser parsers);
   }
 
 type decode =
@@ -50,50 +44,48 @@ type decode =
 
 let rec decode : decoder -> decode =
  fun decoder ->
-  match decoder.s with
+  match decoder.state with
   | Angstrom.Unbuffered.Partial { committed; continue } ->
-      Q.N.shift_exn decoder.q committed;
-      Q.compress decoder.q;
+      Ke.Rke.N.shift_exn decoder.queue committed;
+      if committed = 0 then Ke.Rke.compress decoder.queue;
       let more =
-        if decoder.c then Angstrom.Unbuffered.Complete
-        else Angstrom.Unbuffered.Incomplete
+        match decoder.closed with
+        | true -> Angstrom.Unbuffered.Complete
+        | false -> Angstrom.Unbuffered.Incomplete
       in
-      let off = 0 and len = Q.length decoder.q in
-      if len > 0 || decoder.c then (
-        decoder.s <- continue decoder.b ~off ~len more;
+      let len = Ke.Rke.length decoder.queue in
+      if len > 0 || decoder.closed then (
+        let[@warning "-8"] (slice :: _) = Ke.Rke.N.peek decoder.queue in
+        decoder.state <-
+          continue slice ~off:0 ~len:(Bigstringaf.length slice) more;
         protect decoder)
       else `Await
   | Angstrom.Unbuffered.Fail (committed, _, err) ->
-      Q.N.shift_exn decoder.q committed;
+      Ke.Rke.N.shift_exn decoder.queue committed;
       `Malformed err
   | Angstrom.Unbuffered.Done (committed, `End) -> (
-      Q.N.shift_exn decoder.q committed;
-      Q.compress decoder.q;
-      match Q.N.peek decoder.q with
+      Ke.Rke.N.shift_exn decoder.queue committed;
+      Ke.Rke.compress decoder.queue;
+      match Ke.Rke.N.peek decoder.queue with
       | [ x ] -> `End (Bigstringaf.to_string x)
       | [] -> `End ""
       | _ -> assert false)
   | Angstrom.Unbuffered.Done (committed, `Field v) ->
-      Q.N.shift_exn decoder.q committed;
-      decoder.s <- Angstrom.Unbuffered.parse (parser decoder.p);
+      Ke.Rke.N.shift_exn decoder.queue committed;
+      decoder.state <- Angstrom.Unbuffered.parse (parser decoder.parsers);
       `Field v
 
 and protect decoder =
-  match decoder.s with
+  match decoder.state with
   | Angstrom.Unbuffered.Partial { committed = 0; _ } -> `Await
   | _ -> decode decoder
 
 let blit_from_string src src_off dst dst_off len =
   Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
 
-let src decoder source off len =
-  if off < 0 || len < 0 || off + len > String.length source then
-    Fmt.invalid_arg "Invalid bounds"
-  else
-    Q.N.push decoder.q ~blit:blit_from_string ~length:String.length ~off ~len
-      source
-    |> function
-    | Some _ ->
-        if len = 0 then decoder.c <- true;
-        Rresult.R.ok ()
-    | None -> Rresult.R.error_msg "Input is too much bigger"
+let src decoder src off len =
+  if off < 0 || len < 0 || off + len > String.length src then
+    Fmt.invalid_arg "Invalid bounds";
+  Ke.Rke.N.push decoder.queue ~blit:blit_from_string ~length:String.length ~off
+    ~len src;
+  if len = 0 then decoder.closed <- true
