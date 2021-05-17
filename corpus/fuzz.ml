@@ -130,7 +130,7 @@ module Make (Fuzz : S) = struct
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
     let word =
       map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
-      match Mrmime.Mailbox.Local.word str with
+      match Mailbox.Local.word str with
       | Ok str -> str
       | Error _ -> bad_test "local/word"
     in
@@ -140,7 +140,7 @@ module Make (Fuzz : S) = struct
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
     let word =
       map [ range ~min:1 78 >>= string_from_alphabet atext ] @@ fun str ->
-      match Mrmime.Mailbox.Phrase.word str with
+      match Mailbox.Phrase.word str with
       | Ok elt -> elt
       | Error _ -> bad_test "phrase/word"
     in
