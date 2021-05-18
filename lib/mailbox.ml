@@ -157,7 +157,9 @@ module Encoder = struct
         let domains ppf lst =
           let domain ppf x = eval ppf [ box; char $ '@'; !!domain; close ] x in
           (* XXX(dinosaure): according RFC, comma is surrounded by CFWS. *)
-          let comma = ((fun ppf () -> eval ppf [ fws; char $ ','; fws ]), ()) in
+          let comma =
+            ((fun ppf () -> eval ppf [ cut (); char $ ','; cut () ]), ())
+          in
           eval ppf [ box; !!(list ~sep:comma domain); close ] lst
         in
         let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
