@@ -111,28 +111,30 @@ let with_emitter ?(end_of_line = "\n") ~emitter end_of_body =
   let write_line x = emitter (Some (x ^ end_of_line)) in
   parser ~write_data ~write_line end_of_body
 
-let to_end_of_input ~write_data ~write_line =
-  let dec = Pecu.decoder `Manual in
-
-  fix @@ fun m ->
+let rec parser ~write_data ~write_line dec =
   match Pecu.decode dec with
   | `End -> commit
+  | `Data data ->
+      write_data data;
+      parser ~write_data ~write_line dec
+  | `Line line ->
+      write_line line;
+      parser ~write_data ~write_line dec
+  | `Malformed err -> fail err
   | `Await -> (
       peek_char >>= function
       | None ->
-          Pecu.src dec Bytes.empty 0 0;
+          let () = Pecu.src dec Bytes.empty 0 0 in
           return ()
       | Some _ ->
-          available >>= fun n ->
-          Unsafe.take n (fun ba ~off ~len ->
-              let chunk = Bytes.create len in
-              Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len;
-              Pecu.src dec chunk 0 len)
-          >>= fun () -> m)
-  | `Data data ->
-      write_data data;
-      m
-  | `Line line ->
-      write_line line;
-      m
-  | `Malformed err -> fail err
+          available >>= take <* commit >>= fun str ->
+          let () =
+            Pecu.src dec (Bytes.unsafe_of_string str) 0 (String.length str)
+          in
+          parser ~write_data ~write_line dec)
+
+let to_end_of_input ~write_data ~write_line =
+  let dec = Pecu.decoder `Manual in
+  peek_char *> available >>= take >>= fun str ->
+  Pecu.src dec (Bytes.unsafe_of_string str) 0 (String.length str);
+  parser ~write_data ~write_line dec
