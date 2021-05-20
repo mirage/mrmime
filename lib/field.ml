@@ -109,11 +109,22 @@ module Encoder = struct
 
   let field ppf field =
     let (Field (field_name, w, v)) = field in
-    let e = encoder w in
-    eval ppf
-      [
-        tbox 1; !!Field_name.Encoder.field_name; string $ ":"; spaces 1; !!e;
-        close; new_line;
-      ]
-      field_name v
+    match w with
+    | Unstructured ->
+        let e = encoder w in
+        let separator = match v with `WSP _ :: _ -> ":" | _ -> ": " in
+        eval ppf
+          [
+            tbox 1; !!Field_name.Encoder.field_name; !!string; !!e; close;
+            new_line;
+          ]
+          field_name separator v
+    | w ->
+        let e = encoder w in
+        eval ppf
+          [
+            tbox 1; !!Field_name.Encoder.field_name; string $ ": "; !!e; close;
+            new_line;
+          ]
+          field_name v
 end

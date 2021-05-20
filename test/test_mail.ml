@@ -199,7 +199,7 @@ let test1 () =
   | Error _ -> Fmt.invalid_arg "Generate unparsable email"
 
 let subject =
-  "Something larger than 80 columns to see where prettym split contents.A \
+  "Something larger than 80 columns to see where prettym split contents. A \
    large Subject should be split!"
 
 let example2 =
@@ -225,7 +225,10 @@ let to_unstrctrd unstrctrd =
   | Error (`Msg err) -> failwith err
 
 let remove_fws (unstrctrd : Unstrctrd.t) =
-  let fold acc = function `FWS _ -> acc | x -> x :: acc in
+  let fold acc = function
+    | `FWS _ -> Unstrctrd.wsp ~len:1 :: acc
+    | x -> x :: acc
+  in
   match
     List.fold_left fold [] (unstrctrd :> Unstrctrd.elt list)
     |> List.rev
