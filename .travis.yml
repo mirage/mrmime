@@ -8,8 +8,9 @@ env:
  global:
    - PACKAGE="mrmime"
    - DISTRO="alpine"
-   - PINS="crowbar:https://github.com/stedolan/crowbar.git bigarray-overlap:https://github.com/dinosaure/overlap.git emile:https://github.com/dinosaure/emile.git"
  matrix:
-   - OCAML_VERSION=4.07 TESTS=true
    - OCAML_VERSION=4.08 TESTS=true
    - OCAML_VERSION=4.09 TESTS=true
+   - OCAML_VERSION=4.10 TESTS=true
+   - OCAML_VERSION=4.11 TESTS=true
+   - OCAML_VERSION=4.12 TESTS=true
