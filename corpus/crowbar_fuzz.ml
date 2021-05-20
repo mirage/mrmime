@@ -19,10 +19,11 @@ let list1 = list1
 let option = option
 let map = map
 let fix = fix
-
 let string = bytes
 let concat ~sep = concat_gen_list sep
 let fixed = bytes_fixed
 let ( >>= ) = dynamic_bind
+
 exception Bad
-let bad_test (_str:string) = bad_test ()
+
+let bad_test (_str : string) = bad_test ()
