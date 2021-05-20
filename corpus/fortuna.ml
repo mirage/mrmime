@@ -1,64 +1,47 @@
-type 'a t = Mirage_crypto_rng.Fortuna.g -> 'a
+type 'a t =
+  | Char : char t
+  | Float : float t
+  | String : string t
+  | Bool : bool t
+  | Int : int t
+  | Range : { min : int; max : int } -> int t
+  | Bind : 'a t * ('a -> 'b t) -> 'b t
+  | Choose : 'a t List.t -> 'a t
+  | Const : 'a -> 'a t
+  | Concat : { sep : string t; lst : string t List.t } -> string t
+  | List : 'a t -> 'a List.t t
+  | List1 : 'a t -> 'a List.t t
+  | Fixed : int -> string t
+  | Option : 'a t -> 'a option t
+  | Pair : 'a t * 'b t -> ('a * 'b) t
+  | Fix : 'a t Lazy.t -> 'a t
+  | Map : ('f, 'a) list * 'f -> 'a t
 
-let char g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-  Cstruct.get cs 0
+and (_, _) list =
+  | [] : ('res, 'res) list
+  | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
 
-let float g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-  let a = Int32.abs (Cstruct.LE.get_uint32 cs 0) in
-  let b = Int32.abs (Cstruct.LE.get_uint32 cs 4) in
-  Float.of_string (Fmt.str "%ld.%ld" a b)
+let range ?(min = 0) max = Range { min; max }
+let list v = List v
 
-let string g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-  let ln = Cstruct.get_uint8 cs 0 in
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g ln in
-  Cstruct.to_string cs
+exception Bad
 
-let bool g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-  Cstruct.get_uint8 cs 0 land 1 = 1
+let bad_test _where = raise Bad
 
-let int g =
-  match Sys.word_size with
-  | 32 ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
-      Int32.to_int (Cstruct.LE.get_uint32 cs 0)
-  | 64 ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-      Int64.to_int (Cstruct.LE.get_uint64 cs 0)
-  | _ -> assert false
+(* Mirage_crypto_rng.Fortuna.g -> 'a *)
 
-let range ?(min = 0) max g =
-  if max < 0x100 then
-    let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-    min + (Cstruct.get_uint8 cs 0 mod max)
-  else if max < 0x1000000 then
-    let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
-    min + Int32.(to_int (abs (rem (Cstruct.LE.get_uint32 cs 0) (of_int max))))
-  else
-    let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-    min + Int64.(to_int (abs (rem (Cstruct.LE.get_uint64 cs 0) (of_int max))))
+let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
+ fun ~g t f ->
+  try
+    let v = run ~g t in
+    f v
+  with Bad -> safe ~g t f
 
-let ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t =
- fun x f g ->
-  let v = x g in
-  f v g
-
-let choose lst =
-  let max = List.length lst in
-  fun g ->
-    let nth = range ~min:0 max g in
-    (List.nth lst nth) g
-
-let const x _ = x
-
-let concat bytes = function
+and concat bytes : _ List.t -> _ = function
   | [] -> ""
   | hd :: _ as lst ->
       let res = Bytes.create bytes in
-      let rec go pos = function
+      let rec go pos : _ List.t -> _ = function
         | [] -> Bytes.unsafe_to_string res
         | [ x ] ->
             Bytes.blit_string x 0 res 0 (String.length x);
@@ -69,69 +52,119 @@ let concat bytes = function
       in
       go (bytes - String.length hd) lst
 
-let concat ~sep lst g =
-  let rec go bytes acc = function
-    | [] -> concat bytes acc
-    | [ x ] ->
-        let str = x g in
-        concat (String.length str) [ str ]
-    | x :: r ->
-        let x = x g in
-        let sep = sep g in
-        go (String.length x + String.length sep + bytes) (x :: sep :: acc) r
-  in
-  go 0 [] lst
+and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
+ fun ~g -> function
+  | Pair (a, b) ->
+      let va = run ~g a in
+      let vb = run ~g b in
+      (va, vb)
+  | Char ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+      Cstruct.get cs 0
+  | Float ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
+      let a = Int32.abs (Cstruct.LE.get_uint32 cs 0) in
+      let b = Int32.abs (Cstruct.LE.get_uint32 cs 4) in
+      Float.of_string (Fmt.str "%ld.%ld" a b)
+  | String ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+      let ln = Cstruct.get_uint8 cs 0 in
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g ln in
+      Cstruct.to_string cs
+  | Bool ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+      Cstruct.get_uint8 cs 0 land 1 = 1
+  | Int -> (
+      match Sys.word_size with
+      | 32 ->
+          let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
+          Int32.to_int (Cstruct.LE.get_uint32 cs 0)
+      | 64 ->
+          let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
+          Int64.to_int (Cstruct.LE.get_uint64 cs 0)
+      | _ -> assert false)
+  | Range { min; max } ->
+      (* XXX(dinosaure): [mod] generates mostly [1]. *)
+      if max < 0x100 then
+        let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+        min + (Cstruct.get_uint8 cs 0 mod max)
+      else if max < 0x1000000 then
+        let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
+        min
+        + Int32.(to_int (abs (rem (Cstruct.LE.get_uint32 cs 0) (of_int max))))
+      else
+        let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
+        min
+        + Int64.(to_int (abs (rem (Cstruct.LE.get_uint64 cs 0) (of_int max))))
+  | Bind (x, f) ->
+      let v = run ~g x in
+      run ~g (f v)
+  | Choose lst ->
+      let max = List.length lst in
+      let nth = range ~min:0 max in
+      let nth = run ~g nth in
+      run ~g (List.nth lst nth)
+  | Const v -> v
+  | Concat { sep; lst } ->
+      let rec go bytes acc : _ List.t -> _ = function
+        | [] -> concat bytes acc
+        | [ x ] ->
+            let str = run ~g x in
+            concat (String.length str) [ str ]
+        | x :: r ->
+            let x = run ~g x in
+            let sep = run ~g sep in
+            go (String.length x + String.length sep + bytes) (x :: sep :: acc) r
+      in
+      go 0 [] lst
+  | List t ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+      let nm = Cstruct.get_uint8 cs 0 land 0xf in
+      List.init nm (fun _ -> run ~g t)
+  | List1 t ->
+      let hd = run ~g t in
+      let tl = run ~g (list t) in
+      hd :: tl
+  | Fixed len ->
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g len in
+      Cstruct.to_string cs
+  | Fix v -> run ~g (Lazy.force v)
+  | Map (ts, f) ->
+      let rec go : type f a. (f, a) list -> f -> a = function
+        | [] -> fun x -> x
+        | x :: r ->
+            fun f ->
+              let v = safe ~g x f in
+              go r v
+      in
+      go ts f
+  | Option t -> (
+      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
+      match Cstruct.get_uint8 cs 0 land 1 = 1 with
+      | true ->
+          let v = run ~g t in
+          Some v
+      | false ->
+          let _ = run ~g t in
+          None)
 
-let list t g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-  let nm = Cstruct.get_uint8 cs 0 land 0xf in
-  List.init nm (fun _ -> t g)
+let char = Char
+let float = Float
+let string = String
+let bool = Bool
+let int = Int
+let bind x f = Bind (x, f)
+let choose lst = Choose lst
+let const v = Const v
+let concat ~sep lst = Concat { sep; lst }
+let list1 v = List1 v
+let fixed len = Fixed len
+let option v = Option v
 
-let list1 t g =
-  let hd = t g in
-  let tl = list t g in
-  hd :: tl
+let fix f =
+  let rec m = lazy (f (Fix m)) in
+  Fix m
 
-let fixed len g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g len in
-  Cstruct.to_string cs
-
-let option t g =
-  let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-  match Cstruct.get_uint8 cs 0 land 1 = 1 with
-  | true ->
-      let v = t g in
-      Some v
-  | false ->
-      let _ = t g in
-      None
-
-let pair ta tb g =
-  let va = ta g in
-  let vb = tb g in
-  (va, vb)
-
-type (_, _) list =
-  | [] : ('res, 'res) list
-  | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
-
-exception Bad
-
-let bad_test _where = raise Bad
-
-let rec safe t f g =
-  try
-    let v = t g in
-    f v
-  with Bad -> safe t f g
-
-let map : type f a. (f, a) list -> f -> a t =
- fun ts f g ->
-  let rec go : type f a. (f, a) list -> f -> a = function
-    | [] -> fun x -> x
-    | x :: r ->
-        fun f ->
-          let v = safe x f g in
-          go r v
-  in
-  go ts f
+let pair a b = Pair (a, b)
+let ( >>= ) x f = Bind (x, f)
+let map lst f = Map (lst, f)

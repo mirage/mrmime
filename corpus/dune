@@ -1,3 +1,4 @@
 (executable
  (name generate)
- (libraries cmdliner fpath mirage-crypto-rng mrmime crowbar))
+ (libraries hxd.string hxd.core cmdliner fpath mirage-crypto-rng mrmime
+   crowbar))

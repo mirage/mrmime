@@ -1,15 +1,5 @@
 module Generate = Fuzz.Make (Fortuna)
 
-let rec decode_string str decoder =
-  let open Mrmime in
-  match Hd.decode decoder with
-  | `End _ -> `Ok 0
-  | `Field _v -> decode_string str decoder
-  | `Malformed _err -> `Error (false, "Invalid generated email.")
-  | `Await ->
-      Hd.src decoder str 0 (String.length str);
-      decode_string str decoder
-
 let parsers =
   let open Mrmime in
   let unstructured = Field.(Witness Unstructured) in
@@ -28,14 +18,31 @@ let parsers =
   |> Map.add content_type unstructured
   |> Map.add content_encoding unstructured
 
+let stream_to_string v =
+  let buf = Buffer.create 0x1000 in
+  let rec go () =
+    match v () with
+    | Some (str, off, len) ->
+        Buffer.add_substring buf str off len;
+        go ()
+    | None -> Buffer.contents buf
+  in
+  go ()
+
 let generate seed dst =
   let g = Mirage_crypto_rng.Fortuna.create () in
   Mirage_crypto_rng.Fortuna.reseed ~g (Cstruct.of_string seed);
   assert (Mirage_crypto_rng.Fortuna.seeded ~g);
-  let hdr = Generate.header g in
-  let str = Prettym.to_string Mrmime.Header.Encoder.header hdr in
-  let decoder = Mrmime.Hd.decoder parsers in
-  let ret = decode_string (str ^ "\r\n") decoder in
+  let mail = Fortuna.run ~g Generate.mail in
+  let stream = Mrmime.Mt.to_stream mail in
+  let str = stream_to_string stream in
+  let ret =
+    match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str with
+    | Ok _ -> `Ok 0
+    | Error _ ->
+        Fmt.epr "Invalid mail: @[<hov>%a@]\n%!" (Hxd_string.pp Hxd.default) str;
+        assert false
+  in
   let oc, oc_close =
     match dst with
     | `Standard -> (stdout, ignore)
