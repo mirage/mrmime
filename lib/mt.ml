@@ -184,6 +184,17 @@ let stream_of_string x =
   in
   go
 
+let stream_of_lines lines =
+  let lines = ref lines in
+  let go () =
+    match !lines with
+    | [] -> None
+    | x :: r ->
+        lines := r;
+        Some (x ^ "\r\n", 0, String.length x + 2)
+  in
+  go
+
 let crlf () = stream_of_string "\r\n"
 let ( @ ) a b = concat a b
 
@@ -209,14 +220,17 @@ let multipart_as_part : multipart -> part =
     (* XXX(dinosaure): should never occur! *)
   in
   let beginner = Rfc2046.make_dash_boundary boundary ^ "\r\n" in
-  let inner = Rfc2046.make_delimiter boundary ^ "\r\n" in
-  let closer = Rfc2046.make_close_delimiter boundary ^ "\r\n" in
+  (* XXX(dinosaure): we must respect one rule, emit line per line. *)
+  let inner = stream_of_lines [ ""; Rfc2046.make_dash_boundary boundary ] in
+  let closer =
+    stream_of_lines [ ""; Rfc2046.make_dash_boundary boundary ^ "--" ]
+  in
 
   let rec go stream = function
     | [] -> none
-    | [ x ] -> stream @ stream_of_part x @ stream_of_string closer
+    | [ x ] -> stream @ stream_of_part x @ closer
     | x :: r ->
-        let stream = stream @ stream_of_part x @ stream_of_string inner in
+        let stream = stream @ stream_of_part x @ inner in
         go stream r
   in
 
