@@ -130,7 +130,7 @@ module Decoder = struct
         Content-Transfer-Encoding header field is not present.
   *)
   let mechanism =
-    token >>= fun s ->
+    skip_while is_space *> token >>= fun s ->
     (* XXX(dinosaure): lowercase_*ascii* is fine, not utf8 in this part. *)
     match String.lowercase_ascii s with
     | "7bit" -> return `Bit7
