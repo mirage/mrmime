@@ -18,6 +18,7 @@ let list = list
 let list1 = list1
 let option = option
 let map = map
+let fix = fix
 
 let string = bytes
 let concat ~sep = concat_gen_list sep

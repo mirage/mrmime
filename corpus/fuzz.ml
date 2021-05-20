@@ -17,6 +17,7 @@ module type S = sig
   val list1 : 'a t -> 'a list t
   val fixed : int -> string t
   val option : 'a t -> 'a option t
+  val fix : ('a t -> 'a t) -> 'a t
 
   type (_, _) list =
     | [] : ('res, 'res) list
@@ -260,6 +261,9 @@ module Make (Fuzz : S) = struct
     let encoding = map [ content_encoding ] @@ fun v -> `Encoding v in
     choose [ date; mailboxes; mailbox; addresses; content; encoding ]
 
+  (** [field] generates a header field, i.e. a pair (name, value).
+     Should we bind name to appropriate typed values (like "date" ->
+     Date.t) ?)  *)
   let field =
     map [ field_name; value ] @@ fun field_name -> function
     | `Date v -> Field.Field (field_name, Field.Date, v)
@@ -269,5 +273,56 @@ module Make (Fuzz : S) = struct
     | `Content v -> Field.Field (field_name, Field.Content, v)
     | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
 
+  (** *)
   let header = map [ list1 field ] @@ Header.of_list
+
+  (** Generation of an mail *)
+  let stream_of_string str : Mt.buffer Mt.stream =
+    let consumed = ref false in
+    fun () ->
+      match !consumed with
+      | true -> None
+      | false ->
+          consumed := true;
+          Some (str, 0, String.length str)
+
+  (* max size of body ? *)
+  let body : string t =
+    let is_sevenbit = function '\001' .. '\127' -> true | _ -> false in
+    let abc = alphabet_from_predicate is_sevenbit in
+    range ~min:1 1000 >>= string_from_alphabet abc
+
+  (** Generate a simple mail *)
+  let part : Mt.part t =
+    map [ body ] @@ fun body -> Mt.part (stream_of_string body)
+
+  let simple h = map [ part ] @@ fun p -> Mt.(make h simple p)
+
+  let multi h parts =
+    map [ parts ] @@ fun ps ->
+    let multipart = Mt.multipart ~rng:Mt.rng ps in
+    Mt.make h Mt.multi multipart
+
+  let mail : Mt.t t =
+    fix (fun mail ->
+        header >>= fun h ->
+        match Content_type.ty (Header.content_type h) with
+        | #Content_type.Type.discrete -> simple h
+        | `Message ->
+            (* mail in a mail: the mail [m] is build recursively and
+               converted into a stream with [Mt.to_stream m]. This stream
+               is used to build a part and then the parent mail. No new
+               header are generated for the [Mt.part] function as it
+               would be concatenated with [h] by the [Mt.make]
+               function. *)
+            map [ mail ] @@ fun m -> Mt.(make h simple (part (to_stream m)))
+        | `Multipart ->
+            let mails = list mail in
+            let parts =
+              (* recursively built mails then transforms them into parts *)
+              map [ mails ] @@ fun m ->
+              List.map (fun elt -> Mt.part (Mt.to_stream elt)) m
+            in
+            multi h parts
+        | _ -> bad_test "mail/content_type")
 end
