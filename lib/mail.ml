@@ -65,12 +65,17 @@ let heavy_octet boundary header =
   | None ->
       let buf = Buffer.create 0x800 in
       let write_line line =
+        Fmt.epr ">>> %S.\n%!" line;
         Buffer.add_string buf line;
         Buffer.add_string buf "\n"
       in
-      let write_data = Buffer.add_string buf in
+      let write_data str =
+        Fmt.epr ">>> %S.\n%!" str;
+        Buffer.add_string buf str
+      in
       (match Header.content_encoding header with
       | `Quoted_printable ->
+          Fmt.epr ">>> parse quoted-printable.\n%!";
           Quoted_printable.to_end_of_input ~write_data ~write_line
       | `Base64 -> B64.to_end_of_input ~write_data
       | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data

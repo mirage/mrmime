@@ -38,3 +38,7 @@ depends: [
   "jsonm"            {with-test}
   "crowbar"          {with-test}
 ]
+
+pin-depends: [
+  [ "pecu.dev" "git+https://github.com/mirage/pecu.git#b33965ed8ade1102ae1f18ba6c95aa5d696ec9c3" ]
+]
