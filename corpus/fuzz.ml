@@ -207,12 +207,19 @@ module Make (Fuzz : S) = struct
       ]
 
   let subty ty =
-    let possible_subty =
-      Iana.Map.find (Content_type.Type.to_string ty) Iana.database
-      |> Iana.Set.elements
-    in
-    map [ choose (List.map const possible_subty) ] @@ fun subty ->
-    (ty, Content_type.Subtype.v ty subty)
+    if Content_type.Type.(is_discrete ty || is_multipart ty || is_message ty)
+    then
+      let possible_subty =
+        Iana.Map.find (Content_type.Type.to_string ty) Iana.database
+        |> Iana.Set.elements
+      in
+      map [ choose (List.map const possible_subty) ] @@ fun subty ->
+      (ty, Content_type.Subtype.v ty subty)
+    else
+      map [ x_token ] @@ fun token ->
+      match Content_type.Subtype.extension token with
+      | Ok xtoken -> (ty, xtoken)
+      | _ -> bad_test "subty/extension"
 
   let parameters =
     let key =
@@ -303,10 +310,23 @@ module Make (Fuzz : S) = struct
     let multipart = Mt.multipart ~rng:Mt.rng ps in
     Mt.make h Mt.multi multipart
 
+  (** [header_ct ty] generates header with a given content-type type [ty]. *)
+  let header_ct ty =
+    map [ header; subty ty; parameters ] @@ fun h (ty, subty) param ->
+    let content_type = Content_type.make ty subty param in
+    Header.replace Field_name.content_type (Field.Content, content_type) h
+
+  (** [mail] recursively generates an email.  *)
   let mail : Mt.t t =
     fix (fun mail ->
-        header >>= fun h ->
-        match Content_type.ty (Header.content_type h) with
+        choose
+          [
+            const `Message; const `Multipart; const `Text; const `Image;
+            const `Audio; const `Video; const `Application;
+          ]
+        >>= fun ty ->
+        header_ct ty >>= fun h ->
+        match ty with
         | #Content_type.Type.discrete -> simple h
         | `Message ->
             (* mail in a mail: the mail [m] is build recursively and

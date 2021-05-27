@@ -84,7 +84,6 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
           Int64.to_int (Cstruct.LE.get_uint64 cs 0)
       | _ -> assert false)
   | Range { min; max } ->
-      (* XXX(dinosaure): [mod] generates mostly [1]. *)
       if max < 0x100 then
         let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
         min + (Cstruct.get_uint8 cs 0 mod max)
@@ -105,18 +104,20 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
       let nth = run ~g nth in
       run ~g (List.nth lst nth)
   | Const v -> v
-  | Concat { sep; lst } ->
-      let rec go bytes acc : _ List.t -> _ = function
-        | [] -> concat bytes acc
-        | [ x ] ->
-            let str = run ~g x in
-            concat (String.length str) [ str ]
-        | x :: r ->
-            let x = run ~g x in
-            let sep = run ~g sep in
-            go (String.length x + String.length sep + bytes) (x :: sep :: acc) r
-      in
-      go 0 [] lst
+  | Concat { sep; lst } -> (
+      match lst with
+      | [] -> ""
+      | _ ->
+          let sep = run ~g sep in
+          let rec go bytes acc : _ List.t -> _ = function
+            | [] -> concat bytes acc
+            | x :: r ->
+                let x = run ~g x in
+                go
+                  (String.length x + String.length sep + bytes)
+                  (x :: sep :: acc) r
+          in
+          go 0 [] lst)
   | List t ->
       let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
       let nm = Cstruct.get_uint8 cs 0 land 0xf in
