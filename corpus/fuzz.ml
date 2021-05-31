@@ -19,11 +19,11 @@ module type S = sig
   val option : 'a t -> 'a option t
   val fix : ('a t -> 'a t) -> 'a t
 
-  type (_, _) list =
-    | [] : ('res, 'res) list
-    | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
+  type (_, _) gens =
+    | [] : ('res, 'res) gens
+    | ( :: ) : 'a t * ('k, 'res) gens -> ('a -> 'k, 'res) gens
 
-  val map : ('f, 'a) list -> 'f -> 'a t
+  val map : ('f, 'a) gens -> 'f -> 'a t
   val bad_test : string -> 'a
 end
 
@@ -105,25 +105,38 @@ module Make (Fuzz : S) = struct
      The following generators are for values of all those types. *)
   let zone =
     choose
-      [
-        const Date.Zone.UT; const Date.Zone.GMT; const Date.Zone.EST;
-        const Date.Zone.EDT; const Date.Zone.CST; const Date.Zone.CDT;
-        const Date.Zone.MST; const Date.Zone.MDT; const Date.Zone.PST;
-        const Date.Zone.PDT;
-        map [ char ] (fun chr ->
-            match Date.Zone.military_zone chr with
-            | Ok v -> v
-            | Error _ -> bad_test "military_zone");
-        ( map [ range 24; range 60; bool ] @@ fun mm hh -> function
-          | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
-      ]
+      Date.Zone.
+        [
+          const UT; const GMT; const EST; const EDT; const CST; const CDT;
+          const MST; const MDT; const PST; const PDT;
+          map [ char ] (fun chr ->
+              match Date.Zone.military_zone chr with
+              | Ok v -> v
+              | Error _ -> bad_test "military_zone");
+          ( map [ range 24; range 60; bool ] @@ fun mm hh -> function
+            | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
+        ]
+
+  let month =
+    choose
+      Date.Month.
+        [
+          const Jan; const Feb; const Mar; const Apr; const May; const Jun;
+          const Jul; const Aug; const Sep; const Oct; const Nov; const Dec;
+        ]
 
   (** Date *)
-  let date : Date.t t =
-    map [ float; zone ] @@ fun v zone ->
-    match Ptime.of_float_s (Float.abs v) with
-    | None -> Fmt.kstrf bad_test "ptime (%f)" v
-    | Some ptime -> Date.of_ptime ~zone ptime
+  let date =
+    let year = range ~min:0 9999 in
+    let day = range ~min:1 31 in
+    let hour = range ~min:0 23 in
+    let minute = range ~min:0 59 in
+    let second = range ~min:0 59 in
+    map [ year; month; day; hour; minute; option second; zone ]
+    @@ fun year month day hour minute second zone ->
+    match Mrmime.Date.make (year, month, day) (hour, minute, second) zone with
+    | Ok date -> date
+    | _ -> bad_test "date"
 
   (** Mailbox : a maibox is composed of three parts: a phrase (optional display name),
        a local part (username) and a domain part. *)
@@ -250,13 +263,13 @@ module Make (Fuzz : S) = struct
   (** Content-encoding : `Bit7, `Bit8, `Binary, `Quoted_printable,
      `Base64, `X_token of string and `Ietf_token.
 
-     Ietf_token is not parsed (assert false) so we avoid generating such
-     an encoding. *)
+     Ietf_token and `X_token are not parsed (assert false) so we avoid
+     generating such an encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
       [
         const `Base64; const `Bit8; const `Bit7; const `Binary;
-        const `Quoted_printable; map [ x_token ] (fun v -> `X_token v);
+        const `Quoted_printable;
       ]
 
   let value =
@@ -271,14 +284,30 @@ module Make (Fuzz : S) = struct
   (** [field] generates a header field, i.e. a pair (name, value).
      Should we bind name to appropriate typed values (like "date" ->
      Date.t) ?)  *)
-  let field =
+  (*let field =
     map [ field_name; value ] @@ fun field_name -> function
     | `Date v -> Field.Field (field_name, Field.Date, v)
     | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
     | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
     | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
     | `Content v -> Field.Field (field_name, Field.Content, v)
-    | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
+    | `Encoding v -> Field.Field (field_name, Field.Encoding, v)*)
+
+  let field =
+    field_name >>= fun field_name ->
+    if Field_name.(equal field_name content_encoding) then
+      map [ content_encoding ] @@ fun encoding ->
+      Field.(Field (field_name, Encoding, encoding))
+    else if Field_name.(equal field_name content_type) then
+      map [ content_type ] @@ fun ty -> Field.(Field (field_name, Content, ty))
+    else
+      map [ value ] @@ function
+      | `Date v -> Field.Field (field_name, Field.Date, v)
+      | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
+      | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
+      | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
+      | `Content v -> Field.Field (field_name, Field.Content, v)
+      | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
 
   (** *)
   let header = map [ list1 field ] @@ Header.of_list
@@ -337,7 +366,7 @@ module Make (Fuzz : S) = struct
                function. *)
             map [ mail ] @@ fun m -> Mt.(make h simple (part (to_stream m)))
         | `Multipart ->
-            let mails = list mail in
+            let mails = list1 mail in
             let parts =
               (* recursively built mails then transforms them into parts *)
               map [ mails ] @@ fun m ->

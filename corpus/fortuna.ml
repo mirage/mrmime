@@ -6,20 +6,20 @@ type 'a t =
   | Int : int t
   | Range : { min : int; max : int } -> int t
   | Bind : 'a t * ('a -> 'b t) -> 'b t
-  | Choose : 'a t List.t -> 'a t
+  | Choose : 'a t list -> 'a t
   | Const : 'a -> 'a t
-  | Concat : { sep : string t; lst : string t List.t } -> string t
-  | List : 'a t -> 'a List.t t
-  | List1 : 'a t -> 'a List.t t
+  | Concat : { sep : string t; lst : string t list } -> string t
+  | List : 'a t -> 'a list t
+  | List1 : 'a t -> 'a list t
   | Fixed : int -> string t
   | Option : 'a t -> 'a option t
   | Pair : 'a t * 'b t -> ('a * 'b) t
   | Fix : 'a t Lazy.t -> 'a t
-  | Map : ('f, 'a) list * 'f -> 'a t
+  | Map : ('f, 'a) gens * 'f -> 'a t
 
-and (_, _) list =
-  | [] : ('res, 'res) list
-  | ( :: ) : 'a t * ('k, 'res) list -> ('a -> 'k, 'res) list
+and (_, _) gens =
+  | [] : ('res, 'res) gens
+  | ( :: ) : 'a t * ('k, 'res) gens -> ('a -> 'k, 'res) gens
 
 let range ?(min = 0) max = Range { min; max }
 let list v = List v
@@ -37,11 +37,11 @@ let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
     f v
   with Bad -> safe ~g t f
 
-and concat bytes : _ List.t -> _ = function
+and concat bytes : _ list -> _ = function
   | [] -> ""
   | hd :: _ as lst ->
       let res = Bytes.create bytes in
-      let rec go pos : _ List.t -> _ = function
+      let rec go pos : _ list -> _ = function
         | [] -> Bytes.unsafe_to_string res
         | [ x ] ->
             Bytes.blit_string x 0 res 0 (String.length x);
@@ -131,7 +131,7 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
       Cstruct.to_string cs
   | Fix v -> run ~g (Lazy.force v)
   | Map (ts, f) ->
-      let rec go : type f a. (f, a) list -> f -> a = function
+      let rec go : type f a. (f, a) gens -> f -> a = function
         | [] -> fun x -> x
         | x :: r ->
             fun f ->
