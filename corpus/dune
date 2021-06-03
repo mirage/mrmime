@@ -1,4 +1,4 @@
 (executable
  (name generate)
  (libraries hxd.string hxd.core cmdliner fpath mirage-crypto-rng mrmime
-   crowbar))
+ 	    ocplib-endian str afl-persistent))
