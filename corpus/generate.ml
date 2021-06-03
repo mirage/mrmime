@@ -1,5 +1,6 @@
 open Cmdliner
 
+(** Fortuna command *)
 let fortuna = Generate_fortuna.generate
 
 let base64 =
@@ -35,7 +36,16 @@ let fortuna_cmd =
   in
   (Term.(ret (const fortuna $ seed $ output)), Term.info "fortuna" ~doc ~man)
 
+(** Crowbar command*)
 let crowbar dst = Generate_crowbar.generate dst
+
+let int64 =
+  Arg.conv
+    ((fun str -> Base64.decode str), Fmt.using Base64.encode_string Fmt.string)
+
+let seed64 =
+  let doc = "Crowbar seed." in
+  Arg.(value & opt (some int64) None & info [ "s"; "seed" ] ~doc)
 
 let crowbar_cmd =
   let doc = "Generate a randomly generated valid email." in
@@ -44,7 +54,7 @@ let crowbar_cmd =
       `S "DESCRIPTION"; `P "Generate a random email using $(i,crowbar) fuzzer.";
     ]
   in
-  (Term.(ret (const crowbar $ output)), Term.info "crowbar" ~doc ~man)
+  (Term.(ret (const crowbar $ seed64 $ output)), Term.info "crowbar" ~doc ~man)
 
 let default_cmd =
   let man =

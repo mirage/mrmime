@@ -451,6 +451,7 @@ let run_test ~mode ~silent ?(verbose = false) (Test (name, gens, f)) =
 
 exception TestFailure
 
+(** [run_all_tests s n tests ]*)
 let run_all_tests seed repeat tests =
   let seed =
     match seed with Some seed -> seed | None -> Random.int64 Int64.max_int

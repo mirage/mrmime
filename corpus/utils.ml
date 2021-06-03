@@ -16,7 +16,7 @@ let parsers =
   |> Map.add content_type unstructured
   |> Map.add content_encoding unstructured
 
-let stream_to_string v =
+let buffer_stream_to_string v =
   let buf = Buffer.create 0x1000 in
   let rec go () =
     match v () with
@@ -26,6 +26,17 @@ let stream_to_string v =
     | None -> Buffer.contents buf
   in
   go ()
+
+
+let stream_to_string v =
+  let rec go acc () =
+    match v () with
+    | Some str ->
+        go (str :: acc)()
+    | None -> acc
+  in
+  String.concat "" (List.rev (go [] ()))
+
 
 let date_to_string date =
   let open Mrmime.Date in
