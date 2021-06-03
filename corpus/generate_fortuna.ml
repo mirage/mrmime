@@ -15,11 +15,10 @@ let generate seed dst =
              Fmt.epr "Invalid mail: @[<hov>%a@]\n%!" (Hxd_string.pp Hxd.default) str;
              assert false
        in
-   *)
+  *)
   let str = Fortuna.run ~g Generate.mailbox |> Mrmime.Mailbox.to_string in
   let ret = `Ok 0 in
-  let oc, oc_close = build_oc dst
-  in
+  let oc, oc_close = build_oc dst in
   output_string oc str;
   oc_close oc;
   ret

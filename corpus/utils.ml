@@ -27,16 +27,11 @@ let buffer_stream_to_string v =
   in
   go ()
 
-
 let stream_to_string v =
   let rec go acc () =
-    match v () with
-    | Some str ->
-        go (str :: acc)()
-    | None -> acc
+    match v () with Some str -> go (str :: acc) () | None -> acc
   in
   String.concat "" (List.rev (go [] ()))
-
 
 let date_to_string date =
   let open Mrmime.Date in
