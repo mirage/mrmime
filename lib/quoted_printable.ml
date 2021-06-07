@@ -9,10 +9,8 @@ let parser ~write_data ~write_line end_of_body =
   let dec = Pecu.decoder `Manual in
 
   let check_end_of_body =
-    let expected_len = String.length end_of_body in
-    Unsafe.peek expected_len (fun ba ~off ~len ->
-        let raw = Bigstringaf.substring ba ~off ~len in
-        String.equal raw end_of_body)
+    let len = String.length end_of_body in
+    Unsafe.peek len Bigstringaf.substring >>| String.equal end_of_body
   in
 
   let trailer () =
@@ -25,26 +23,26 @@ let parser ~write_data ~write_line end_of_body =
          input, it will return [`Malformed]. *)
       | `Data data ->
           write_data data;
-          finish ()
+          commit >>= finish
       | `Line line ->
           write_line line;
-          finish ()
+          commit >>= finish
       | `End -> commit
-      | `Malformed err -> fail err
+      | `Malformed err -> commit *> fail err
     and go () =
       match Pecu.decode dec with
       | `Await ->
           (* definitely [end_of_body]. *)
           Pecu.src dec Bytes.empty 0 0;
-          finish ()
+          commit >>= finish
       | `Data data ->
           write_data data;
-          go ()
+          commit >>= go
       | `Line line ->
           write_line line;
-          go ()
+          commit >>= go
       | `End -> commit
-      | `Malformed err -> fail err
+      | `Malformed err -> commit *> fail err
     in
 
     go ()
@@ -58,7 +56,7 @@ let parser ~write_data ~write_line end_of_body =
            unroll all outputs availables on [pecu]. *)
         let chunk = Bytes.sub chunk 0 (Bytes.length chunk - 1) in
         Pecu.src dec chunk 0 (Bytes.length chunk);
-        trailer ()
+        commit >>= trailer
     | false ->
         (* at this stage, byte after [chunk] is NOT a part of [end_of_body]. We
            can notice to [pecu] [chunk + end_of_body.[0]], advance on the
@@ -66,7 +64,7 @@ let parser ~write_data ~write_line end_of_body =
            (see below). *)
         Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0];
         Pecu.src dec chunk 0 (Bytes.length chunk);
-        advance 1 *> m
+        advance 1 *> commit *> m
   in
 
   (* take while we did not discover the first byte of [end_of_body]. *)
@@ -85,14 +83,14 @@ let parser ~write_data ~write_line end_of_body =
            [end_of_body]. The result will be sended to [choose]. *)
         let chunk' = Bytes.create (String.length chunk + 1) in
         Bytes.blit_string chunk 0 chunk' 0 (String.length chunk);
-        check_end_of_body >>= choose chunk'
+        check_end_of_body <* commit >>= choose chunk'
     | `Data data ->
         write_data data;
-        go ()
+        commit >>= go
     | `Line line ->
         write_line line;
-        go ()
-    | `Malformed err -> fail err
+        commit >>= go
+    | `Malformed err -> commit *> fail err
   in
   go ()
 
@@ -116,22 +114,21 @@ let rec parser ~write_data ~write_line dec =
   | `End -> commit
   | `Data data ->
       write_data data;
-      parser ~write_data ~write_line dec
+      commit *> parser ~write_data ~write_line dec
   | `Line line ->
       write_line line;
-      parser ~write_data ~write_line dec
-  | `Malformed err -> fail err
+      commit *> parser ~write_data ~write_line dec
+  | `Malformed err -> commit *> fail err
   | `Await -> (
       peek_char >>= function
       | None ->
-          let () = Pecu.src dec Bytes.empty 0 0 in
-          return ()
+          Pecu.src dec Bytes.empty 0 0;
+          commit
       | Some _ ->
-          available >>= take <* commit >>= fun str ->
-          let () =
-            Pecu.src dec (Bytes.unsafe_of_string str) 0 (String.length str)
-          in
-          parser ~write_data ~write_line dec)
+          available >>= fun len ->
+          Unsafe.take len Bigstringaf.substring >>= fun str ->
+          Pecu.src dec (Bytes.unsafe_of_string str) 0 len;
+          commit *> parser ~write_data ~write_line dec)
 
 let to_end_of_input ~write_data ~write_line =
   let dec = Pecu.decoder `Manual in

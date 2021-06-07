@@ -5,46 +5,53 @@ type 'a t =
   | Multipart of 'a t option list elt
   | Message of 'a t elt
 
-let parser ~write_line end_of_body =
+let rec index v max idx chr =
+  if idx >= max then raise Not_found;
+  if Bigstringaf.get v idx = chr then idx else index v max (succ idx) chr
+
+let index v chr = index v (Bigstringaf.length v) 0 chr
+
+let parser ~write_data end_of_body =
   let open Angstrom in
   let check_end_of_body =
-    let expected_len = String.length end_of_body in
-    Unsafe.peek expected_len (fun ba ~off ~len ->
-        let raw = Bigstringaf.substring ba ~off ~len in
-        String.equal raw end_of_body)
+    let len = String.length end_of_body in
+    Unsafe.peek len Bigstringaf.substring >>| String.equal end_of_body
   in
 
   fix @@ fun m ->
   let choose chunk = function
     | true ->
         let chunk = Bytes.sub_string chunk 0 (Bytes.length chunk - 1) in
-        write_line chunk;
+        write_data chunk;
         commit
     | false ->
-        Bytes.set chunk (Bytes.length chunk - 1) end_of_body.[0];
-        write_line (Bytes.unsafe_to_string chunk);
-        advance 1 *> m
+        write_data (Bytes.unsafe_to_string chunk);
+        advance 1 *> commit *> m
   in
 
-  Unsafe.take_while (( <> ) end_of_body.[0]) Bigstringaf.substring
-  >>= fun chunk ->
-  let chunk' = Bytes.create (String.length chunk + 1) in
-  Bytes.blit_string chunk 0 chunk' 0 (String.length chunk);
-  check_end_of_body >>= choose chunk'
+  available >>= function
+  | 0 -> peek_char *> m
+  | len -> (
+      Unsafe.peek len Bigstringaf.sub >>= fun chunk ->
+      match index chunk end_of_body.[0] with
+      | pos ->
+          let tmp = Bytes.create (pos + 1) in
+          Bigstringaf.blit_to_bytes chunk ~src_off:0 tmp ~dst_off:0
+            ~len:(pos + 1);
+          advance pos *> check_end_of_body <* commit >>= choose tmp
+      | exception Not_found ->
+          write_data (Bigstringaf.to_string chunk);
+          advance len *> commit *> m)
 
-let with_buffer ?(end_of_line = "\n") end_of_body =
+let with_buffer end_of_body =
   let buf = Buffer.create 0x100 in
-  let write_line x =
-    Buffer.add_string buf x;
-    Buffer.add_string buf end_of_line
-  in
-
+  let write_data = Buffer.add_string buf in
   let open Angstrom in
-  parser ~write_line end_of_body >>| fun () -> Buffer.contents buf
+  parser ~write_data end_of_body >>| fun () -> Buffer.contents buf
 
-let with_emitter ?(end_of_line = "\n") ~emitter end_of_body =
-  let write_line x = emitter (Some (x ^ end_of_line)) in
-  parser ~write_line end_of_body
+let with_emitter ~emitter end_of_body =
+  let write_data x = emitter (Some x) in
+  parser ~write_data end_of_body
 
 let to_end_of_input ~write_data =
   let open Angstrom in
@@ -65,17 +72,12 @@ let heavy_octet boundary header =
   | None ->
       let buf = Buffer.create 0x800 in
       let write_line line =
-        Fmt.epr ">>> %S.\n%!" line;
         Buffer.add_string buf line;
         Buffer.add_string buf "\n"
       in
-      let write_data str =
-        Fmt.epr ">>> %S.\n%!" str;
-        Buffer.add_string buf str
-      in
+      let write_data = Buffer.add_string buf in
       (match Header.content_encoding header with
       | `Quoted_printable ->
-          Fmt.epr ">>> parse quoted-printable.\n%!";
           Quoted_printable.to_end_of_input ~write_data ~write_line
       | `Base64 -> B64.to_end_of_input ~write_data
       | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
