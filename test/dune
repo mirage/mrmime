@@ -1,4 +1,9 @@
 (executable
+ (name test_header)
+ (modules test_header)
+ (libraries alcotest mrmime))
+
+(executable
  (name rfc2045)
  (modules rfc2045)
  (libraries alcotest mrmime))
@@ -81,3 +86,10 @@
   (:hd test_hd.exe))
  (action
   (run %{hd} --color=always)))
+
+(rule
+ (alias runtest)
+ (deps
+  (:header test_header.exe))
+ (action
+  (run %{header} --color=always)))
