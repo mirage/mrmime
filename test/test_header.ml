@@ -29,9 +29,43 @@ let default_content_type =
   | [], v0 -> Alcotest.(check content_type) "value" v0 Content_type.default
   | _ -> Alcotest.fail "Invalid header"
 
+let replace_headers_if_exists =
+  Alcotest.test_case "replace if exists" `Quick @@ fun () ->
+  let v =
+    Header.add Field_name.content_type
+      Field.(Content, Content_type.default)
+      Header.empty
+  in
+  let content_type_1 =
+    Content_type.(make `Text (Subtype.v `Text "richtext") Parameters.empty)
+  in
+  let v =
+    Header.replace Field_name.content_type Field.(Content, content_type_1) v
+  in
+  match Header.assoc Field_name.content_type v with
+  | [ Field (_, Content, v') ] ->
+      Alcotest.(check content_type) "v" content_type_1 v'
+  | _ -> Alcotest.fail "Invalid header"
+
+let replace_headers_if_absent =
+  Alcotest.test_case "replace if absent" `Quick @@ fun () ->
+  let v = Header.empty in
+  let v =
+    Header.replace Field_name.content_type
+      Field.(Content, Content_type.default)
+      v
+  in
+  match Header.assoc Field_name.content_type v with
+  | [ Field (_, Content, v) ] ->
+      Alcotest.(check content_type) "v" Content_type.default v
+  | _ -> Alcotest.fail "Invalid header"
+
 let () =
   Alcotest.run "header"
     [
-      ("simple", [ test_valued_header ]);
-      ("content-type", [ default_content_type ]);
+      ( "simple",
+        [
+          test_valued_header; replace_headers_if_exists;
+          replace_headers_if_absent;
+        ] ); ("content-type", [ default_content_type ]);
     ]
