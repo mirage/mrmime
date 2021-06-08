@@ -31,9 +31,22 @@ let add : type a. Field_name.t -> a Field.t * a -> t -> t =
 
 let replace : type a. Field_name.t -> a Field.t * a -> t -> t =
  fun field_name (w, v) t ->
-  let header = remove_assoc field_name t in
-  let field = Field.Field (field_name, w, v) in
-  Location.inj ~location:Location.none field :: header
+  let rec replace acc = function
+    | [] ->
+        let field =
+          Location.(inj ~location:none (Field.Field (field_name, w, v)))
+        in
+        List.rev (field :: acc)
+    | field :: rest ->
+        let (Field.Field (field_name', _, _)) = Location.prj field in
+        if Field_name.equal field_name field_name' then
+          copy
+            (Location.(inj ~location:none (Field.Field (field_name, w, v)))
+             :: acc)
+            rest
+        else replace (field :: acc) rest
+  and copy acc rest = List.rev_append rest acc |> List.rev in
+  replace [] t
 
 let of_list = List.map (Location.inj ~location:Location.none)
 let of_list_with_location x = x
