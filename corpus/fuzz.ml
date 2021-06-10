@@ -284,15 +284,6 @@ module Make (Fuzz : S) = struct
   (** [field] generates a header field, i.e. a pair (name, value).
      Should we bind name to appropriate typed values (like "date" ->
      Date.t) ?)  *)
-  (*let field =
-    map [ field_name; value ] @@ fun field_name -> function
-    | `Date v -> Field.Field (field_name, Field.Date, v)
-    | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
-    | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
-    | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
-    | `Content v -> Field.Field (field_name, Field.Content, v)
-    | `Encoding v -> Field.Field (field_name, Field.Encoding, v)*)
-
   let field =
     field_name >>= fun field_name ->
     if Field_name.(equal field_name content_encoding) then
@@ -309,35 +300,14 @@ module Make (Fuzz : S) = struct
       | `Content v -> Field.Field (field_name, Field.Content, v)
       | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
 
-  (** *)
   let header = map [ list1 field ] @@ Header.of_list
 
   (** Generation of an mail *)
-  let stream_of_string str : Mt.buffer Mt.stream =
-    let consumed = ref false in
-    fun () ->
-      match !consumed with
-      | true -> None
-      | false ->
-          consumed := true;
-          Some (str, 0, String.length str)
-
   (* max size of body ? *)
   let body : string t =
-    let is_sevenbit = function '\001' .. '\127' -> true | _ -> false in
+    let is_sevenbit = function '\000' .. '\127' -> true | _ -> false in
     let abc = alphabet_from_predicate is_sevenbit in
     range ~min:1 1000 >>= string_from_alphabet abc
-
-  (** Generate a simple mail *)
-  let part : Mt.part t =
-    map [ body ] @@ fun body -> Mt.part (stream_of_string body)
-
-  let simple h = map [ part ] @@ fun p -> Mt.(make h simple p)
-
-  let multi h parts =
-    map [ parts ] @@ fun ps ->
-    let multipart = Mt.multipart ~rng:Mt.rng ps in
-    Mt.make h Mt.multi multipart
 
   (** [header_ct ty] generates header with a given content-type type [ty]. *)
   let header_ct ty =
@@ -346,7 +316,7 @@ module Make (Fuzz : S) = struct
     Header.replace Field_name.content_type (Field.Content, content_type) h
 
   (** [mail] recursively generates an email.  *)
-  let mail : Mt.t t =
+  let mail : string Mail.t t =
     fix (fun mail ->
         choose
           [
@@ -354,9 +324,10 @@ module Make (Fuzz : S) = struct
             const `Audio; const `Video; const `Application;
           ]
         >>= fun ty ->
-        header_ct ty >>= fun h ->
+        header_ct ty >>= fun header ->
         match ty with
-        | #Content_type.Type.discrete -> simple h
+        | #Content_type.Type.discrete ->
+            map [ body ] @@ fun body -> Mail.(Leaf { header; body })
         | `Message ->
             (* mail in a mail: the mail [m] is build recursively and
                converted into a stream with [Mt.to_stream m]. This stream
@@ -364,14 +335,10 @@ module Make (Fuzz : S) = struct
                header are generated for the [Mt.part] function as it
                would be concatenated with [h] by the [Mt.make]
                function. *)
-            map [ mail ] @@ fun m -> Mt.(make h simple (part (to_stream m)))
+            map [ mail ] @@ fun m -> Mail.(Message { header; body = m })
         | `Multipart ->
-            let mails = list1 mail in
-            let parts =
-              (* recursively built mails then transforms them into parts *)
-              map [ mails ] @@ fun m ->
-              List.map (fun elt -> Mt.part (Mt.to_stream elt)) m
-            in
-            multi h parts
+            let parts = list1 (option mail) in
+            map [ parts ] @@ fun parts ->
+            Mail.Multipart { header; body = parts }
         | _ -> bad_test "mail/content_type")
 end

@@ -28,7 +28,6 @@ exception Bad
 
 let bad_test _where = raise Bad
 
-(* Mirage_crypto_rng.Fortuna.g -> 'a *)
 
 let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
  fun ~g t f ->
@@ -60,7 +59,7 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
       (va, vb)
   | Char ->
       let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      Cstruct.get cs 0
+      Cstruct.get_char cs 0
   | Float ->
       let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
       let a = Int32.abs (Cstruct.LE.get_uint32 cs 0) in
@@ -157,7 +156,6 @@ let int = Int
 let bind x f = Bind (x, f)
 let choose lst = Choose lst
 let const v = Const v
-let concat ~sep lst = Concat { sep; lst }
 let list1 v = List1 v
 let fixed len = Fixed len
 let option v = Option v
@@ -169,3 +167,4 @@ let fix f =
 let pair a b = Pair (a, b)
 let ( >>= ) x f = Bind (x, f)
 let map lst f = Map (lst, f)
+let concat ~sep lst = Concat { sep; lst }

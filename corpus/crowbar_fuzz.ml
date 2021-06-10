@@ -1,5 +1,5 @@
-(* This code mainly come from https://github.com/stedolan/crowbar/blob/master/src/crowbar.ml.
-*)
+(* This code mainly come from
+   https://github.com/stedolan/crowbar/blob/master/src/crowbar.ml.  *)
 
 type src = Random of Random.State.t | Fd of Unix.file_descr
 
@@ -451,68 +451,14 @@ let run_test ~mode ~silent ?(verbose = false) (Test (name, gens, f)) =
 
 exception TestFailure
 
-(** [run_all_tests s n tests ]*)
-let run_all_tests seed repeat tests =
-  let seed =
-    match seed with Some seed -> seed | None -> Random.int64 Int64.max_int
-  in
-  let failures = ref 0 in
-  let () =
-    tests
-    |> List.iter (fun t ->
-           match
-             run_test ~mode:(`Repeat (repeat, seed)) ~silent:false t
-             |> classify_status
-           with
-           | `Fail -> failures := !failures + 1
-           | _ -> ())
-  in
-  !failures
-(* failures come via the exception mechanism above *)
-
-(*
-let run_all_tests seed repeat file verbosity infinity tests =
+let run_one_test seed repeat file verbosity test =
   match file with
-  | None ->
+  | None -> (
       let seed =
         match seed with Some seed -> seed | None -> Random.int64 Int64.max_int
       in
-      if infinity then
-        (* infinite QuickCheck mode *)
-        let rec go ntests alltests tests =
-          match tests with
-          | [] -> go ntests alltests alltests
-          | t :: rest -> (
-              if ntests mod 10000 = 0 then Printf.eprintf "\r%d%!" ntests;
-              let chan = src_of_seed seed in
-              let state =
-                { chan; buf = Bytes.make 256 '0'; offset = 0; len = 0 }
-              in
-              match
-                classify_status
-                  (run_test ~mode:(`Once state) ~silent:true ~verbose:true t)
-              with
-              | `Fail ->
-                  Printf.printf "%d tests passed before first failure\n%!"
-                    ntests
-              | _ -> go (ntests + 1) alltests rest)
-        in
-        let () = go 0 tests tests in
-        1
-      else
-        (* limited-run QuickCheck mode *)
-        let failures = ref 0 in
-        let () =
-          tests
-          |> List.iter (fun t ->
-                 match
-                   run_test ~mode:(`Repeat (repeat, seed)) ~silent:false t
-                   |> classify_status
-                 with
-                 | `Fail -> failures := !failures + 1
-                 | _ -> ())
-        in
-        !failures
+      let status = run_test ~mode:(`Repeat (repeat, seed)) ~silent:true test in
+      match classify_status status with `Fail -> raise TestFailure | _ -> ())
   | Some file ->
       (* AFL mode *)
       let verbose = List.length verbosity > 0 in
@@ -523,9 +469,7 @@ let run_all_tests seed repeat file verbosity infinity tests =
               { chan = Fd fd; buf = Bytes.make 256 '0'; offset = 0; len = 0 }
             in
             let status =
-              try
-                run_test ~mode:(`Once state) ~silent:false ~verbose
-                @@ List.nth tests (choose_int (List.length tests) state)
+              try run_test ~mode:(`Once state) ~silent:true ~verbose test
               with BadTest s -> BadInput s
             in
             Unix.close fd;
@@ -535,6 +479,4 @@ let run_all_tests seed repeat file verbosity infinity tests =
                 Printexc.record_backtrace false;
                 raise TestFailure)
       in
-      0
-(* failures come via the exception mechanism above *)
- *)
+      ()
