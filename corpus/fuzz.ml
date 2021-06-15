@@ -302,8 +302,9 @@ module Make (Fuzz : S) = struct
 
   let header = map [ list1 field ] @@ Header.of_list
 
-  (** Generation of an mail *)
   (* max size of body ? *)
+
+  (** Generation of an mail *)
   let body : string t =
     let is_sevenbit = function '\000' .. '\127' -> true | _ -> false in
     let abc = alphabet_from_predicate is_sevenbit in

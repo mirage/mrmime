@@ -2,22 +2,50 @@ open Cmdliner
 
 let empty_mail = Mrmime.(Mail.Leaf Mail.{ header = Header.empty; body = "" })
 
-let crowbar_mail_generator seed input : string Mrmime.Mail.t =
+(** exception must be raised inside the "AflPersistant.run" function *)
+let parse_and_compare mail =
+  let str_mail =
+    Utils.(mail_to_mt mail |> Mrmime.Mt.to_stream |> buffer_stream_to_string)
+  in
+  match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
+  | Ok mail' ->
+      if Equality.equal mail (snd mail') then (
+        (str_mail, `Ok 0))
+      else (
+        (*Format.printf "*****Generated mail*****@.";
+        Utils.print_struct mail;
+        Utils.print_mail mail;
+        Format.printf "******Parsed mail*****@.";
+        Utils.print_struct (snd mail');
+        Utils.print_mail (snd mail');*)
+        failwith "not equal")
+  | Error s -> (str_mail, `Error (false, s))
+
+let crowbar_mail_generator seed input =
   let module Generate = Fuzz.Make (Crowbar_fuzz) in
   let open Crowbar_fuzz in
-  let mail = ref empty_mail in
-  let test = Test ("mail", [ Generate.mail ], fun m -> mail := m) in
+  let mail, ret = (ref "", ref (`Ok 0)) in
+  let test =
+    Test
+      ( "mail",
+        [ Generate.mail ],
+        fun m ->
+          let a = parse_and_compare m in
+          mail := fst a;
+          ret := snd a )
+  in
   Crowbar_fuzz.run_one_test seed 1 input [] test;
-  !mail
+  (!mail, !ret)
 
-let fortuna_mail_generator g : string Mrmime.Mail.t =
+let fortuna_mail_generator g =
   let module Generate = Fuzz.Make (Fortuna) in
   assert (Mirage_crypto_rng.Fortuna.seeded ~g);
-  Fortuna.run ~g Generate.mail
+  let mail = Fortuna.run ~g Generate.mail in
+  parse_and_compare mail
 
 let generate (seed : [ `Crowbar of int64 option | `Fortuna of string ]) dst
     input =
-  let mail =
+  let mail, ret =
     match seed with
     | `Crowbar s ->
         Random.self_init ();
@@ -27,22 +55,10 @@ let generate (seed : [ `Crowbar of int64 option | `Fortuna of string ]) dst
         Mirage_crypto_rng.Fortuna.reseed ~g (Cstruct.of_string s);
         fortuna_mail_generator g
   in
-  let str_mail =
-    Utils.(mail_to_mt mail |> Mrmime.Mt.to_stream |> buffer_stream_to_string)
-  in
-  let ret =
-    match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
-    | Ok mail' ->
-        if Equality.equal mail (snd mail') then (
-          Format.printf "Valid equality@.";
-          `Ok 0)
-        else failwith "not equal"
-    | Error s -> `Error (false, s)
-  in
   (match ret with
   | `Error (_, _) ->
       Format.printf "Invalid mail@.";
-      Utils.print dst str_mail
+      Utils.print dst mail
   | _ -> ());
   ret
 

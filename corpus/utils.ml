@@ -57,19 +57,20 @@ let stream_to_string v =
   String.concat "" (List.rev (go [] ()))
 
 let stream_of_string str : Mt.buffer Mt.stream =
-    let consumed = ref false in
-    fun () ->
-      match !consumed with
-      | true -> None
-      | false ->
-          consumed := true;
-          Some (str, 0, String.length str)
+  let consumed = ref false in
+  fun () ->
+    match !consumed with
+    | true -> None
+    | false ->
+        consumed := true;
+        Some (str, 0, String.length str)
 
 let empty_stream () = None
 
 let rec mail_to_mt (mail : string Mail.t) : Mt.t =
   match mail with
-  | Leaf { header; body } -> Mt.part (stream_of_string body) |> Mt.make header Mt.simple
+  | Leaf { header; body } ->
+      Mt.part (stream_of_string body) |> Mt.make header Mt.simple
   | Message { header; body = mes } ->
       mail_to_mt mes |> Mt.to_stream |> Mt.part |> Mt.make header Mt.simple
   | Multipart { header; body = parts } ->
@@ -81,3 +82,29 @@ let rec mail_to_mt (mail : string Mail.t) : Mt.t =
           parts
       in
       Mt.multipart ~rng:Mt.rng parts |> Mt.make header Mt.multi
+
+type st = L | Mess of st | Multi of st option list
+
+let convert_struct m =
+  let rec go = function
+    | Mail.Leaf _ -> L
+    | Message {body;_} -> Mess (go body)
+    | Multipart {body; _} ->
+       Multi (List.map (fun m -> match m with None -> None | Some m -> Some (go m)) body)
+    in go m
+
+let rec struct_to_string = function
+  | L -> "Leaf"
+  | Mess st -> "Mess ("^(struct_to_string st)^")"
+  | Multi parts ->
+     "Multi ("^(String.concat ", " (List.map (function None -> "None" | Some m -> struct_to_string m) parts))^")"
+
+
+let print_struct m =
+  convert_struct m |> struct_to_string |> Format.printf "%s@."
+
+let print_mail (m : string Mail.t) =
+  mail_to_mt m
+  |> Mt.to_stream
+  |> buffer_stream_to_string
+  |> Format.printf "%s@."

@@ -458,7 +458,11 @@ let run_one_test seed repeat file verbosity test =
         match seed with Some seed -> seed | None -> Random.int64 Int64.max_int
       in
       let status = run_test ~mode:(`Repeat (repeat, seed)) ~silent:true test in
-      match classify_status status with `Fail -> raise TestFailure | _ -> ())
+      (match status with
+       | TestFail _ -> raise TestFailure
+       | GenFail (e, _, _) -> raise e
+       | _ -> ()))
+
   | Some file ->
       (* AFL mode *)
       let verbose = List.length verbosity > 0 in
