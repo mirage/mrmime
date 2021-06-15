@@ -54,8 +54,11 @@ let rec decode : decoder -> decode =
         | false -> Angstrom.Unbuffered.Incomplete
       in
       let len = Ke.Rke.length decoder.queue in
+      let slice =
+        if len = 0 then Bigstringaf.empty
+        else List.hd (Ke.Rke.N.peek decoder.queue)
+      in
       if len > 0 || decoder.closed then (
-        let[@warning "-8"] (slice :: _) = Ke.Rke.N.peek decoder.queue in
         decoder.state <-
           continue slice ~off:0 ~len:(Bigstringaf.length slice) more;
         protect decoder)
