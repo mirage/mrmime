@@ -38,6 +38,19 @@
  (modules test_hd)
  (libraries alcotest mrmime))
 
+(executable
+ (name test_stream)
+ (modules test_stream)
+ (libraries logs logs.fmt fmt.tty lwt lwt.unix mrmime))
+
+(executable
+ (name test_generate)
+ (modules test_generate)
+ (libraries base64 mrmime))
+
+(cram
+ (deps test_generate.exe test_stream.exe))
+
 (rule
  (alias runtest)
  (deps
