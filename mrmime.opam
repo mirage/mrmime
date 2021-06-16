@@ -37,6 +37,8 @@ depends: [
   "alcotest"         {with-test}
   "jsonm"            {with-test}
   "crowbar"          {with-test}
+  "lwt"              {with-test}
+  "logs"             {with-test}
 ]
 
 pin-depends: [
