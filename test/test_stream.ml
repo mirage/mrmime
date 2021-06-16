@@ -59,10 +59,15 @@ let parse ~emitters =
         `Continue
 
 let rec map f = function
-  | Mail.Leaf { header; body } -> Mail.Leaf { header; body = f body }
-  | Multipart { header; body } ->
-      Multipart { header; body = List.map (Option.map (map f)) body }
-  | Message { header; body } -> Message { header; body = map f body }
+  | Mail.Leaf body -> Mail.Leaf (f body)
+  | Multipart parts ->
+      Multipart
+        (List.map
+           (function
+             | header, None -> (header, None)
+             | header, Some body -> (header, Some (map f body)))
+           parts)
+  | Message (header, body) -> Message (header, map f body)
 
 open Lwt.Infix
 
