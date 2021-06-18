@@ -159,8 +159,6 @@ let multipart ~rng ?(header = Header.empty) ?boundary parts =
   in
   { header; parts }
 
-let none () = None
-
 let concat s0 s1 =
   let c = ref s0 in
   let rec go () =
@@ -221,16 +219,16 @@ let multipart_as_part : multipart -> part =
   in
   let beginner = Rfc2046.make_dash_boundary boundary ^ "\r\n" in
   (* XXX(dinosaure): we must respect one rule, emit line per line. *)
-  let inner = stream_of_lines [ ""; Rfc2046.make_dash_boundary boundary ] in
+  let inner () = stream_of_lines [ ""; Rfc2046.make_dash_boundary boundary ] in
   let closer =
     stream_of_lines [ ""; Rfc2046.make_dash_boundary boundary ^ "--" ]
   in
 
   let rec go stream = function
-    | [] -> none
+    | [] -> assert false
     | [ x ] -> stream @ stream_of_part x @ closer
     | x :: r ->
-        let stream = stream @ stream_of_part x @ inner in
+        let stream = stream @ stream_of_part x @ inner () in
         go stream r
   in
 

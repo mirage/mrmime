@@ -282,6 +282,19 @@ let test3 () =
   | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"
   | Error _ -> Fmt.invalid_arg "Invalid email"
 
+let example4 = {mrmime|Subject: A simple email
+
+Hello World!
+|mrmime}
+
+let test4 () =
+  Alcotest.test_case "7-bit contents" `Quick @@ fun () ->
+  match Angstrom.parse_string ~consume:Prefix Mrmime.Mail.mail example4 with
+  | Ok (_, Leaf { Mrmime.Mail.body; _ }) ->
+      Alcotest.(check string) "contents" body "Hello World!\r\n"
+  | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"
+  | Error _ -> Fmt.invalid_arg "Invalid email"
+
 let () =
   Alcotest.run "mail"
-    [ ("example", [ test0 (); test1 (); test2 (); test3 () ]) ]
+    [ ("example", [ test0 (); test1 (); test2 (); test3 (); test4 () ]) ]
