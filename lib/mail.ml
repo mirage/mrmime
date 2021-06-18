@@ -1,9 +1,7 @@
-type 'a elt = { header : Header.t; body : 'a }
-
 type 'a t =
-  | Leaf of 'a elt
-  | Multipart of 'a t option list elt
-  | Message of 'a t elt
+  | Leaf of 'a
+  | Multipart of (Header.t * 'a t option) list
+  | Message of Header.t * 'a t
 
 let rec index v max idx chr =
   if idx >= max then raise Not_found;
@@ -137,37 +135,33 @@ let mail =
     match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
-        heavy_octet parent header >>| fun body -> Leaf { header; body }
+        heavy_octet parent header >>| fun body -> Leaf body
     | `Message ->
-        mail parent >>| fun (header', body') ->
-        Message { header = header'; body = body' }
+        mail parent >>| fun (header', body') -> Message (header', body')
     | `Multipart -> (
         match boundary header with
         | Some boundary ->
             Rfc2046.multipart_body ?parent boundary
               (body (Option.some boundary))
-            >>| List.map snd
-            >>| fun parts -> Multipart { header; body = parts }
+            >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
     Header.Decoder.header <* char '\r' <* char '\n' >>= fun header ->
     match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
-        heavy_octet parent header >>| fun body -> (header, Leaf { header; body })
+        heavy_octet parent header >>| fun body -> (header, Leaf body)
     | `Message ->
         mail parent >>| fun (header', message') ->
-        (header, Message { header = header'; body = message' })
+        (header, Message (header', message'))
     | `Multipart -> (
         match boundary header with
         | Some boundary ->
             Rfc2046.multipart_body ?parent boundary
               (body (Option.some boundary))
-            >>| List.map snd
-            >>| fun parts -> (header, Multipart { header; body = parts })
+            >>| fun parts -> (header, Multipart parts)
         | None -> fail "expected boundary")
   in
-
   mail None
 
 type 'id emitters = Header.t -> (string option -> unit) * 'id
@@ -180,18 +174,15 @@ let stream : emitters:'id emitters -> (Header.t * 'id t) Angstrom.t =
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
         let emitter, id = emitters header in
-        light_octet ~emitter parent header >>| fun () ->
-        Leaf { header; body = id }
+        light_octet ~emitter parent header >>| fun () -> Leaf id
     | `Message ->
-        mail parent >>| fun (header', body') ->
-        Message { header = header'; body = body' }
+        mail parent >>| fun (header', body') -> Message (header', body')
     | `Multipart -> (
         match boundary header with
         | Some boundary ->
             Rfc2046.multipart_body ?parent boundary
               (body (Option.some boundary))
-            >>| List.map (fun (_header, body) -> body)
-            >>| fun parts -> Multipart { header; body = parts }
+            >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
     Header.Decoder.header <* char '\r' <* char '\n' >>= fun header ->
@@ -199,18 +190,16 @@ let stream : emitters:'id emitters -> (Header.t * 'id t) Angstrom.t =
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
         let emitter, id = emitters header in
-        light_octet ~emitter parent header >>| fun () ->
-        (header, Leaf { header; body = id })
+        light_octet ~emitter parent header >>| fun () -> (header, Leaf id)
     | `Message ->
         mail parent >>| fun (header', body') ->
-        (header, Message { header = header'; body = body' })
+        (header, Message (header', body'))
     | `Multipart -> (
         match boundary header with
         | Some boundary ->
             Rfc2046.multipart_body ?parent boundary
               (body (Option.some boundary))
-            >>| List.map (fun (_header, body) -> body)
-            >>| fun parts -> (header, Multipart { header; body = parts })
+            >>| fun parts -> (header, Multipart parts)
         | None -> fail "expected boundary")
   in
 

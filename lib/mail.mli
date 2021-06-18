@@ -14,12 +14,10 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *)
 
-type 'a elt = { header : Header.t; body : 'a }
-
 type 'a t =
-  | Leaf of 'a elt
-  | Multipart of 'a t option list elt
-  | Message of 'a t elt
+  | Leaf of 'a
+  | Multipart of (Header.t * 'a t option) list
+  | Message of Header.t * 'a t
 
 val heavy_octet : string option -> Header.t -> string Angstrom.t
 (** {i Heavy} parser of a body - it will stores bodies into [string]. *)
