@@ -67,43 +67,81 @@ let stream_of_string str : Mt.buffer Mt.stream =
 
 let empty_stream () = None
 
-let rec mail_to_mt (mail : string Mail.t) : Mt.t =
+let rec mail_to_mt (mail : Header.t * string Mail.t) : Mt.t =
   match mail with
-  | Leaf { header; body } ->
+  | header, Leaf body ->
       Mt.part (stream_of_string body) |> Mt.make header Mt.simple
-  | Message { header; body = mes } ->
-      mail_to_mt mes |> Mt.to_stream |> Mt.part |> Mt.make header Mt.simple
-  | Multipart { header; body = parts } ->
+  | header, Message (h, b) ->
+      mail_to_mt (h, b)
+      |> Mt.to_stream
+      |> Mt.part ~header
+      |> Mt.make Header.empty Mt.simple
+  | header, Multipart parts ->
       let parts : Mt.part list =
         List.map
-          (function
-            | Some part -> mail_to_mt part |> Mt.to_stream |> Mt.part
-            | None -> Mt.part empty_stream)
+          (fun (h, m) ->
+            match m with
+            | Some m -> mail_to_mt (h, m) |> Mt.to_stream |> Mt.part
+            | None -> Mt.part ~header:h empty_stream)
           parts
       in
-      Mt.multipart ~rng:Mt.rng parts |> Mt.make header Mt.multi
+      Mt.multipart ~header ~rng:Mt.rng parts |> Mt.make Header.empty Mt.multi
 
-type st = L | Mess of st | Multi of st option list
+let count_header h =
+  let lines =
+    Header.to_stream h |> stream_to_string |> String.split_on_char '\n'
+  in
+  List.length lines - 1
 
-let convert_struct m =
-  let rec go = function
-    | Mail.Leaf _ -> L
-    | Message {body;_} -> Mess (go body)
-    | Multipart {body; _} ->
-       Multi (List.map (fun m -> match m with None -> None | Some m -> Some (go m)) body)
-    in go m
+let headers_count_to_string ~verbose h =
+  if verbose then (count_header h |> string_of_int) ^ ", " else ""
 
-let rec struct_to_string = function
-  | L -> "Leaf"
-  | Mess st -> "Mess ("^(struct_to_string st)^")"
-  | Multi parts ->
-     "Multi ("^(String.concat ", " (List.map (function None -> "None" | Some m -> struct_to_string m) parts))^")"
+let rec struct_to_string ?(verbose = false) = function
+  | hp, Mail.Leaf s ->
+      headers_count_to_string ~verbose hp
+      ^ "Leaf"
+      ^ if not verbose then "" else " " ^ string_of_int (String.length s)
+  | hp, Message (h, st) ->
+      headers_count_to_string ~verbose hp
+      ^ "Message ("
+      ^ struct_to_string ~verbose (h, st)
+      ^ ")"
+  | hp, Multipart parts ->
+      let print_part = function
+        | h, None ->
+            if not verbose then "None"
+            else "(" ^ headers_count_to_string ~verbose h ^ "None)"
+        | h, Some m -> struct_to_string ~verbose (h, m)
+      in
+      headers_count_to_string ~verbose hp
+      ^ "Multi ["
+      ^ String.concat "; " (List.map print_part parts)
+      ^ "]"
 
+let print_struct ?(verbose = false) (h, m) =
+  struct_to_string ~verbose (h, m) |> Format.printf "%s@."
 
-let print_struct m =
-  convert_struct m |> struct_to_string |> Format.printf "%s@."
+let headers_to_string h = Header.to_stream h |> stream_to_string
 
-let print_mail (m : string Mail.t) =
+let _print_mail (h, m) =
+  let rec go h = function
+    | Mail.Leaf b -> "\nLEAF\n\n" ^ headers_to_string h ^ b
+    | Message (h', b) -> "\nMESSAGE\n\n" ^ headers_to_string h ^ go h' b
+    | Multipart parts ->
+        let parts =
+          List.fold_left
+            (fun acc (h, m) ->
+              match m with
+              | None -> ("PART\n" ^ headers_to_string h ^ "None") :: acc
+              | Some m -> ("PART\n" ^ go h m) :: acc)
+            [] parts
+        in
+        let parts = List.rev parts |> String.concat "\r\n" in
+        "\nMULTIPART\n\n" ^ headers_to_string h ^ parts
+  in
+  go h m |> Format.printf "%s@."
+
+let print_mail (m : Header.t * string Mail.t) =
   mail_to_mt m
   |> Mt.to_stream
   |> buffer_stream_to_string

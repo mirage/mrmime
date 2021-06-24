@@ -26,7 +26,7 @@ let rec compare_sorted_list ((only_in_1, only_in_2) as acc) h1 h2 =
 let sort = List.sort_uniq Stdlib.compare
 
 let compare_header (h : Header.t) (h' : Header.t) =
-  let rec go h h' =
+  let go h h' =
     let all1 =
       List.map (fun name -> (name, Header.assoc name h)) all_field_names
     in
@@ -41,22 +41,32 @@ let compare_header (h : Header.t) (h' : Header.t) =
   in
   go h h'
 
+let print = Format.printf
 
 let same_structure m1 m2 =
   let rec go m1 m2 =
     match (m1, m2) with
-    | Mail.Leaf _, Mail.Leaf _ -> true
-    | Message { body = m1'; _ }, Message { body = m2'; _ } -> go m1' m2'
-    | Multipart { body = p1; _ }, Multipart { body = p2; _ } ->
-        List.for_all2
-          (fun m1 m2 ->
-            match (m1, m2) with
-            | None, None -> true
-            | Some m1, Some m2 -> go m1 m2
-            | _, _ -> false)
-          p1 p2
+    | Mail.Leaf _, Mail.Leaf _ ->
+        true
+    | Message (_, m1'), Message (_, m2') ->
+        go m1' m2'
+    | Multipart p1, Multipart p2 ->
+        if List.length p1 = List.length p2 then
+          List.for_all2
+            (fun (_, m1) (_, m2) ->
+              match (m1, m2) with
+              | None, None -> true
+              | Some m1, Some m2 -> go m1 m2
+              | None, Some (Mail.Leaf "") | Some (Mail.Leaf ""), None -> true (* to correct ? *)
+              | _, _ -> false)
+            p1 p2
+        else false
     | _, _ -> false
   in
   go m1 m2
 
 let equal (m1 : _ Mail.t) (m2 : _ Mail.t) = same_structure m1 m2
+
+(* Multi [Multi [Leaf; Leaf; None; None]; None]
+   Multi [Leaf; Leaf]
+*)

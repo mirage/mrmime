@@ -317,7 +317,7 @@ module Make (Fuzz : S) = struct
     Header.replace Field_name.content_type (Field.Content, content_type) h
 
   (** [mail] recursively generates an email.  *)
-  let mail : string Mail.t t =
+  let mail : (Header.t * string Mail.t) t =
     fix (fun mail ->
         choose
           [
@@ -325,10 +325,10 @@ module Make (Fuzz : S) = struct
             const `Audio; const `Video; const `Application;
           ]
         >>= fun ty ->
-        header_ct ty >>= fun header ->
+        header_ct ty >>= fun h_parent ->
         match ty with
         | #Content_type.Type.discrete ->
-            map [ body ] @@ fun body -> Mail.(Leaf { header; body })
+            map [ body ] @@ fun body -> (h_parent, Mail.Leaf body)
         | `Message ->
             (* mail in a mail: the mail [m] is build recursively and
                converted into a stream with [Mt.to_stream m]. This stream
@@ -336,10 +336,15 @@ module Make (Fuzz : S) = struct
                header are generated for the [Mt.part] function as it
                would be concatenated with [h] by the [Mt.make]
                function. *)
-            map [ mail ] @@ fun m -> Mail.(Message { header; body = m })
+            map [ mail ] @@ fun (h, b) -> (h_parent, Mail.(Message (h, b)))
         | `Multipart ->
-            let parts = list1 (option mail) in
-            map [ parts ] @@ fun parts ->
-            Mail.Multipart { header; body = parts }
+            let parts : (Header.t * string Mail.t option) list t =
+              map [ list1 (pair header (option mail)) ] @@ fun parts ->
+              List.map
+                (function
+                  | h, None -> (h, None) | _, Some (h, m) -> (h, Some m))
+                parts
+            in
+            map [ parts ] @@ fun parts -> (h_parent, Mail.Multipart parts)
         | _ -> bad_test "mail/content_type")
 end

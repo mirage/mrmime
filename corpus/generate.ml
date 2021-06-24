@@ -1,6 +1,6 @@
 open Cmdliner
 
-let empty_mail = Mrmime.(Mail.Leaf Mail.{ header = Header.empty; body = "" })
+let empty_mail = (Mrmime.Header.empty, Mrmime.(Mail.Leaf ""))
 
 (** exception must be raised inside the "AflPersistant.run" function *)
 let parse_and_compare mail =
@@ -9,15 +9,19 @@ let parse_and_compare mail =
   in
   match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
   | Ok mail' ->
-      if Equality.equal mail (snd mail') then (
+      if Equality.equal (snd mail) (snd mail') then (
+        Format.printf "*****Generated mail*****@.";
+        Utils.print_struct ~verbose:true mail;
+        Format.printf "******Parsed mail*****@.";
+        Utils.print_struct ~verbose:true mail';
         (str_mail, `Ok 0))
       else (
-        (*Format.printf "*****Generated mail*****@.";
-        Utils.print_struct mail;
+        Format.printf "*****Generated mail*****@.";
+        Utils.print_struct ~verbose:true mail;
         Utils.print_mail mail;
         Format.printf "******Parsed mail*****@.";
-        Utils.print_struct (snd mail');
-        Utils.print_mail (snd mail');*)
+        Utils.print_struct ~verbose:true mail';
+        Utils.print_mail mail';
         failwith "not equal")
   | Error s -> (str_mail, `Error (false, s))
 
@@ -55,11 +59,7 @@ let generate (seed : [ `Crowbar of int64 option | `Fortuna of string ]) dst
         Mirage_crypto_rng.Fortuna.reseed ~g (Cstruct.of_string s);
         fortuna_mail_generator g
   in
-  (match ret with
-  | `Error (_, _) ->
-      Format.printf "Invalid mail@.";
-      Utils.print dst mail
-  | _ -> ());
+  (match ret with `Error (_, _) -> Utils.print dst mail | _ -> ());
   ret
 
 (** Fortuna command *)
