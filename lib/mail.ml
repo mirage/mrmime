@@ -123,9 +123,7 @@ let light_octet ~emitter boundary header =
 
 let boundary header =
   let content_type = Header.content_type header in
-  match List.assoc_opt "boundary" (Content_type.parameters content_type) with
-  | Some (`Token boundary) | Some (`String boundary) -> Some boundary
-  | None -> None
+  Content_type.boundary content_type
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
