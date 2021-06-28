@@ -3,29 +3,31 @@ open Cmdliner
 let empty_mail = (Mrmime.Header.empty, Mrmime.(Mail.Leaf ""))
 
 (** exception must be raised inside the "AflPersistant.run" function *)
-let parse_and_compare mail =
+let parse_and_compare ~verbose mail =
   let str_mail =
     Utils.(mail_to_mt mail |> Mrmime.Mt.to_stream |> buffer_stream_to_string)
   in
   match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
   | Ok mail' ->
-      if Equality.equal (snd mail) (snd mail') then (
-        Format.printf "*****Generated mail*****@.";
-        Utils.print_struct ~verbose:true mail;
-        Format.printf "******Parsed mail*****@.";
-        Utils.print_struct ~verbose:true mail';
-        (str_mail, `Ok 0))
+      if Equality.equal mail mail' then (str_mail, `Ok 0)
       else (
-        Format.printf "*****Generated mail*****@.";
-        Utils.print_struct ~verbose:true mail;
-        Utils.print_mail mail;
-        Format.printf "******Parsed mail*****@.";
-        Utils.print_struct ~verbose:true mail';
-        Utils.print_mail mail';
+        if verbose then (
+          Format.printf "Parsed mail is not equal to generated mail.\n";
+          Format.printf "\nStruture of generated mail\n";
+          Utils.print_struct ~verbose:true mail;
+          Format.printf "\nStruture of parsed mail\n";
+          Utils.print_struct ~verbose:true mail';
+          Format.printf "\n++++++++ Generated mail ++++++++\n\n";
+          Utils.print_mail mail;
+          Format.printf "\n\n++++++++ Parsed mail ++++++++\n\n";
+          Utils.print_mail mail');
         failwith "not equal")
-  | Error s -> (str_mail, `Error (false, s))
+  | Error s ->
+      if verbose then Format.printf "\nGenerated mail can't be parsed.\n";
+      (str_mail, `Error (false, s))
 
-let crowbar_mail_generator seed input =
+(* Multi is only defined for debug right now *)
+let crowbar_mail_generator ?(verbose = false) seed input multi =
   let module Generate = Fuzz.Make (Crowbar_fuzz) in
   let open Crowbar_fuzz in
   let mail, ret = (ref "", ref (`Ok 0)) in
@@ -34,44 +36,49 @@ let crowbar_mail_generator seed input =
       ( "mail",
         [ Generate.mail ],
         fun m ->
-          let a = parse_and_compare m in
+          let a = parse_and_compare ~verbose m in
           mail := fst a;
           ret := snd a )
   in
-  Crowbar_fuzz.run_one_test seed 1 input [] test;
-  (!mail, !ret)
+  match multi with
+  | None ->
+      Crowbar_fuzz.run_one_test seed 1 input [] test;
+      (!mail, !ret)
+  | Some m ->
+      let seed = match seed with None -> Random.int64 1000L | Some n -> n in
+      for i = 0 to m do
+        let seed = Int64.add (Int64.of_int i) seed in
+        if verbose then Format.printf "Seed: %s@." (Int64.to_string seed);
+        Crowbar_fuzz.run_one_test (Some seed) 1 input [] test
+      done;
+      (!mail, !ret)
 
-let fortuna_mail_generator g =
+let fortuna_mail_generator ?(verbose = false) g =
   let module Generate = Fuzz.Make (Fortuna) in
   assert (Mirage_crypto_rng.Fortuna.seeded ~g);
   let mail = Fortuna.run ~g Generate.mail in
-  parse_and_compare mail
+  parse_and_compare ~verbose mail
 
-let generate (seed : [ `Crowbar of int64 option | `Fortuna of string ]) dst
-    input =
+let generate ~verbose (seed : [ `Crowbar of int64 option | `Fortuna of string ]) multi
+    dst input =
   let mail, ret =
     match seed with
     | `Crowbar s ->
         Random.self_init ();
-        crowbar_mail_generator s input
+        crowbar_mail_generator ~verbose s input multi
     | `Fortuna s ->
         let g = Mirage_crypto_rng.Fortuna.create () in
         Mirage_crypto_rng.Fortuna.reseed ~g (Cstruct.of_string s);
-        fortuna_mail_generator g
+        fortuna_mail_generator ~verbose g
   in
   (match ret with `Error (_, _) -> Utils.print dst mail | _ -> ());
   ret
 
-(** Fortuna command *)
-let fortuna seed output = generate (`Fortuna seed) output None
 
-let base64 =
-  Arg.conv
-    ((fun str -> Base64.decode str), Fmt.using Base64.encode_string Fmt.string)
-
-let seed =
-  let doc = "Fortuna seed." in
-  Arg.(required & opt (some base64) None & info [ "s"; "seed" ] ~doc)
+(** Commun arguments *)
+let multi =
+  let doc = "Debug." in
+  Arg.(value & opt (some int) None & info [ "m"; "multi" ] ~doc)
 
 let filename =
   let parser = function
@@ -88,6 +95,21 @@ let output =
   let doc = "Output file, standard by default." in
   Arg.(value & opt filename `Standard & info [ "o"; "output" ] ~doc)
 
+let verbose =
+  let doc = "Debug." in
+  Arg.(value & flag & info [ "v"; "verbose" ] ~doc)
+
+(** Fortuna command *)
+let fortuna verbose seed output = generate ~verbose(`Fortuna seed) None output None
+
+let base64 =
+  Arg.conv
+    ((fun str -> Base64.decode str), Fmt.using Base64.encode_string Fmt.string)
+
+let seed =
+  let doc = "Fortuna seed." in
+  Arg.(required & opt (some base64) None & info [ "s"; "seed" ] ~doc)
+
 let fortuna_cmd =
   let doc = "Generate a randomly generated valid email from a seed." in
   let man =
@@ -98,10 +120,10 @@ let fortuna_cmd =
          and the $(i,base64) given seed.";
     ]
   in
-  (Term.(ret (const fortuna $ seed $ output)), Term.info "fortuna" ~doc ~man)
+  (Term.(ret (const fortuna $ verbose $ seed $ output)), Term.info "fortuna" ~doc ~man)
 
 (** Crowbar command*)
-let crowbar seed dst input = generate (`Crowbar seed) dst input
+let crowbar verbose seed multi dst input = generate ~verbose (`Crowbar seed) multi dst input
 
 let int64 =
   Arg.conv
@@ -123,7 +145,7 @@ let crowbar_cmd =
       `S "DESCRIPTION"; `P "Generate a random email using $(i,crowbar) fuzzer.";
     ]
   in
-  ( Term.(ret (const crowbar $ seed64 $ output $ randomness_file)),
+  ( Term.(ret (const crowbar $ verbose $ seed64 $ multi $ output $ randomness_file)),
     Term.info "crowbar" ~doc ~man )
 
 let default_cmd =

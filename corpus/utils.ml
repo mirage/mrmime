@@ -87,11 +87,19 @@ let rec mail_to_mt (mail : Header.t * string Mail.t) : Mt.t =
       in
       Mt.multipart ~header ~rng:Mt.rng parts |> Mt.make Header.empty Mt.multi
 
+let is_a_header line =
+  String.split_on_char ':' line |> function
+  | [] | [ _ ] -> false
+  | _ :: y :: _ -> String.get y 0 = ' '
+
 let count_header h =
   let lines =
-    Header.to_stream h |> stream_to_string |> String.split_on_char '\n'
+    Header.to_stream h
+    |> stream_to_string
+    |> String.split_on_char '\n'
+    |> List.filter is_a_header
   in
-  List.length lines - 1
+  List.length lines
 
 let headers_count_to_string ~verbose h =
   if verbose then (count_header h |> string_of_int) ^ ", " else ""
@@ -111,7 +119,7 @@ let rec struct_to_string ?(verbose = false) = function
         | h, None ->
             if not verbose then "None"
             else "(" ^ headers_count_to_string ~verbose h ^ "None)"
-        | h, Some m -> struct_to_string ~verbose (h, m)
+        | h, Some m -> "(" ^ struct_to_string ~verbose (h, m) ^ ")"
       in
       headers_count_to_string ~verbose hp
       ^ "Multi ["

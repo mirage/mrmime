@@ -2,6 +2,7 @@ open Mrmime
 
 exception NotEqual of string
 
+(* Headers comparison *)
 let all_field_names =
   Field_name.
     [
@@ -41,32 +42,38 @@ let compare_header (h : Header.t) (h' : Header.t) =
   in
   go h h'
 
-let print = Format.printf
 
-let same_structure m1 m2 =
-  let rec go m1 m2 =
+let compare_leaf b b' =
+  if String.length b = String.length b' then b = b' else false
+
+(* Structure comparison between two email. It checks that:
+
+ - the mail structure (leaf, message and multipart) is the same
+
+ - each corresponding parts of the parent mails have the same number
+   of email and the same body length *)
+let same_structure (h1, m1) (h2, m2) =
+  let rec go (h1, m1) (h2, m2) =
+    Utils.(count_header h1 = count_header h2)
+    &&
     match (m1, m2) with
-    | Mail.Leaf _, Mail.Leaf _ ->
-        true
-    | Message (_, m1'), Message (_, m2') ->
-        go m1' m2'
+    | Mail.Leaf b1, Mail.Leaf b2 -> compare_leaf b1 b2
+    | Message (h1', m1'), Message (h2', m2') -> go (h1', m1') (h2', m2')
     | Multipart p1, Multipart p2 ->
         if List.length p1 = List.length p2 then
           List.for_all2
-            (fun (_, m1) (_, m2) ->
-              match (m1, m2) with
+            (fun (h1', m1') (h2', m2') ->
+              match (m1', m2') with
               | None, None -> true
-              | Some m1, Some m2 -> go m1 m2
-              | None, Some (Mail.Leaf "") | Some (Mail.Leaf ""), None -> true (* to correct ? *)
+              | Some m1', Some m2' -> go (h1', m1') (h2', m2')
+              | None, Some (Mail.Leaf "") | Some (Mail.Leaf ""), None ->
+                  true (* to correct in mrmime? *)
               | _, _ -> false)
             p1 p2
         else false
     | _, _ -> false
   in
-  go m1 m2
+  go (h1, m1) (h2, m2)
 
-let equal (m1 : _ Mail.t) (m2 : _ Mail.t) = same_structure m1 m2
-
-(* Multi [Multi [Leaf; Leaf; None; None]; None]
-   Multi [Leaf; Leaf]
-*)
+let equal ((h1, m1) : Header.t * _ Mail.t) ((h2, m2) : Header.t * _ Mail.t) =
+  same_structure (h1, m1) (h2, m2)
