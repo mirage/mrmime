@@ -32,12 +32,14 @@ let is_ftext = function
   | _ -> false
 
 let of_string x =
-  try
-    for i = 0 to String.length x - 1 do
-      if not (is_ftext x.[i]) then raise Break
-    done;
-    Ok x
-  with Break -> Rresult.R.error_msgf "Invalid field: %S" x
+  if x = "" then Rresult.R.error_msgf "Invalid empty field-name"
+  else
+    try
+      for i = 0 to String.length x - 1 do
+        if not (is_ftext x.[i]) then raise Break
+      done;
+      Ok x
+    with Break -> Rresult.R.error_msgf "Invalid field: %S" x
 
 let of_string_exn x =
   match of_string x with
