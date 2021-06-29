@@ -78,9 +78,17 @@ let discard_all_to_delimiter boundary =
 let nothing_to_do = Fmt.kstrf fail "nothing to do"
 let crlf = string "\r\n"
 
-let body_part body =
+let possible_boundary boundary =
+  peek_string (String.length (make_delimiter boundary)) >>= fun str ->
+  if String.equal (make_delimiter boundary) str then return `Nothing
+  else fail "boundary"
+
+let boundary_or_crlf boundary =
+  possible_boundary boundary <|> crlf *> return `CRLF
+
+let body_part boundary body =
   Header.Decoder.header >>= fun header ->
-  (crlf *> return `CRLF <|> return `Nothing >>= function
+  (boundary_or_crlf boundary >>= function
    | `CRLF -> body header >>| Option.some
    | `Nothing -> return None)
   >>| fun body -> (header, body)
@@ -89,7 +97,7 @@ let encapsulation boundary body =
   string (make_delimiter boundary)
   *> transport_padding
   *> crlf
-  *> body_part body
+  *> body_part boundary body
 
 (* From RFC 2046:
 
@@ -110,7 +118,7 @@ let multipart_body ?parent boundary body =
   *> dash_boundary boundary
   *> transport_padding
   *> crlf
-  *> body_part body
+  *> body_part boundary body
   >>= fun x ->
   many (encapsulation boundary body) >>= fun r ->
   (close_delimiter boundary *> transport_padding *> option () (epilogue parent)
