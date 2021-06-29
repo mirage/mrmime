@@ -122,7 +122,8 @@ module Subtype = struct
     | database ->
         if Iana.Set.mem (String.lowercase_ascii token) database then
           Ok (`Iana_token token)
-        else Rresult.R.error_msgf "Subtype %S does not exist" token
+        else
+          Rresult.R.error_msgf "Subtype %S does not exist (type: %s)" token ty
     | exception Not_found -> Rresult.R.error_msgf "Type %S does not exist" ty
 
   let iana_exn ty token =
