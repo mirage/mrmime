@@ -306,7 +306,7 @@ module Make (Fuzz : S) = struct
 
   (** Generation of an mail *)
   let body : string t =
-    let is_sevenbit = function '\000' .. '\127' -> true | _ -> false in
+    let is_sevenbit = function '\000' .. '\126' -> true | _ -> false in
     let abc = alphabet_from_predicate is_sevenbit in
     range ~min:1 1000 >>= string_from_alphabet abc
 
