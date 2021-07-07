@@ -67,25 +67,42 @@ let stream_of_string str : Mt.buffer Mt.stream =
 
 let empty_stream () = None
 
-let rec mail_to_mt (mail : Header.t * string Mail.t) : Mt.t =
-  match mail with
-  | header, Leaf body ->
-      Mt.part (stream_of_string body) |> Mt.make header Mt.simple
-  | header, Message (h, b) ->
-      mail_to_mt (h, b)
-      |> Mt.to_stream
-      |> Mt.part ~header
-      |> Mt.make Header.empty Mt.simple
-  | header, Multipart parts ->
-      let parts : Mt.part list =
-        List.map
-          (fun (h, m) ->
-            match m with
-            | Some m -> mail_to_mt (h, m) |> Mt.to_stream |> Mt.part
-            | None -> Mt.part ~header:h empty_stream)
-          parts
-      in
-      Mt.multipart ~header ~rng:Mt.rng parts |> Mt.make Header.empty Mt.multi
+let mail_to_mt (mail : Header.t * string Mail.t) : Mt.t =
+  let rec to_part = function
+    | header, Mail.Leaf body ->
+        Mt.part ~header (stream_of_string body)
+    | header, Message (h, b) ->
+        to_mail (h, b) |> Mt.to_stream |> Mt.part ~header
+    | header, Multipart parts ->
+        let parts : Mt.part list =
+          List.map
+            (fun (h, m) ->
+              match m with
+              | Some m -> to_part (h, m)
+              | None -> Mt.part ~header:h empty_stream)
+            parts
+        in
+        Mt.multipart ~header ~rng:Mt.rng parts |> Mt.multipart_as_part
+  and to_mail = function
+    | header, Mail.Leaf body ->
+       Mt.part (stream_of_string body) |> Mt.make header Mt.simple
+    | header, Message (h, b) ->
+        to_mail (h, b)
+        |> Mt.to_stream
+        |> Mt.part ~header
+        |> Mt.make Header.empty Mt.simple
+    | header, Multipart parts ->
+        let parts : Mt.part list =
+          List.map
+            (fun (h, m) ->
+              match m with
+              | Some m -> to_part (h, m)
+              | None -> Mt.part ~header:h empty_stream)
+            parts
+        in
+        Mt.multipart ~header ~rng:Mt.rng parts |> Mt.make Header.empty Mt.multi
+  in
+  to_mail mail
 
 let is_a_header line =
   String.split_on_char ':' line |> function
@@ -154,3 +171,15 @@ let print_mail (m : Header.t * string Mail.t) =
   |> Mt.to_stream
   |> buffer_stream_to_string
   |> Format.printf "%s@."
+
+let print_content_encoding mail =
+  Format.printf "Content-encoding: %s\n"
+    Mrmime.(
+      Header.content_encoding (fst mail) |> function
+      | `Bit7 -> "Bit 7"
+      | `Bit8 -> "Bit 8"
+      | `Binary -> "Binary"
+      | `Quoted_printable -> "Quoted printable"
+      | `Base64 -> "Base 64"
+      | `Ietf_token _ -> "Ietf_token"
+      | `X_token _ -> "X_token")

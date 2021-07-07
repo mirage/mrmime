@@ -59,8 +59,8 @@ let fortuna_mail_generator ?(verbose = false) g =
   let mail = Fortuna.run ~g Generate.mail in
   parse_and_compare ~verbose mail
 
-let generate ~verbose (seed : [ `Crowbar of int64 option | `Fortuna of string ]) multi
-    dst input =
+let generate ~verbose (seed : [ `Crowbar of int64 option | `Fortuna of string ])
+    multi dst input =
   let mail, ret =
     match seed with
     | `Crowbar s ->
@@ -74,8 +74,7 @@ let generate ~verbose (seed : [ `Crowbar of int64 option | `Fortuna of string ])
   (match ret with `Error (_, _) -> Utils.print dst mail | _ -> ());
   ret
 
-
-(** Commun arguments *)
+(** Common arguments *)
 let multi =
   let doc = "Debug." in
   Arg.(value & opt (some int) None & info [ "m"; "multi" ] ~doc)
@@ -100,7 +99,8 @@ let verbose =
   Arg.(value & flag & info [ "v"; "verbose" ] ~doc)
 
 (** Fortuna command *)
-let fortuna verbose seed output = generate ~verbose(`Fortuna seed) None output None
+let fortuna verbose seed output =
+  generate ~verbose (`Fortuna seed) None output None
 
 let base64 =
   Arg.conv
@@ -120,10 +120,12 @@ let fortuna_cmd =
          and the $(i,base64) given seed.";
     ]
   in
-  (Term.(ret (const fortuna $ verbose $ seed $ output)), Term.info "fortuna" ~doc ~man)
+  ( Term.(ret (const fortuna $ verbose $ seed $ output)),
+    Term.info "fortuna" ~doc ~man )
 
 (** Crowbar command*)
-let crowbar verbose seed multi dst input = generate ~verbose (`Crowbar seed) multi dst input
+let crowbar verbose seed multi dst input =
+  generate ~verbose (`Crowbar seed) multi dst input
 
 let int64 =
   Arg.conv
@@ -145,7 +147,8 @@ let crowbar_cmd =
       `S "DESCRIPTION"; `P "Generate a random email using $(i,crowbar) fuzzer.";
     ]
   in
-  ( Term.(ret (const crowbar $ verbose $ seed64 $ multi $ output $ randomness_file)),
+  ( Term.(
+      ret (const crowbar $ verbose $ seed64 $ multi $ output $ randomness_file)),
     Term.info "crowbar" ~doc ~man )
 
 let default_cmd =
