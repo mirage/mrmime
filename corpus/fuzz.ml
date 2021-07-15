@@ -200,9 +200,7 @@ module Make (Fuzz : S) = struct
     let mailbox : Emile.t t = map [ mailbox ] @@ fun v -> Address.mailbox v in
     choose [ group; mailbox ]
 
-  (*let addresses : Address.t List.t t = list1 address*)
-
-  (** Content-encoding: [ty/subty;q=value] *)
+  (** Content-type: [ty/subty;q=value] *)
   let token =
     let alphabet = alphabet_from_predicate Mrmime.Content_type.is_token in
     range ~min:1 32 >>= string_from_alphabet alphabet
@@ -263,7 +261,7 @@ module Make (Fuzz : S) = struct
   (** Content-encoding : `Bit7, `Bit8, `Binary, `Quoted_printable,
      `Base64, `X_token of string and `Ietf_token.
 
-     Ietf_token and `X_token are not parsed (assert false) so we avoid
+     Ietf_token and `X_token are not by mrmime so we avoid
      generating such an encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
@@ -272,43 +270,81 @@ module Make (Fuzz : S) = struct
         const `Quoted_printable;
       ]
 
-  let value =
-    let date = map [ date ] @@ fun v -> `Date v in
-    let mailboxes = map [ list1 mailbox ] @@ fun v -> `Mailboxes v in
-    let mailbox = map [ mailbox ] @@ fun v -> `Mailbox v in
-    let addresses = map [ list1 address ] @@ fun v -> `Addresses v in
-    let content = map [ content_type ] @@ fun v -> `Content v in
-    let encoding = map [ content_encoding ] @@ fun v -> `Encoding v in
-    choose [ date; mailboxes; mailbox; addresses; content; encoding ]
-
-  (** [field] generates a header field, i.e. a pair (name, value).
-     Should we bind name to appropriate typed values (like "date" ->
-     Date.t) ?)  *)
+  (** [field] randomly generates a single header. As some headers are
+     parsed by mrmime, we make sure to generate these ones with the right
+     value. *)
   let field =
+    (* Grammar of unstructured header field follows two rfcs:
+        - rfc5322 :
+          unstructured    =   (*([FWS] VCHAR)*)
+        - rfc5234 :
+          VCHAR = %x21-7E *)
+    let unstructured : Unstructured.t t =
+      let abc =
+        alphabet_from_predicate (function
+          | '\x21' .. '\x7e' -> true
+          | _ -> false)
+      in
+      map [ range ~min:5 15 >>= string_from_alphabet abc ] @@ fun s ->
+      (match Unstrctrd.of_string (s ^ "\r\n") with
+       | Ok (_, s) -> s
+       | _ -> bad_test "Unstructured"
+        :> Unstructured.t)
+    in
     field_name >>= fun field_name ->
-    if Field_name.(equal field_name content_encoding) then
+    if Field_name.(equal field_name date) then
+      (* date*)
+      map [ date ] @@ fun date -> Field.(Field (field_name, Date, date))
+    else if Field_name.(equal field_name from) then
+      (* from*)
+      map [ mailboxes ] @@ fun mailboxes ->
+      Field.(Field (field_name, Mailboxes, mailboxes))
+    else if Field_name.(equal field_name sender) then
+      (* sender *)
+      map [ mailbox ] @@ fun mailbox ->
+      Field.(Field (field_name, Mailbox, mailbox))
+    else if Field_name.(equal field_name reply_to) then
+      (* reply_to *)
+      map [ list1 address ] @@ fun addresses ->
+      Field.(Field (field_name, Addresses, addresses))
+    else if Field_name.(equal field_name cc) then
+      (* cc *)
+      map [ list1 address ] @@ fun addresses ->
+      Field.(Field (field_name, Addresses, addresses))
+    else if Field_name.(equal field_name bcc) then
+      (* bcc *)
+      map [ list1 address ] @@ fun addresses ->
+      Field.(Field (field_name, Addresses, addresses))
+      (*else if Field_name.(equal field_name message_id) then
+        (* message-id *)
+        map [ message_id ] @@ fun message_id ->
+        Field.(Field (field_name, MessageID, message_id))*)
+    else if Field_name.(equal field_name content_type) then
+      (* content-type *)
+      map [ content_type ] @@ fun content_type ->
+      Field.(Field (field_name, Content, content_type))
+    else if Field_name.(equal field_name content_encoding) then
+      (* content-transfer-encoding *)
       map [ content_encoding ] @@ fun encoding ->
       Field.(Field (field_name, Encoding, encoding))
-    else if Field_name.(equal field_name content_type) then
-      map [ content_type ] @@ fun ty -> Field.(Field (field_name, Content, ty))
     else
-      map [ value ] @@ function
-      | `Date v -> Field.Field (field_name, Field.Date, v)
-      | `Mailboxes v -> Field.Field (field_name, Field.Mailboxes, v)
-      | `Mailbox v -> Field.Field (field_name, Field.Mailbox, v)
-      | `Addresses v -> Field.Field (field_name, Field.Addresses, v)
-      | `Content v -> Field.Field (field_name, Field.Content, v)
-      | `Encoding v -> Field.Field (field_name, Field.Encoding, v)
+      map [ unstructured ] @@ fun unstructured ->
+      Field.(Field (field_name, Unstructured, unstructured))
 
   let header = map [ list1 field ] @@ Header.of_list
 
-  (* max size of body ? *)
-
-  (** Generation of an mail *)
-  let body : string t =
-    let is_sevenbit = function '\000' .. '\126' -> true | _ -> false in
-    let abc = alphabet_from_predicate is_sevenbit in
-    range ~min:1 1000 >>= string_from_alphabet abc
+  (** body generator *)
+  let body header : string t =
+    let is_bit7 = function '\000' .. '\127' -> true | _ -> false in
+    let body predicat =
+      let abc = alphabet_from_predicate predicat in
+      range ~min:1 1000 >>= string_from_alphabet abc
+    in
+    match Header.content_encoding header with
+    | `Bit7 | `Binary -> body is_bit7
+    | `Bit8 -> body (fun _ -> true)
+    | `Quoted_printable | `Base64 -> body (fun _ -> true)
+    | `Ietf_token _ | `X_token _ -> assert false
 
   (** [header_ct ty] generates header with a given content-type type [ty]. *)
   let header_ct ty =
@@ -328,15 +364,15 @@ module Make (Fuzz : S) = struct
         header_ct ty >>= fun h_parent ->
         match ty with
         | #Content_type.Type.discrete ->
-            map [ body ] @@ fun body -> (h_parent, Mail.Leaf body)
-        | `Message ->
+            map [ body h_parent ] @@ fun body -> (h_parent, Mail.Leaf body)
+        (*| `Message ->
             (* mail in a mail: the mail [m] is build recursively and
                converted into a stream with [Mt.to_stream m]. This stream
                is used to build a part and then the parent mail. No new
                header are generated for the [Mt.part] function as it
                would be concatenated with [h] by the [Mt.make]
                function. *)
-            map [ mail ] @@ fun (h, b) -> (h_parent, Mail.(Message (h, b)))
+            map [ mail ] @@ fun (h, b) -> (h_parent, Mail.(Message (h, b)))*)
         | `Multipart ->
             let parts : (Header.t * string Mail.t option) list t =
               map [ list1 (pair header (option mail)) ] @@ fun parts ->
