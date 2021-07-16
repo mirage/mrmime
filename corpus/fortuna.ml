@@ -28,7 +28,6 @@ exception Bad
 
 let bad_test _where = raise Bad
 
-
 let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
  fun ~g t f ->
   try

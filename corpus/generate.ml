@@ -44,11 +44,7 @@ let crowbar_mail_generator ?(debug = false) seed multi dst input =
         fun m ->
           let m, r = parse_and_compare ~debug m in
           (match r with
-          | `Ok _ -> (
-              match dst with
-              | `Dir _ ->
-                  Utils.print dst m
-              | _ -> ())
+          | `Ok _ -> ( match dst with `Dir _ -> Utils.print dst m | _ -> ())
           | `Error _ -> if debug then Utils.(print dst m));
           mail := m;
           ret := r )

@@ -1,4 +1,5 @@
 (executable
  (name generate)
+ (public_name mrmime.generate)
  (libraries hxd.string hxd.core cmdliner fpath mirage-crypto-rng mrmime
- 	    ocplib-endian str afl-persistent))
+   ocplib-endian str afl-persistent))
