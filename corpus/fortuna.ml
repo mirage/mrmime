@@ -81,18 +81,16 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
           let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
           Int64.to_int (Cstruct.LE.get_uint64 cs 0)
       | _ -> assert false)
-  | Range { min; max } ->
-      if max < 0x100 then
+  | Range { min; max = m } ->
+      if m < 0x100 then
         let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-        min + (Cstruct.get_uint8 cs 0 mod max)
-      else if max < 0x1000000 then
+        min + (Cstruct.get_uint8 cs 0 mod m)
+      else if m < 0x1000000 then
         let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
-        min
-        + Int32.(to_int (abs (rem (Cstruct.LE.get_uint32 cs 0) (of_int max))))
+        min + Int32.(to_int (abs (rem (Cstruct.LE.get_uint32 cs 0) (of_int m))))
       else
         let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-        min
-        + Int64.(to_int (abs (rem (Cstruct.LE.get_uint64 cs 0) (of_int max))))
+        min + Int64.(to_int (abs (rem (Cstruct.LE.get_uint64 cs 0) (of_int m))))
   | Bind (x, f) ->
       let v = run ~g x in
       run ~g (f v)
