@@ -223,9 +223,9 @@ exception GenFailed of exn * Printexc.raw_backtrace * unit printer
 
 let rec generate : type a. int -> state -> a t -> a * unit printer =
  fun size input gen ->
-  (*if size <= 1 && gen.small_examples <> [] then
-      (List.hd gen.small_examples, fun ppf () -> pp ppf "?")
-    else*)
+  (* if size <= 1 && gen.small_examples <> [] then
+       (List.hd gen.small_examples, fun ppf () -> pp ppf "?")
+     else *)
   match gen.strategy with
   | Choose gens ->
       (* FIXME: better distribution? *)

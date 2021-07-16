@@ -48,7 +48,8 @@ let mail_to_mt (mail : Header.t * string Mail.t) : Mt.t =
         Mt.multipart ~header ~rng:Mt.rng parts |> Mt.multipart_as_part
   and to_mail = function
     | header, Mail.Leaf body ->
-        Mt.part (stream_of_string body) |> Mt.make header Mt.simple
+        Mt.part ~header (stream_of_string body)
+        |> Mt.make Header.empty Mt.simple
     | header, Message (h, b) ->
         to_mail (h, b)
         |> Mt.to_stream
@@ -99,33 +100,27 @@ let count_header h =
   in
   List.length lines
 
-let headers_count_to_string ~debug h =
-  if debug then (count_header h |> string_of_int) ^ ", " else ""
+let headers_count_to_string h = (count_header h |> string_of_int) ^ ", "
 
-let rec struct_to_string ?(debug = false) = function
+let rec struct_to_string = function
   | hp, Mail.Leaf s ->
-      headers_count_to_string ~debug hp
+      headers_count_to_string hp
       ^ "Leaf"
-      ^ if not debug then "" else " " ^ string_of_int (String.length s)
+      ^ " "
+      ^ string_of_int (String.length s)
   | hp, Message (h, st) ->
-      headers_count_to_string ~debug hp
-      ^ "Message ("
-      ^ struct_to_string ~debug (h, st)
-      ^ ")"
+      headers_count_to_string hp ^ "Message (" ^ struct_to_string (h, st) ^ ")"
   | hp, Multipart parts ->
       let print_part = function
-        | h, None ->
-            if not debug then "None"
-            else "(" ^ headers_count_to_string ~debug h ^ "None)"
-        | h, Some m -> "(" ^ struct_to_string ~debug (h, m) ^ ")"
+        | _h, None -> "None"
+        | h, Some m -> "(" ^ struct_to_string (h, m) ^ ")"
       in
-      headers_count_to_string ~debug hp
+      headers_count_to_string hp
       ^ "Multi ["
       ^ String.concat "; " (List.map print_part parts)
       ^ "]"
 
-let print_struct ?(debug = false) (h, m) =
-  struct_to_string ~debug (h, m) |> Format.printf "%s@."
+let print_struct (h, m) = struct_to_string (h, m) |> Format.printf "%s@."
 
 let date_to_string date =
   let open Mrmime.Date in

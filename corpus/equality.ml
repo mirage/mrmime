@@ -1,22 +1,7 @@
 open Mrmime
+module Log = (val Logs.src_log (Logs.Src.create "equality"))
 
-exception NotEqual of string
-
-(** [extract_headers h] extracts all classical headers among a
-   predefined list (included date, from, sender, to, reply_to) *)
-let extract_headers h =
-  let to_ = Field_name.v "to" in
-  let field_names =
-    Field_name.
-      [
-        date; from; sender; to_; reply_to; cc; bcc; subject; message_id;
-        in_reply_to; references; comments; keywords; received; return_path;
-        content_type; content_encoding; mime_version; content_id;
-        content_description; resent_date; resent_from; resent_sender; resent_to;
-        resent_cc; resent_bcc; resent_message_id; resent_reply_to;
-      ]
-  in
-  List.map (fun name -> (name, Header.assoc name h)) field_names
+exception Not_equal of string
 
 (** [compare_parameters ct ct'] compares [Content_type.t] parameters
    values of [ct] and [ct']. If a boundary parameter is present in
@@ -31,14 +16,17 @@ let compare_parameters ct ct' =
   in
   match (param_without_boundary ct, param_without_boundary ct') with
   | (false, p), (false, p') | (true, p), (true, p') -> Parameters.equal p p'
-  | _, _ -> false
+  | _, _ ->
+      Log.err (fun m -> m "Parameters into the content-type are not equal.");
+      false
 
 (** [comapre_field_value f f'] compares field values [f] and [f']:
    both must have the same witness and are equal according to the
    proper equality function. Equality between [unstructured] values is
    not checked. *)
-let compare_field_value ~debug (Field.Field (_n, w, v))
-    (Field.Field (_n, w', v')) =
+let compare_field_value :
+    type a b. a Mrmime.Field.t -> a -> b Mrmime.Field.t -> b -> bool =
+ fun w v w' v' ->
   match (w, w') with
   | Field.Date, Field.Date -> Date.equal v v'
   | Field.Mailbox, Field.Mailbox -> Mailbox.equal v v'
@@ -60,39 +48,49 @@ let compare_field_value ~debug (Field.Field (_n, w, v))
   | Field.Encoding, Field.Encoding -> Content_encoding.equal v v'
   | Field.Unstructured, Field.Unstructured -> true
   | _, _ ->
-      if debug then
-        Format.printf "Mismatched field value type : %s %s.\n"
-          (Utils.field_to_string w) (Utils.field_to_string w');
+      Log.err (fun m ->
+          m "Mismatched field value type: %S <> %S." (Utils.field_to_string w)
+            (Utils.field_to_string w'));
       false
 
-let compare_field_values ~debug vs vs' =
-  List.for_all2 (fun f f' -> compare_field_value ~debug f f') vs vs'
-
-let rec compare_sorted_list ~debug (h1 : (Field_name.t * Field.field list) list)
-    (h2 : (Field_name.t * Field.field list) list) =
+let rec compare_sorted_list (h1 : Field.field list) (h2 : Field.field list) =
   match (h1, h2) with
   | [], [] -> true
   | _, [] | [], _ ->
-      if debug then Format.printf "Headers have different size.\n";
+      Log.err (fun m -> m "Headers are different.");
+      Log.err (fun m ->
+          m "[hdrs0]: @[<hov>%a@]." Mrmime.Header.pp Mrmime.Header.(of_list h1));
+      Log.err (fun m ->
+          m "[hdrs1]: @[<hov>%a@]." Mrmime.Header.pp Mrmime.Header.(of_list h2));
       false
-  | (name, values) :: xs, (name', values') :: ys ->
-      if Field_name.equal name name' then
-        if compare_field_values ~debug values values' then
-          compare_sorted_list ~debug xs ys
-        else (
-          if debug then Format.printf "Mismatched header field.\n";
-          false)
-      else (
-        if debug then Format.printf "Mismatched header names.\n";
-        false)
+  | ( (Mrmime.Field.Field (name, w, v) as field) :: xs,
+      (Mrmime.Field.Field (name', w', v') as field') :: ys ) ->
+      let res =
+        Field_name.equal name name'
+        && compare_field_value w v w' v'
+        && compare_sorted_list xs ys
+      in
+      if not res then
+        Log.err (fun m ->
+            m "@[<hov>%a@] is not equal with @[<hov>%a@]." Mrmime.Field.pp field
+              Mrmime.Field.pp field');
+      res
 
 (** [compare_header h h'] compares headers with the supposition that
    they are in same order.*)
 let compare_header (h : Header.t) (h' : Header.t) =
-  compare_sorted_list (extract_headers h) (extract_headers h')
+  let res =
+    compare_sorted_list (Mrmime.Header.to_list h) (Mrmime.Header.to_list h')
+  in
+  if not res then
+    Log.err (fun m ->
+        m "@[<hov>%a@] <> @[<hov>%a@]" Mrmime.Header.pp h Mrmime.Header.pp h');
+  res
 
 let compare_leaf b b' =
-  if String.length b = String.length b' then b = b' else false
+  let res = String.length b = String.length b' && b = b' in
+  if not res then Log.err (fun m -> m "Contents are not equal %S <> %S." b b');
+  res
 
 (** [equal h h'] is an equality between two headers. The comparison checks that: 
 
@@ -100,11 +98,13 @@ let compare_leaf b b' =
  - both content are the same
  - some equalities on headers with [compare_header]
 *)
-let equal ~debug ((h1, m1) : Header.t * _ Mail.t)
-    ((h2, m2) : Header.t * _ Mail.t) =
+let equal ((h1, m1) : Header.t * _ Mail.t) ((h2, m2) : Header.t * _ Mail.t) =
   let rec go (h1, m1) (h2, m2) =
-    Utils.(count_header h1 = count_header h2)
-    && compare_header ~debug h1 h2
+    Log.debug (fun m ->
+        m "Header 0 (%d) = Header 1 (%d)?" (Mrmime.Header.length h1)
+          (Mrmime.Header.length h2));
+    Mrmime.Header.length h1 = Mrmime.Header.length h2
+    && compare_header h1 h2
     &&
     match (m1, m2) with
     | Mail.Leaf b1, Mail.Leaf b2 -> compare_leaf b1 b2
@@ -116,11 +116,8 @@ let equal ~debug ((h1, m1) : Header.t * _ Mail.t)
               match (m1', m2') with
               | None, None -> true
               | Some m1', Some m2' -> go (h1', m1') (h2', m2')
-              | None, Some (Mail.Leaf "") | Some (Mail.Leaf ""), None ->
-                  true (* to correct in mrmime? *)
-              | _, _ ->
-                  if debug then Format.printf "Mismatched mails structure.\n";
-                  false)
+              | None, Some (Mail.Leaf "") | Some (Mail.Leaf ""), None -> true
+              | _, _ -> false)
             p1 p2
         else false
     | _, _ -> false
