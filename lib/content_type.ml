@@ -215,10 +215,11 @@ module Parameters = struct
        At the end, \032, is possible in a quoted-string however, number of it
        does not look significant - so we don't try to escape it. *)
     let need_to_escape = function
-      | '\009' | '\010' | '\013' | '\034' | '\092' -> true
+      | '\008' | '\009' | '\010' | '\013' | '\034' | '\092' -> true
       | _ -> false
     in
     let of_escaped_character = function
+      | '\008' -> 'b'
       | '\009' -> 't'
       | '\010' -> 'n'
       | '\013' -> 'r'
