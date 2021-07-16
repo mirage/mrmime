@@ -43,7 +43,7 @@ depends: [
   "jsonm"            {with-test}
   "crowbar"          {with-test}
   "lwt"              {with-test}
-  "logs"             {with-test}
+  "logs"
 ]
 
 pin-depends: [
