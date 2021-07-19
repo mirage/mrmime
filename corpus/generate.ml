@@ -30,11 +30,11 @@ let parse_and_compare ~quiet output mail =
   match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
   | Ok mail' ->
       let str_mail' =
-        Utils.(mail_to_mt mail)
+        Utils.(mail_to_mt mail')
         |> Mrmime.Mt.to_stream
         |> Utils.buffer_stream_to_string
       in
-
+      
       if Equality.equal mail mail' then (
         save_mails_into_files output str_mail str_mail';
         if quiet then `Ok 0
@@ -60,8 +60,7 @@ let crowbar_mail_generator ~quiet seed multi output input =
       ( "mail",
         [ Generate.mail ],
         fun m ->
-          let res = parse_and_compare ~quiet output m in
-          ret := res )
+          ret := parse_and_compare ~quiet output m)
   in
   match multi with
   | None ->
