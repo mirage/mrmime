@@ -50,6 +50,8 @@ let replace : type a. Field_name.t -> a Field.t * a -> t -> t =
 
 let of_list = List.map (Location.inj ~location:Location.none)
 let of_list_with_location x = x
+let to_list_with_location x = x
+let to_list = List.map Location.prj
 
 let content_type header =
   let content : Content_type.t ref = ref Content_type.default in
@@ -82,6 +84,8 @@ let message_id header =
     | _ :: tl -> go tl
   in
   go (List.map Location.prj header)
+
+let length t = List.length t
 
 module Decoder = struct
   open Angstrom

@@ -47,6 +47,8 @@ val of_list : Field.field list -> t
 (** [of_list l] returns a header from the list [l] (without location). *)
 
 val of_list_with_location : Field.field Location.with_location list -> t
+val to_list_with_location : t -> Field.field Location.with_location list
+val to_list : t -> Field.field list
 
 val empty : t
 (** [empty] is an empty header which does not have any default values. *)
@@ -62,6 +64,9 @@ val content_encoding : t -> Content_encoding.t
 val message_id : t -> MessageID.t option
 (** [message_id header] returns a {!MessageID.t} if it exists. Otherwise it returns
    [None]. *)
+
+val length : t -> int
+(** [length hdr] returns the length of the given header [hdr]. *)
 
 (** {2 Decoder of header.} *)
 
