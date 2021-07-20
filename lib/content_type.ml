@@ -544,7 +544,11 @@ module Decoder = struct
     char '\\' *> any_char >>| Parameters.of_escaped_character >>| String.make 1
 
   let quoted_string =
-    char '"' *> many (quoted_pair <|> utf_8_and is_qtext)
+    char '"'
+    *> many
+         (quoted_pair
+         <|> utf_8_and is_qtext
+         <|> (satisfy is_wsp >>| String.make 1))
     <* char '"'
     >>| String.concat ""
 
