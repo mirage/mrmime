@@ -15,12 +15,16 @@ let compare_parameters ct ct' =
     | Some _ -> (true, Parameters.(remove (k "boundary") p))
   in
   match (param_without_boundary ct, param_without_boundary ct') with
-  | (false, p), (false, p') | (true, p), (true, p') -> Parameters.equal p p'
+  | (false, p), (false, p') | (true, p), (true, p') ->
+      let res = Parameters.equal p p' in
+      if not res then
+        Log.err (fun m -> m "Content-type parameters are not equal.");
+      res
   | _, _ ->
-      Log.err (fun m -> m "Parameters into the content-type are not equal.");
+      Log.err (fun m -> m "Content-type parameters are not equal.");
       false
 
-(** [comapre_field_value f f'] compares field values [f] and [f']:
+(** [compare_field_value f f'] compares field values [f] and [f']:
    both must have the same witness and are equal according to the
    proper equality function. Equality between [unstructured] values is
    not checked. *)
@@ -40,10 +44,10 @@ let compare_field_value :
         if Content_type.(Subtype.equal (subty v) (subty v')) then
           compare_parameters v v'
         else (
-          Format.printf "Different content subtype.\n";
+          Log.err (fun m -> m "Content types have different subtypes.");
           false)
       else (
-        Format.printf "Different content type.\n";
+        Log.err (fun m -> m "Content types have different subtypes.");
         false)
   | Field.Encoding, Field.Encoding -> Content_encoding.equal v v'
   | Field.Unstructured, Field.Unstructured -> true
@@ -65,16 +69,12 @@ let rec compare_sorted_list (h1 : Field.field list) (h2 : Field.field list) =
       false
   | ( (Mrmime.Field.Field (name, w, v) as field) :: xs,
       (Mrmime.Field.Field (name', w', v') as field') :: ys ) ->
-      let res =
-        Field_name.equal name name'
-        && compare_field_value w v w' v'
-        && compare_sorted_list xs ys
-      in
+      let res = Field_name.equal name name' && compare_field_value w v w' v' in
       if not res then
         Log.err (fun m ->
             m "@[<hov>%a@] is not equal with @[<hov>%a@]." Mrmime.Field.pp field
               Mrmime.Field.pp field');
-      res
+      res && compare_sorted_list xs ys
 
 (** [compare_header h h'] compares headers with the supposition that
    they are in same order.*)
@@ -92,9 +92,9 @@ let compare_leaf b b' =
   if not res then Log.err (fun m -> m "Contents are not equal %S <> %S." b b');
   res
 
-(** [equal h h'] is an equality between two headers. The comparison checks that: 
+(** [equal h h'] is an equality between two headers. The comparison checks that:
 
- - the mail structure (leaf, message and multipart) is the same 
+ - the mail structure (leaf, message and multipart) is the same
  - both content are the same
  - some equalities on headers with [compare_header]
 *)
