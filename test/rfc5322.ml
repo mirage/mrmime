@@ -166,14 +166,61 @@ let parse_header x =
     Angstrom.parse_string ~consume:Angstrom.Consume.Prefix
       Mrmime.Header.Decoder.header (x ^ "\r\n")
   with
-  | Ok header -> Fmt.pr "header: @[<hov>%a@].\n%!" Mrmime.Header.pp header
+  | Ok header -> header
   | Error _ -> Fmt.failwith "Invalid header"
+
+let parse_and_print_header x =
+  parse_header x |> Fmt.pr "header: @[<hov>%a@].\n%!" Mrmime.Header.pp
 
 let header_tests =
   let make idx input =
     Alcotest.test_case (Fmt.strf "header %d" idx) `Quick @@ fun () ->
-    Alcotest.(check pass) input (parse_header input) ()
+    Alcotest.(check pass) input (parse_and_print_header input) ()
   in
   List.mapi make header_tests
 
-let () = Alcotest.run "rfc5322" [ ("header", header_tests) ]
+(* [parse_content_type x expected] extracts a content-type header from
+   x and compares its types, subtypes and parameters counts to the
+   expected values [expected] *)
+let parse_content_type x (ty, subty, param_count) =
+  let open Mrmime in
+  let content_type = parse_header x |> Header.assoc Field_name.content_type in
+  let ty', subty', param_count' =
+    match content_type with
+    | [ Mrmime.Field.Field (_, w, v) ] -> (
+        match w with
+        | Field.Content ->
+            ( Content_type.ty v,
+              Content_type.subty v,
+              Content_type.parameters v |> List.length )
+        | _ -> Fmt.failwith "Not a content type.")
+    | _ -> Fmt.failwith "Invalid header"
+  in
+  if not (Content_type.Type.equal ty ty') then
+    Fmt.failwith "Content-type don't matched"
+  else if not (Content_type.Subtype.equal subty subty') then
+    Fmt.failwith "Content-subtype don't matched"
+  else if not (param_count = param_count') then
+    Fmt.failwith "Not the same number of parameters."
+  else ()
+
+(* Check that whitespaces are allowed in content type parameter value (PR#72) *)
+let content_type_test =
+  let test =
+    {|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>
+      (=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?=)
+To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed
+   <ned@innosoft.com>, Keith Moore <moore@cs.utk.edu>
+Subject: Test of new header generator
+MIME-Version: 1.0
+Content-type: text/plain; wpefjjnqwisj231=" q02eifwe0sn  "; weinfw="qwewqe"
+|}
+  in
+  let ct =
+    Mrmime.Content_type.(Type.text, Subtype.iana_exn Type.text "plain", 2)
+  in
+  Alcotest.test_case "header - content-type" `Quick @@ fun () ->
+  Alcotest.(check pass) test (parse_content_type test ct) ()
+
+let () =
+  Alcotest.run "rfc5322" [ ("header", header_tests @ [ content_type_test ]) ]
