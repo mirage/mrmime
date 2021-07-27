@@ -127,7 +127,7 @@ module Make (Fuzz : S) = struct
 
   (** Date *)
   let date =
-    let year = range ~min:0 9999 in
+    let year = range ~min:1000 9999 in
     let day = range ~min:1 31 in
     let hour = range ~min:0 23 in
     let minute = range ~min:0 59 in

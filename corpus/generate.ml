@@ -34,7 +34,6 @@ let parse_and_compare ~quiet output mail =
         |> Mrmime.Mt.to_stream
         |> Utils.buffer_stream_to_string
       in
-      
       if Equality.equal mail mail' then (
         save_mails_into_files output str_mail str_mail';
         if quiet then `Ok 0
@@ -59,8 +58,7 @@ let crowbar_mail_generator ~quiet seed multi output input =
     Test
       ( "mail",
         [ Generate.mail ],
-        fun m ->
-          ret := parse_and_compare ~quiet output m)
+        fun m -> ret := parse_and_compare ~quiet output m )
   in
   match multi with
   | None ->
@@ -68,7 +66,7 @@ let crowbar_mail_generator ~quiet seed multi output input =
       !ret
   | Some m ->
       let seed = match seed with None -> Random.int64 1000L | Some n -> n in
-      for i = 0 to m do
+      for i = 0 to m - 1 do
         let seed = Int64.add (Int64.of_int i) seed in
         Crowbar_fuzz.run_one_test (Some seed) 1 input [] test
       done;
