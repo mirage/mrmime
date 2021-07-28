@@ -294,6 +294,49 @@ let test4 () =
   | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"
   | Error _ -> Fmt.invalid_arg "Invalid email"
 
+let buffer_stream_to_string v =
+  let buf = Buffer.create 0x1000 in
+  let rec go () =
+    match v () with
+    | Some (str, off, len) ->
+        Buffer.add_substring buf str off len;
+        go ()
+    | None -> Buffer.contents buf
+  in
+  go ()
+
+(** Regression test for PR#77: no whitespace should be added by
+   prettym inside a quoted-string in an header. *)
+let test5 () =
+  let open Mrmime in
+  let part = Mt.part (stream_of_string "Some body") in
+  let header =
+    let ct =
+      Content_type.(
+        make `Video
+          (Subtype.v `Video "vnd.CCTV")
+          Parameters.(
+            of_list
+              [
+                ( k "someprettylongparameters",
+                  v "abcdefghijklmnopqrstuvwxyz\t12345678" );
+              ]))
+    in
+    Header.of_list Field.[ Field (Field_name.content_type, Content, ct) ]
+  in
+  let mail =
+    Mt.make header Mt.simple part |> Mt.to_stream |> buffer_stream_to_string
+  in
+  Alcotest.test_case "Prettym cut" `Quick @@ fun () ->
+  Alcotest.(check string)
+    "contents" mail
+    "Content-Type: video/vnd.CCTV; someprettylongparameters=\r\n\
+    \                \"abcdefghijklmnopqrstuvwxyz\\\\t12345678\"\r\n\
+     \r\n\
+     Some body"
+
 let () =
   Alcotest.run "mail"
-    [ ("example", [ test0 (); test1 (); test2 (); test3 (); test4 () ]) ]
+    [
+      ("example", [ test0 (); test1 (); test2 (); test3 (); test4 (); test5 () ]);
+    ]
