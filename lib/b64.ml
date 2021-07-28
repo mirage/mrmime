@@ -102,7 +102,7 @@ let rec parser ~write_data dec =
       peek_char >>= function
       | None ->
           Base64_rfc2045.src dec Bytes.empty 0 0;
-          commit
+          commit *> parser ~write_data dec
       | Some _ ->
           available >>= fun len ->
           Unsafe.take len Bigstringaf.substring >>= fun str ->
