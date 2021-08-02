@@ -70,7 +70,7 @@ module Encoder = struct
   open Prettym
 
   let atom = [ !!string ]
-  let str = [ char $ '"'; !!string; char $ '"' ]
+  let str = [ box; char $ '"'; !!string; char $ '"'; close ]
 
   let word ppf = function
     | `Atom x -> eval ppf atom x
