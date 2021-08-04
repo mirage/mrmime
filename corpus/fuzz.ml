@@ -78,7 +78,7 @@ module Make (Fuzz : S) = struct
       [
         const Field_name.date; const Field_name.from; const Field_name.sender;
         const Field_name.reply_to; const Field_name.cc; const Field_name.bcc;
-        const Field_name.subject; const Field_name.message_id;
+        const Field_name.subject; (*const Field_name.message_id;*)
         const Field_name.in_reply_to; const Field_name.references;
         const Field_name.comments; const Field_name.keywords;
         const Field_name.received; const Field_name.return_path;
@@ -270,6 +270,25 @@ module Make (Fuzz : S) = struct
         const `Quoted_printable;
       ]
 
+  let messageid : Mrmime.MessageID.t t =
+    let dtext = alphabet_from_predicate Emile.Parser.is_dtext in
+    let word = range ~min:1 78 >>= string_from_alphabet dtext in
+    let domain =
+      map [ list1 word ] @@ fun w ->
+      let w =
+        List.(
+          map MessageID.Domain.atom w
+          |> fold_left
+               (fun acc elt ->
+                 match elt with Some (`Atom x) -> x :: acc | None -> acc)
+               [])
+      in
+      match w with [] -> bad_test "message-id" | _ -> `Domain w
+    in
+    let literal = map [ word ] @@ fun w -> MessageID.Domain.(v default w) in
+    map [ local; choose [ domain; literal ] ] @@ fun local domain ->
+    (local, domain)
+
   (** [field] randomly generates a single header. As some headers are
      parsed by mrmime, we make sure to generate these ones with the right
      value. *)
@@ -315,10 +334,10 @@ module Make (Fuzz : S) = struct
       (* bcc *)
       map [ list1 address ] @@ fun addresses ->
       Field.(Field (field_name, Addresses, addresses))
-      (*else if Field_name.(equal field_name message_id) then
-        (* message-id *)
-        map [ message_id ] @@ fun message_id ->
-        Field.(Field (field_name, MessageID, message_id))*)
+    else if Field_name.(equal field_name message_id) then
+      (* message-id *)
+      map [ messageid ] @@ fun message_id ->
+      Field.(Field (field_name, MessageID, message_id))
     else if Field_name.(equal field_name content_type) then
       (* content-type *)
       map [ content_type ] @@ fun content_type ->
