@@ -87,7 +87,14 @@ let compare_header (h : Header.t) (h' : Header.t) =
         m "@[<hov>%a@] <> @[<hov>%a@]" Mrmime.Header.pp h Mrmime.Header.pp h');
   res
 
-let compare_leaf b b' =
+let compare_leaf (encoding : Mrmime.Content_encoding.t) b b' =
+  let b =
+    match encoding with
+    (* Quoted printable decoding always adds a \n at the end of the
+       line*)
+    | `Quoted_printable -> b ^ "\n"
+    | _ -> b
+  in
   let res = String.length b = String.length b' && b = b' in
   if not res then Log.err (fun m -> m "Contents are not equal %S <> %S." b b');
   res
@@ -107,7 +114,8 @@ let equal ((h1, m1) : Header.t * _ Mail.t) ((h2, m2) : Header.t * _ Mail.t) =
     && compare_header h1 h2
     &&
     match (m1, m2) with
-    | Mail.Leaf b1, Mail.Leaf b2 -> compare_leaf b1 b2
+    | Mail.Leaf b1, Mail.Leaf b2 ->
+        compare_leaf (Mrmime.Header.content_encoding h1) b1 b2
     | Message (h1', m1'), Message (h2', m2') -> go (h1', m1') (h2', m2')
     | Multipart p1, Multipart p2 ->
         if List.length p1 = List.length p2 then
