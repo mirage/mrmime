@@ -33,15 +33,20 @@ depends: [
   "bigarray-compat"
   "bigarray-overlap" {>= "0.2.0"}
   "angstrom"         {>= "0.14.0"}
-  "hxd"              {with-test}
+  "cmdliner"
+  "fpath"
+  "hxd"
+  "mirage-crypto-rng"
+  "ocplib-endian"
+  "afl-persistent"
   "alcotest"         {with-test}
   "jsonm"            {with-test}
   "crowbar"          {with-test}
   "lwt"              {with-test}
-  "logs"             {with-test}
+  "logs"
 ]
 
 pin-depends: [
   [ "pecu.dev" "git+https://github.com/mirage/pecu.git#b33965ed8ade1102ae1f18ba6c95aa5d696ec9c3" ]
-  [ "unstrctrd.dev" "git+https://github.com/dinosaure/unstrctrd.git#460c963e577936146da3c2c4f619a05db09d8348" ]
+  [ "unstrctrd.dev" "git+https://github.com/dinosaure/unstrctrd.git#f2dc1640c647ceeb8ee0c4ae3fef705f51507621" ]
 ]

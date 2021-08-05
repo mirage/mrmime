@@ -225,7 +225,7 @@ module Parameters = struct
       | '\013' -> 'r'
       | c -> c
     in
-    let escape_characters x =
+    let _escape_characters x =
       let len = String.length x in
       let buf = Buffer.create len in
       String.iter
@@ -265,7 +265,7 @@ module Parameters = struct
            However, order is really important semantically. UTF-8 -> escape
            expects a special process to decoder (escape -> UTF-8). About history,
            unicorn and so on, it should be the best to keep this order. *)
-        Rresult.R.(utf_8 v >>| escape_characters >>| fun x -> `String x)
+        Rresult.R.(utf_8 v (* >>| escape_characters *) >>| fun x -> `String x)
 
   let value_exn x =
     match value x with Ok v -> v | Error (`Msg err) -> invalid_arg err
