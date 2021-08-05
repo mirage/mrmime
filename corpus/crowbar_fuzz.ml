@@ -1,5 +1,5 @@
 (* This code mainly come from
-   https://github.com/stedolan/crowbar/blob/master/src/crowbar.ml.  *)
+   https://github.com/stedolan/crowbar/blob/master/src/crowbar.ml. *)
 
 type src = Random of Random.State.t | Fd of Unix.file_descr
 
