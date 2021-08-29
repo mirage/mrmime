@@ -101,6 +101,21 @@ module Type = struct
     | `Multipart -> "multipart"
     | `Ietf_token token | `X_token token -> token
 
+  let of_string str =
+    match String.lowercase_ascii str with
+    | "text" -> Ok `Text
+    | "image" -> Ok `Image
+    | "audio" -> Ok `Audio
+    | "video" -> Ok `Video
+    | "application" -> Ok `Application
+    | "message" -> Ok `Message
+    | "multipart" -> Ok `Multipart
+    | str -> (
+        match (ietf str, extension str) with
+        | Ok ietf, _ -> Ok ietf
+        | _, Ok extension -> Ok extension
+        | _ -> Rresult.R.error_msgf "Invalid type: %S" str)
+
   let compare a b =
     String.(
       compare (lowercase_ascii (to_string a)) (lowercase_ascii (to_string b)))
