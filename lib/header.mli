@@ -39,6 +39,11 @@ val add : Field_name.t -> 'a Field.t * 'a -> t -> t
 (** [add field_name (w, v) t] adds a new field-name with value v. [add]
    does not replace [field_name] if it already exists into [t]. *)
 
+val add_unless_exists : Field_name.t -> 'a Field.t * 'a -> t -> t
+(** [add_unless_exists field_name (w, v) t] is a collection of header fields that
+   is the same as [t] if [t] already includes [field_name], and otherwise is
+   equivalent to [add field_name (w, v) t]. *)
+
 val replace : Field_name.t -> 'a Field.t * 'a -> t -> t
 (** [replace field_name (w, v) t] replaces existing field-name [field_name] in [t]
    by the new value [v]. If [field_name] does not exist, it adds it. *)

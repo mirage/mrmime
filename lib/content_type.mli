@@ -79,6 +79,7 @@ module Type : sig
   val is_multipart : t -> bool
   val is_message : t -> bool
   val to_string : t -> string
+  val of_string : string -> (t, [> Rresult.R.msg ]) result
 end
 
 module Subtype : sig

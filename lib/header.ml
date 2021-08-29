@@ -29,6 +29,10 @@ let add : type a. Field_name.t -> a Field.t * a -> t -> t =
   let field = Field.Field (field_name, w, v) in
   Location.inj ~location:Location.none field :: t
 
+let add_unless_exists : type a. Field_name.t -> a Field.t * a -> t -> t =
+ fun field_name (w, v) t ->
+  if exists field_name t then t else add field_name (w, v) t
+
 let replace : type a. Field_name.t -> a Field.t * a -> t -> t =
  fun field_name (w, v) t ->
   let rec replace acc = function
