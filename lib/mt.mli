@@ -31,7 +31,12 @@ val part : ?encoding:bool -> ?header:Header.t -> buffer stream -> part
    be {b encoded} to the given encoding. Otherwise, the stream is not transencoded. *)
 
 val multipart :
-  rng:'g rng -> ?header:Header.t -> ?boundary:string -> part list -> multipart
+  ?g:'g ->
+  rng:'g rng ->
+  ?header:Header.t ->
+  ?boundary:string ->
+  part list ->
+  multipart
 (** [multipart ~rng ~content ~boundary ~fields parts] makes a new multipart from
    a bunch of parts, specified [Content-*] fields, others [fields] and a
    specified [boundary]. If [boundary] is not specifed, we use [rng] to make a

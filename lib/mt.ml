@@ -143,9 +143,9 @@ let rng ?(g = random_seed ()) n =
   done;
   Bytes.unsafe_to_string res |> Base64.encode_exn
 
-let multipart ~rng ?(header = Header.empty) ?boundary parts =
+let multipart ?g ~rng ?(header = Header.empty) ?boundary parts =
   let boundary =
-    match boundary with Some boundary -> boundary | None -> rng ?g:None 8
+    match boundary with Some boundary -> boundary | None -> rng ?g 8
   in
   let boundary = Content_type.Parameters.v boundary in
   let content_type =
