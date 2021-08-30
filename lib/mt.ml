@@ -110,17 +110,19 @@ let to_base64 : ?length:int -> buffer stream -> buffer stream =
 type part = { header : Header.t; body : buffer stream }
 type multipart = { header : Header.t; parts : part list }
 
-let part ?(header = Header.empty) stream =
+let part ?(encoding = true) ?(header = Header.empty) stream =
   let content_type = Header.content_type header in
   let content_encoding = Header.content_encoding header in
   if not (Content_type.is_discrete content_type) then
     Fmt.invalid_arg "Content-type MUST be discrete type to make a part";
   let stream =
-    match content_encoding with
-    | `Quoted_printable -> to_quoted_printable stream
-    | `Base64 -> to_base64 stream
-    | `Bit8 | `Binary | `Bit7 -> stream
-    | `Ietf_token _ | `X_token _ -> assert false
+    if encoding then
+      match content_encoding with
+      | `Quoted_printable -> to_quoted_printable stream
+      | `Base64 -> to_base64 stream
+      | `Bit8 | `Binary | `Bit7 -> stream
+      | `Ietf_token _ | `X_token _ -> assert false
+    else stream
   in
   (* XXX(dinosaure): TODO [`Bit7], IETF and extension encoding. *)
   { header; body = stream }
