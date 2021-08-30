@@ -24,11 +24,11 @@ type 'g rng = ?g:'g -> int -> string
 val rng : int array rng
 (** A default random generator. *)
 
-val part : ?header:Header.t -> buffer stream -> part
-(** [part ~content ~fields stream] makes a new part from a body stream [stream],
-   [Content-*] fields, and others [fields]. If [content] is not specified, we
-   use {!Content.default}. [stream] while be mapped according
-   [Content-Transfer-Encoding] of [content]. *)
+val part : ?encoding:bool -> ?header:Header.t -> buffer stream -> part
+(** [part ?encoding ?header stream] makes a new part from a body stream [stream],
+   with the given [header] (default to {!Header.empty}). If [header] contains
+   a [Content-Transfer-Encoding] and [encoding = true] (default), the stream will
+   be {b encoded} to the given encoding. Otherwise, the stream is not transencoded. *)
 
 val multipart :
   rng:'g rng -> ?header:Header.t -> ?boundary:string -> part list -> multipart
