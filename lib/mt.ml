@@ -29,14 +29,7 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream =
         match Pecu.encode encoder `Await with
         | `Ok -> (go [@tailcall]) ()
         | `Partial -> (emit [@tailcall]) ())
-    | 257 (* Line_break *) -> (
-        (* XXX(dinosaure): we encode, in any case, a last CRLF to ensure that any
-           line emitted by [to_quoted_printable] finish with a [CRLF]. TODO: may
-           be this behavior is strictly under [Pecu] impl. *)
-        Ke.Rke.cons queue 258;
-        match Pecu.encode encoder `Line_break with
-        | `Ok -> go ()
-        | `Partial -> (emit [@tailcall]) ())
+    (* XXX(dinosaure): [257] was an old state which is not used anymore. *)
     | 258 (* End *) ->
         Ke.Rke.cons queue 259;
         (pending [@tailcall]) (Pecu.encode encoder `End)
@@ -44,6 +37,10 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream =
         assert (Pecu.encode encoder `Await = `Ok);
         Ke.Rke.cons queue 259;
         None
+    | 260 -> (
+        match Pecu.encode encoder `Line_break with
+        | `Ok -> (go [@tailcall]) ()
+        | `Partial -> (emit [@tailcall]) ())
     | chr -> (
         match Pecu.encode encoder (`Char (Char.chr chr)) with
         | `Ok -> (go [@tailcall]) ()
@@ -52,9 +49,10 @@ let to_quoted_printable : ?length:int -> buffer stream -> buffer stream =
         match stream () with
         | Some (buf, off, len) ->
             iter ~f:(fun chr -> Ke.Rke.push queue (Char.code chr)) buf ~off ~len;
+            Ke.Rke.push queue 260;
             (go [@tailcall]) ()
         | None ->
-            Ke.Rke.push queue 257;
+            Ke.Rke.push queue 258;
             (go [@tailcall]) ())
   in
 
@@ -154,7 +152,9 @@ let multipart ?g ~rng ?(header = Header.empty) ?boundary parts =
     else multipart_content_default
   in
   let content_type =
-    Content_type.with_parameter content_type ("boundary", boundary)
+    match Content_type.boundary content_type with
+    | None -> Content_type.with_parameter content_type ("boundary", boundary)
+    | Some _ -> content_type
   in
   let header =
     Header.replace Field_name.content_type (Field.Content, content_type) header

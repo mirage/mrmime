@@ -24,6 +24,17 @@ let generate_any random =
 let generate_any_bytes len max = generate_any random_bytes len max
 let generate_any_7bits len max = generate_any random_7bits len max
 
+let generate_any_bytes_with_newline len max =
+  let g = generate_any random_bytes len max in
+  fun () ->
+    match g () with
+    | Some (str, off, len) ->
+        let buf' = Bytes.create (len + 1) in
+        Bytes.blit_string str off buf' 0 len;
+        Bytes.set buf' len '\n';
+        Some (Bytes.unsafe_to_string buf', 0, len + 1)
+    | None -> None
+
 open Mrmime
 
 let max = 1_000_000
@@ -66,7 +77,7 @@ let rec drain stream =
 
 let regenerate part =
   let part0 = generate_any_7bits chunk max in
-  let part1 = generate_any_bytes chunk max in
+  let part1 = generate_any_bytes_with_newline chunk max in
   let part2 = generate_any_bytes chunk max in
   match part with
   | 0 -> show part0
