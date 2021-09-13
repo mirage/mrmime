@@ -170,6 +170,9 @@ Of course, feedback is expected to improve it. So you can use it, but you should
 not expect an industrial quality - I mean, not yet. So play with it, and enjoy
 your hacking!
 
+`mrmime` has received funding from the Next Generation Internet Initiative (NGI)
+within the framework of the DAPSI Project.
+
 [rfc822]: https://tools.ietf.org/html/rfc822 
 [rfc2822]: https://tools.ietf.org/html/rfc2822 
 [rfc5321]: https://tools.ietf.org/html/rfc5321
