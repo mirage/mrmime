@@ -359,7 +359,7 @@ module Decoder = struct
     | Quoted_printable -> normalize_quoted_printable ?chunk ~charset raw
     | Base64 -> normalize_base64 ?chunk ~charset raw
 
-  let invalid_encoding = Fmt.kstrf fail "Invalid encoding '%c'"
+  let invalid_encoding = Fmt.kstr fail "Invalid encoding '%c'"
 
   (* From RFC 2047
 

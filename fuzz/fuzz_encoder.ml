@@ -12,7 +12,7 @@ let rec value t x =
   | `Bool true -> Prettym.string t "true"
   | `Bool false -> Prettym.string t "false"
   | `Null -> Prettym.string t "null"
-  | `Float f -> Prettym.string t (Fmt.strf "%.16g" f)
+  | `Float f -> Prettym.string t (Fmt.str "%.16g" f)
   | `String s -> Prettym.eval t Prettym.[ char $ '"'; !!string; char $ '"' ] s
   | `A a -> Prettym.eval t Prettym.[ char $ '['; !!arr; char $ ']' ] a
   | `O o -> Prettym.eval t Prettym.[ char $ '{'; !!obj; char $ '}' ] o

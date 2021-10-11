@@ -75,7 +75,7 @@ let discard_all_to_delimiter boundary =
   | Some _ -> advance 1 *> m (* impossible case? *)
   | None -> return ()
 
-let nothing_to_do = Fmt.kstrf fail "nothing to do"
+let nothing_to_do = Fmt.kstr fail "nothing to do"
 let crlf = string "\r\n"
 
 let possible_boundary boundary =

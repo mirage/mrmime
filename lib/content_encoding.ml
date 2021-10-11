@@ -50,7 +50,7 @@ let equal a b =
 module Decoder = struct
   open Angstrom
 
-  let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
+  let invalid_token token = Fmt.kstr fail "invalid token: %s" token
 
   let of_string s a =
     match parse_string ~consume:Consume.All a s with
