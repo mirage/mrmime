@@ -174,7 +174,7 @@ let parse_and_print_header x =
 
 let header_tests =
   let make idx input =
-    Alcotest.test_case (Fmt.strf "header %d" idx) `Quick @@ fun () ->
+    Alcotest.test_case (Fmt.str "header %d" idx) `Quick @@ fun () ->
     Alcotest.(check pass) input (parse_and_print_header input) ()
   in
   List.mapi make header_tests

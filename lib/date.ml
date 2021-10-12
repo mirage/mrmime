@@ -235,8 +235,8 @@ module Zone = struct
 
   let to_string = function
     | TZ (hh, mm) ->
-        if hh >= 0 then Fmt.strf "+%02d%02d" hh mm
-        else Fmt.strf "-%02d%02d" (abs hh) mm
+        if hh >= 0 then Fmt.str "+%02d%02d" hh mm
+        else Fmt.str "-%02d%02d" (abs hh) mm
     | Military_zone c -> String.make 1 c
     | x -> Fmt.to_to_string pp x
 
@@ -1036,7 +1036,7 @@ module Encoder = struct
   let month = using Month.to_string string
 
   let time ppf (hours, minutes, seconds) =
-    let string_of_number = Fmt.strf "%02d" in
+    let string_of_number = Fmt.str "%02d" in
     let number ppf x =
       eval ppf [ cut; !!(using string_of_number string); cut ] x
     in

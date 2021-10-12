@@ -309,7 +309,7 @@ module Parameters = struct
 
   let pp ppf t =
     let pp ppf (key, value) = Fmt.pf ppf "%a=%a" pp_key key pp_value value in
-    Fmt.list ~sep:(Fmt.always ";@ ") pp ppf (Map.bindings t)
+    Fmt.list ~sep:(Fmt.any ";@ ") pp ppf (Map.bindings t)
 
   let of_escaped_character = function
     | '\x61' -> '\x07' (* "\a" *)
@@ -410,7 +410,7 @@ let equal a b =
 module Decoder = struct
   open Angstrom
 
-  let invalid_token token = Fmt.kstrf fail "invalid token: %s" token
+  let invalid_token token = Fmt.kstr fail "invalid token: %s" token
 
   let of_string s a =
     match parse_string ~consume:Consume.All a s with

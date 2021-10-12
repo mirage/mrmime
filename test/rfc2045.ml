@@ -3,7 +3,7 @@ let ( <.> ) f g x = f (g x)
 let parse_content_type x =
   let parser =
     let open Angstrom in
-    let failf fmt = Fmt.kstrf fail fmt in
+    let failf fmt = Fmt.kstr fail fmt in
     let buf = Bytes.create 0x7f in
     Unstrctrd_parser.unstrctrd buf >>= fun v ->
     let res =

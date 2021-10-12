@@ -20,7 +20,7 @@ let parse_date x =
   Angstrom.parse_string ~consume:Angstrom.Consume.All parser (x ^ "\r\n")
 
 let make raw expect =
-  Alcotest.test_case (Fmt.strf "%S" raw) `Quick @@ fun () ->
+  Alcotest.test_case (Fmt.str "%S" raw) `Quick @@ fun () ->
   match parse_date raw with
   | Ok value -> Alcotest.(check date) raw expect value
   | Error err -> Fmt.invalid_arg "Invalid date value (%s): %s." err raw
