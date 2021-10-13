@@ -47,6 +47,6 @@ depends: [
 ]
 
 pin-depends: [
-  [ "pecu.dev" "git+https://github.com/mirage/pecu.git#b33965ed8ade1102ae1f18ba6c95aa5d696ec9c3" ]
-  [ "unstrctrd.dev" "git+https://github.com/dinosaure/unstrctrd.git#f2dc1640c647ceeb8ee0c4ae3fef705f51507621" ]
+  [ "pecu.dev" "git+https://github.com/mirage/pecu.git#ce3fbfdf7d3785356bcb80e3cef3aebb05298494" ]
+  [ "unstrctrd.dev" "git+https://github.com/dinosaure/unstrctrd.git#d4a378f639f5bb154a18cf9b80ac7cf937e16143" ]
 ]
