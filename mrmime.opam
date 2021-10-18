@@ -20,15 +20,15 @@ depends: [
   "rresult"
   "fmt"              {>= "0.8.7"}
   "ke"               {>= "0.4"}
-  "unstrctrd"        {>= "0.2"}
+  "unstrctrd"        {>= "0.3"}
   "ptime"            {>= "0.8.2"}
   "uutf"
   "rosetta"          {>= "0.3.0"}
   "ipaddr"
   "emile"            {>= "1.0"}
   "base64"           {>= "3.1.0"}
-  "pecu"             {>= "0.5"}
-  "prettym"
+  "pecu"             {>= "0.6"}
+  "prettym"          {>= "0.0.2"}
   "bigstringaf"      {>= "0.5.0"}
   "bigarray-compat"
   "bigarray-overlap" {>= "0.2.0"}
@@ -44,9 +44,4 @@ depends: [
   "crowbar"          {with-test}
   "lwt"              {with-test}
   "logs"
-]
-
-pin-depends: [
-  [ "pecu.dev" "git+https://github.com/mirage/pecu.git#ce3fbfdf7d3785356bcb80e3cef3aebb05298494" ]
-  [ "unstrctrd.dev" "git+https://github.com/dinosaure/unstrctrd.git#d4a378f639f5bb154a18cf9b80ac7cf937e16143" ]
 ]
