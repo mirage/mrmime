@@ -96,9 +96,9 @@ module Decoder = struct
 
   let is_wsp = function ' ' | '\t' -> true | _ -> false
 
-  let field =
+  let field g =
     Field_name.Decoder.field_name >>= fun field_name ->
-    skip_while is_wsp *> char ':' *> Field.Decoder.field field_name
+    skip_while is_wsp *> char ':' *> Field.Decoder.field ?g field_name
 
   let with_location p =
     pos >>= fun a ->
@@ -107,7 +107,7 @@ module Decoder = struct
     let location = Location.make a b in
     Location.inj ~location v
 
-  let header = many (with_location field)
+  let header g = many (with_location (field g))
 end
 
 module Encoder = struct

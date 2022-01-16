@@ -76,7 +76,7 @@ val length : t -> int
 (** {2 Decoder of header.} *)
 
 module Decoder : sig
-  val header : t Angstrom.t
+  val header : Field.witness Field_name.Map.t option -> t Angstrom.t
 end
 
 (** {2 Encoder of header.} *)

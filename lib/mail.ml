@@ -127,7 +127,7 @@ let boundary header =
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
-let mail =
+let mail g =
   let open Angstrom in
   let rec body parent header =
     match Content_type.ty (Header.content_type header) with
@@ -144,7 +144,7 @@ let mail =
             >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
-    Header.Decoder.header <* char '\r' <* char '\n' >>= fun header ->
+    Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
     match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
@@ -164,8 +164,11 @@ let mail =
 
 type 'id emitters = Header.t -> (string option -> unit) * 'id
 
-let stream : emitters:'id emitters -> (Header.t * 'id t) Angstrom.t =
- fun ~emitters ->
+let stream :
+    ?g:Field.witness Field_name.Map.t ->
+    'id emitters ->
+    (Header.t * 'id t) Angstrom.t =
+ fun ?g emitters ->
   let open Angstrom in
   let rec body parent header =
     match Content_type.ty (Header.content_type header) with
@@ -183,7 +186,7 @@ let stream : emitters:'id emitters -> (Header.t * 'id t) Angstrom.t =
             >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
-    Header.Decoder.header <* char '\r' <* char '\n' >>= fun header ->
+    Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
     match Content_type.ty (Header.content_type header) with
     | `Ietf_token _x | `X_token _x -> assert false
     | #Content_type.Type.discrete ->
