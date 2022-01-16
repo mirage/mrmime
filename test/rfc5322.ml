@@ -1,6 +1,5 @@
 let header_tests =
-  [
-    (* See RFC 5322 § Appendix A.1.1 *)
+  [ (* See RFC 5322 § Appendix A.1.1 *)
     {|From: John Doe <jdoe@machine.example>
 To: Mary Smith <mary@example.net>
 Subject: Saying Hello
@@ -158,7 +157,7 @@ To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed
 Subject: Test of new header generator
 MIME-Version: 1.0
 Content-type: text/plain; charset=ISO-8859-1
-|};
+|}
   ]
 
 let parse_header x =

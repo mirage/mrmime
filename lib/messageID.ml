@@ -51,9 +51,13 @@ module Encoder = struct
     match t with
     | local_part, domain_part ->
         eval ppf
-          [
-            tbox 1; char $ '<'; !!Mailbox.Encoder.local; char $ '@'; !!domain;
-            char $ '>'; close;
+          [ tbox 1;
+            char $ '<';
+            !!Mailbox.Encoder.local;
+            char $ '@';
+            !!domain;
+            char $ '>';
+            close
           ]
           local_part domain_part
 end

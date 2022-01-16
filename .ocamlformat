@@ -1,7 +1,6 @@
-version=0.18.0
+version=0.20.1
 module-item-spacing=compact
-break-struct=natural
 break-infix=fit-or-vertical
 parens-tuple=always
 wrap-comments=false
-break-collection-expressions=wrap
+dock-collection-brackets=false

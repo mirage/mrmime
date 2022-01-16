@@ -61,9 +61,8 @@ let example0 =
     in
     Header.of_list
       Field.
-        [
-          Field (Field_name.content_type, Content, content0);
-          Field (Field_name.content_encoding, Encoding, `Base64);
+        [ Field (Field_name.content_type, Content, content0);
+          Field (Field_name.content_encoding, Encoding, `Base64)
         ]
   in
 
@@ -76,9 +75,8 @@ let example0 =
     in
     Header.of_list
       Field.
-        [
-          Field (Field_name.content_type, Content, content1);
-          Field (Field_name.content_encoding, Encoding, `Quoted_printable);
+        [ Field (Field_name.content_type, Content, content1);
+          Field (Field_name.content_encoding, Encoding, `Quoted_printable)
         ]
   in
 
@@ -93,15 +91,14 @@ let example0 =
   let multipart = Mt.multipart ~rng:Mt.rng [ part0; part1 ] in
 
   let header =
-    [
-      Field.(Field (Field_name.sender, Mailbox, john));
+    [ Field.(Field (Field_name.sender, Mailbox, john));
       Field.(
         Field
           ( Field_name.v "To",
             Addresses,
             Address.[ mailbox thomas; mailbox anil ] ));
       Field.(Field (Field_name.subject, Unstructured, subject));
-      Field.(Field (Field_name.date, Date, now));
+      Field.(Field (Field_name.date, Date, now))
     ]
   in
 
@@ -150,8 +147,7 @@ let example1 =
   let part = Mt.part ~header:header0 (stream_of_string "Hello World!") in
 
   let header =
-    [
-      Field.(Field (Field_name.sender, Mailbox, john));
+    [ Field.(Field (Field_name.sender, Mailbox, john));
       Field.(
         Field
           ( Field_name.v "To",
@@ -159,7 +155,7 @@ let example1 =
             Address.
               [ mailbox thomas; mailbox anil; mailbox hannes; mailbox gemma ] ));
       Field.(Field (Field_name.subject, Unstructured, subject));
-      Field.(Field (Field_name.date, Date, now));
+      Field.(Field (Field_name.date, Date, now))
     ]
   in
 
@@ -206,10 +202,9 @@ let example2 =
   let open Mrmime in
   let _, subject = Unstrctrd.safely_decode subject in
   let header =
-    [
-      Field.(
+    [ Field.(
         Field
-          (Field_name.subject, Unstructured, (subject :> Unstructured.elt list)));
+          (Field_name.subject, Unstructured, (subject :> Unstructured.elt list)))
     ]
   in
   let part = Mt.part (stream_of_string "Hello World!") in

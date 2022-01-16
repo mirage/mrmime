@@ -34,10 +34,9 @@ let phrase =
 
 let extension =
   map
-    [
-      dynamic_bind (range 78) (string_from_alphabet ldh_str);
+    [ dynamic_bind (range 78) (string_from_alphabet ldh_str);
       range (String.length let_dig);
-      dynamic_bind (range ~min:1 78) (string_from_alphabet dcontent);
+      dynamic_bind (range ~min:1 78) (string_from_alphabet dcontent)
     ]
     (fun ldh idx x ->
       match
@@ -68,8 +67,9 @@ let domain_atom =
       | Error _ -> bad_test ())
 
 let domain =
-  map [ list1 domain_atom ] (fun lst ->
-      `Domain (List.map (fun (`Atom x) -> x) lst))
+  map
+    [ list1 domain_atom ]
+    (fun lst -> `Domain (List.map (fun (`Atom x) -> x) lst))
 
 let domain = choose [ extension; ipv4; ipv6; domain ]
 
@@ -77,7 +77,9 @@ let domain = choose [ extension; ipv4; ipv6; domain ]
    excludes it according to RFC 5321 (see [Rfc822.domain]). *)
 
 let mailbox =
-  map [ option phrase; local; list1 domain ] (fun name local domains ->
+  map
+    [ option phrase; local; list1 domain ]
+    (fun name local domains ->
       match domains with
       | x :: r -> Emile.{ name; local; domain = (x, r) }
       | [] -> bad_test ())

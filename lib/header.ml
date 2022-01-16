@@ -46,7 +46,7 @@ let replace : type a. Field_name.t -> a Field.t * a -> t -> t =
         if Field_name.equal field_name field_name' then
           copy
             (Location.(inj ~location:none (Field.Field (field_name, w, v)))
-             :: acc)
+            :: acc)
             rest
         else replace (field :: acc) rest
   and copy acc rest = List.rev_append rest acc |> List.rev in

@@ -150,11 +150,10 @@ let seed =
 let fortuna_cmd =
   let doc = "Generate a randomly generated valid email from a seed." in
   let man =
-    [
-      `S "DESCRIPTION";
+    [ `S "DESCRIPTION";
       `P
         "Generate a random email from the $(i,fortuna) random number generator \
-         and the $(i,base64) given seed.";
+         and the $(i,base64) given seed."
     ]
   in
   ( Term.(ret (const fortuna $ setup_logs $ seed $ output)),
@@ -180,8 +179,8 @@ let randomness_file =
 let crowbar_cmd =
   let doc = "Generate a randomly generated valid email." in
   let man =
-    [
-      `S "DESCRIPTION"; `P "Generate a random email using $(i,crowbar) fuzzer.";
+    [ `S "DESCRIPTION";
+      `P "Generate a random email using $(i,crowbar) fuzzer."
     ]
   in
   ( Term.(
@@ -191,11 +190,10 @@ let crowbar_cmd =
 
 let default_cmd =
   let man =
-    [
-      `S "DESCRIPTION";
+    [ `S "DESCRIPTION";
       `P
         "Generate a random email using $(i,crowbar) fuzzer or $(i,fortuna) \
-         random number generator.";
+         random number generator."
     ]
   in
   let doc = "a random mails generator" in

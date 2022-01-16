@@ -2,12 +2,12 @@ type parsers = Field.witness Field_name.Map.t
 type value = [ `Field of Field.field Location.with_location | `End ]
 type state = value Angstrom.Unbuffered.state
 
-type decoder = {
-  queue : (char, Bigarray.int8_unsigned_elt) Ke.Rke.t;
-  parsers : parsers;
-  mutable closed : bool;
-  mutable state : state;
-}
+type decoder =
+  { queue : (char, Bigarray.int8_unsigned_elt) Ke.Rke.t;
+    parsers : parsers;
+    mutable closed : bool;
+    mutable state : state
+  }
 
 let field g =
   let open Angstrom in
@@ -29,11 +29,10 @@ let parser parsers =
   with_location (field parsers) >>| (fun v -> `Field v) <|> crlf *> return `End
 
 let decoder parsers =
-  {
-    queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char;
+  { queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char;
     parsers;
     closed = false;
-    state = Angstrom.Unbuffered.parse (parser parsers);
+    state = Angstrom.Unbuffered.parse (parser parsers)
   }
 
 type decode =

@@ -35,9 +35,16 @@ let is_qtext_valid_string = is_utf8_valid_string_with Emile.Parser.is_qtext
 let need_to_escape, escape_char =
   (* See [of_escaped_character] but totally arbitrary. *)
   let bindings =
-    [
-      ('\000', '\000'); ('\\', '\\'); ('\x07', 'a'); ('\b', 'b'); ('\t', 't');
-      ('\n', 'n'); ('\x0b', 'v'); ('\x0c', 'f'); ('\r', 'r'); ('"', '"');
+    [ ('\000', '\000');
+      ('\\', '\\');
+      ('\x07', 'a');
+      ('\b', 'b');
+      ('\t', 't');
+      ('\n', 'n');
+      ('\x0b', 'v');
+      ('\x0c', 'f');
+      ('\r', 'r');
+      ('"', '"')
     ]
   in
   ((fun chr -> List.mem_assoc chr bindings), fun chr -> List.assoc chr bindings)
@@ -105,16 +112,30 @@ module Encoder = struct
           ip
     | `Addr (Emile.IPv6 ip) ->
         eval ppf
-          [
-            box; char $ '['; cut (); string $ "IPv6:"; cut (); !!ipaddr_v6;
-            cut (); char $ ']'; close;
+          [ box;
+            char $ '[';
+            cut ();
+            string $ "IPv6:";
+            cut ();
+            !!ipaddr_v6;
+            cut ();
+            char $ ']';
+            close
           ]
           ip
     | `Addr (Emile.Ext (ldh, v)) ->
         eval ppf
-          [
-            box; char $ '['; cut (); !!string; cut (); char $ ':'; cut ();
-            !!string; cut (); char $ ']'; close;
+          [ box;
+            char $ '[';
+            cut ();
+            !!string;
+            cut ();
+            char $ ':';
+            cut ();
+            !!string;
+            cut ();
+            char $ ']';
+            close
           ]
           ldh v
 
@@ -124,17 +145,15 @@ module Encoder = struct
       | `Word w -> word ppf w
       | `Encoded (charset, Emile.Quoted_printable data) ->
           Encoded_word.Encoder.encoded_word ppf
-            {
-              Encoded_word.charset = `Charset charset;
+            { Encoded_word.charset = `Charset charset;
               encoding = Encoded_word.Quoted_printable;
-              data;
+              data
             }
       | `Encoded (charset, Emile.Base64 data) ->
           Encoded_word.Encoder.encoded_word ppf
-            {
-              Encoded_word.charset = `Charset charset;
+            { Encoded_word.charset = `Charset charset;
               encoding = Encoded_word.Base64;
-              data;
+              data
             }
     in
     let space ppf () = eval ppf [ fws ] in
@@ -144,9 +163,19 @@ module Encoder = struct
     match (t.Emile.name, t.Emile.domain) with
     | Some name, (x, []) ->
         eval ppf
-          [
-            box; !!phrase; spaces 1; char $ '<'; cut (); !!local; cut ();
-            char $ '@'; cut (); !!domain; cut (); char $ '>'; close;
+          [ box;
+            !!phrase;
+            spaces 1;
+            char $ '<';
+            cut ();
+            !!local;
+            cut ();
+            char $ '@';
+            cut ();
+            !!domain;
+            cut ();
+            char $ '>';
+            close
           ]
           name t.Emile.local x
     | None, (x, []) ->
@@ -165,10 +194,23 @@ module Encoder = struct
         let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
 
         eval ppf
-          [
-            box; !!(option phrase); cut (); char $ '<'; cut (); !!domains;
-            cut (); char $ ':'; cut (); !!local; cut (); char $ '@'; cut ();
-            !!domain; cut (); char $ '>'; close;
+          [ box;
+            !!(option phrase);
+            cut ();
+            char $ '<';
+            cut ();
+            !!domains;
+            cut ();
+            char $ ':';
+            cut ();
+            !!local;
+            cut ();
+            char $ '@';
+            cut ();
+            !!domain;
+            cut ();
+            char $ '>';
+            close
           ]
           name r t.Emile.local x
 

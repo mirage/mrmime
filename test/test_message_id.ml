@@ -11,8 +11,7 @@ let make raw expect =
   | Error _ -> Fmt.invalid_arg "Invalid msg-id value: %s." raw
 
 let tests : (string * Mrmime.MessageID.t) list =
-  [
-    ( "<1234@local.machine.example>",
+  [ ( "<1234@local.machine.example>",
       ([ `Atom "1234" ], `Domain [ "local"; "machine"; "example" ]) );
     ( "<5678.21-Nov-1997@example.com>",
       ([ `Atom "5678"; `Atom "21-Nov-1997" ], `Domain [ "example"; "com" ]) );
@@ -33,7 +32,7 @@ let tests : (string * Mrmime.MessageID.t) list =
         `Domain [ "mail"; "gmail"; "com" ] ) );
     ( "<mirage/irmin/pull/378/c259513470@github.com>",
       ([ `Atom "mirage/irmin/pull/378/c259513470" ], `Domain [ "github"; "com" ])
-    );
+    )
   ]
 
 let make_output v expect =
@@ -44,15 +43,13 @@ let make_output v expect =
 
 let tests_caml : (Mrmime.MessageID.t * string) list =
   let open Mrmime in
-  [
-    ( ( Mailbox.Local.(v [ w "FE47A9B" ]),
+  [ ( ( Mailbox.Local.(v [ w "FE47A9B" ]),
         MessageID.Domain.(v domain [ a "gmail"; a "com" ]) ),
-      "<FE47A9B@gmail.com>" );
+      "<FE47A9B@gmail.com>" )
   ]
 
 let () =
   Alcotest.run "msg-id"
-    [
-      ("valid msg-id", List.map (fun (raw, expect) -> make raw expect) tests);
-      ("output", List.map (fun (v, expect) -> make_output v expect) tests_caml);
+    [ ("valid msg-id", List.map (fun (raw, expect) -> make raw expect) tests);
+      ("output", List.map (fun (v, expect) -> make_output v expect) tests_caml)
     ]

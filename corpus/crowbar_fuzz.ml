@@ -3,12 +3,8 @@
 
 type src = Random of Random.State.t | Fd of Unix.file_descr
 
-type state = {
-  chan : src;
-  buf : Bytes.t;
-  mutable offset : int;
-  mutable len : int;
-}
+type state =
+  { chan : src; buf : Bytes.t; mutable offset : int; mutable len : int }
 
 type 'a printer = Format.formatter -> 'a -> unit
 
@@ -38,9 +34,8 @@ let fix f =
   unlazy lazygen
 
 let map (type f a) (gens : (f, a) gens) (f : f) =
-  {
-    strategy = Map (gens, f);
-    small_examples = (match gens with [] -> [ f ] | _ -> []);
+  { strategy = Map (gens, f);
+    small_examples = (match gens with [] -> [ f ] | _ -> [])
   }
 
 let dynamic_bind m f = { strategy = Bind (m, f); small_examples = [] }
@@ -48,18 +43,16 @@ let ( >>= ) = dynamic_bind
 let const x = map [] x
 
 let choose gens =
-  {
-    strategy = Choose gens;
-    small_examples = List.map (fun x -> x.small_examples) gens |> List.concat;
+  { strategy = Choose gens;
+    small_examples = List.map (fun x -> x.small_examples) gens |> List.concat
   }
 
 let option gen = { strategy = Option gen; small_examples = [ None ] }
 let list gen = { strategy = List gen; small_examples = [ [] ] }
 
 let list1 gen =
-  {
-    strategy = List1 gen;
-    small_examples = List.map (fun x -> [ x ]) gen.small_examples;
+  { strategy = List1 gen;
+    small_examples = List.map (fun x -> [ x ]) gen.small_examples
   }
 
 let primitive f ex = { strategy = Primitive f; small_examples = [ ex ] }
@@ -386,11 +379,10 @@ let prng_state_of_seed seed =
   (* try to make this independent of word size *)
   let seed =
     Int64.
-      [|
-        to_int (logand (of_int 0xffff) seed);
-        to_int (logand (of_int 0xffff) (shift_right seed 16));
-        to_int (logand (of_int 0xffff) (shift_right seed 32));
-        to_int (logand (of_int 0xffff) (shift_right seed 48));
+      [| to_int (logand (of_int 0xffff) seed);
+         to_int (logand (of_int 0xffff) (shift_right seed 16));
+         to_int (logand (of_int 0xffff) (shift_right seed 32));
+         to_int (logand (of_int 0xffff) (shift_right seed 48))
       |]
   in
   Random.State.make seed
@@ -417,11 +409,10 @@ let run_test ~mode ~silent ?(verbose = false) (Test (name, gens, f)) =
         while !npass < iters && classify_status !worst_status = `Pass do
           let seed = Random.State.int64 seedsrc Int64.max_int in
           let state =
-            {
-              chan = src_of_seed seed;
+            { chan = src_of_seed seed;
               buf = Bytes.make 256 '0';
               offset = 0;
-              len = 0;
+              len = 0
             }
           in
           let status = run_once gens f state in

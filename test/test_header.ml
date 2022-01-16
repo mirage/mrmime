@@ -62,10 +62,10 @@ let replace_headers_if_absent =
 
 let () =
   Alcotest.run "header"
-    [
-      ( "simple",
-        [
-          test_valued_header; replace_headers_if_exists;
-          replace_headers_if_absent;
-        ] ); ("content-type", [ default_content_type ]);
+    [ ( "simple",
+        [ test_valued_header;
+          replace_headers_if_exists;
+          replace_headers_if_absent
+        ] );
+      ("content-type", [ default_content_type ])
     ]

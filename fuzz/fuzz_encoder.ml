@@ -36,10 +36,11 @@ let json =
   let string = map [ bytes ] (fun x -> if valid x then x else bad_test ()) in
   let binding = map [ string; m ] (fun k v -> (k, v)) in
   choose
-    [
-      const `Null; map [ bool ] (fun x -> `Bool x);
-      map [ string ] (fun x -> `String x); map [ list m ] (fun x -> `A x);
-      map [ list binding ] (fun x -> `O x);
+    [ const `Null;
+      map [ bool ] (fun x -> `Bool x);
+      map [ string ] (fun x -> `String x);
+      map [ list m ] (fun x -> `A x);
+      map [ list binding ] (fun x -> `O x)
     ]
 
 type await = [ `Await ]

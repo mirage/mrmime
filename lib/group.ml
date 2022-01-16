@@ -30,7 +30,9 @@ let v ~name mailboxes =
 
 let pp = Emile.pp_group
 
-module Decoder = struct let group = Emile.Parser.group end
+module Decoder = struct
+  let group = Emile.Parser.group
+end
 
 module Encoder = struct
   open Prettym
@@ -41,9 +43,15 @@ module Encoder = struct
 
   let group ppf t =
     eval ppf
-      [
-        box; !!phrase; char $ ':'; spaces 1; box; !!(list ~sep:comma mailbox);
-        close; char $ ';'; close;
+      [ box;
+        !!phrase;
+        char $ ':';
+        spaces 1;
+        box;
+        !!(list ~sep:comma mailbox);
+        close;
+        char $ ';';
+        close
       ]
       t.Emile.group t.Emile.mailboxes
 end

@@ -31,11 +31,11 @@ val b : encoding
 val q : encoding
 (** Inline quoted-printable encoding. *)
 
-type t = {
-  charset : charset;
-  encoding : encoding;
-  data : (string, Rresult.R.msg) result;
-}
+type t =
+  { charset : charset;
+    encoding : encoding;
+    data : (string, Rresult.R.msg) result
+  }
 
 val is_normalized : t -> bool
 

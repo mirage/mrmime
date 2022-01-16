@@ -2,26 +2,35 @@ open Crowbar
 
 let day =
   choose
-    [
-      const Mrmime.Date.Day.Mon; const Mrmime.Date.Day.Tue;
-      const Mrmime.Date.Day.Wed; const Mrmime.Date.Day.Thu;
-      const Mrmime.Date.Day.Fri; const Mrmime.Date.Day.Sat;
-      const Mrmime.Date.Day.Sun;
+    [ const Mrmime.Date.Day.Mon;
+      const Mrmime.Date.Day.Tue;
+      const Mrmime.Date.Day.Wed;
+      const Mrmime.Date.Day.Thu;
+      const Mrmime.Date.Day.Fri;
+      const Mrmime.Date.Day.Sat;
+      const Mrmime.Date.Day.Sun
     ]
 
 let month =
   choose
-    [
-      const Mrmime.Date.Month.Jan; const Mrmime.Date.Month.Feb;
-      const Mrmime.Date.Month.Mar; const Mrmime.Date.Month.Apr;
-      const Mrmime.Date.Month.May; const Mrmime.Date.Month.Jun;
-      const Mrmime.Date.Month.Jul; const Mrmime.Date.Month.Aug;
-      const Mrmime.Date.Month.Sep; const Mrmime.Date.Month.Oct;
-      const Mrmime.Date.Month.Nov; const Mrmime.Date.Month.Dec;
+    [ const Mrmime.Date.Month.Jan;
+      const Mrmime.Date.Month.Feb;
+      const Mrmime.Date.Month.Mar;
+      const Mrmime.Date.Month.Apr;
+      const Mrmime.Date.Month.May;
+      const Mrmime.Date.Month.Jun;
+      const Mrmime.Date.Month.Jul;
+      const Mrmime.Date.Month.Aug;
+      const Mrmime.Date.Month.Sep;
+      const Mrmime.Date.Month.Oct;
+      const Mrmime.Date.Month.Nov;
+      const Mrmime.Date.Month.Dec
     ]
 
 let military_zone =
-  map [ range 25 ] (fun n ->
+  map
+    [ range 25 ]
+    (fun n ->
       match Char.unsafe_chr n with
       | '\000' .. '\008' ->
           Mrmime.Date.Zone.Military_zone (Char.unsafe_chr (n + 65))
@@ -33,12 +42,18 @@ let tz = map [ range 24; range 60 ] (fun a b -> Mrmime.Date.Zone.TZ (a, b))
 
 let zone =
   choose
-    [
-      const Mrmime.Date.Zone.UT; const Mrmime.Date.Zone.GMT;
-      const Mrmime.Date.Zone.EST; const Mrmime.Date.Zone.EDT;
-      const Mrmime.Date.Zone.CST; const Mrmime.Date.Zone.CDT;
-      const Mrmime.Date.Zone.MST; const Mrmime.Date.Zone.MDT;
-      const Mrmime.Date.Zone.PST; const Mrmime.Date.Zone.PDT; military_zone; tz;
+    [ const Mrmime.Date.Zone.UT;
+      const Mrmime.Date.Zone.GMT;
+      const Mrmime.Date.Zone.EST;
+      const Mrmime.Date.Zone.EDT;
+      const Mrmime.Date.Zone.CST;
+      const Mrmime.Date.Zone.CDT;
+      const Mrmime.Date.Zone.MST;
+      const Mrmime.Date.Zone.MDT;
+      const Mrmime.Date.Zone.PST;
+      const Mrmime.Date.Zone.PDT;
+      military_zone;
+      tz
     ]
 
 let year = choose [ range ~min:1990 3000; range ~min:90 100 ]
@@ -50,11 +65,10 @@ let date =
   map
     [ option day; range 31; month; year; hours; minutes; option seconds; zone ]
     (fun day date month year hours minutes seconds zone ->
-      {
-        Mrmime.Date.day;
+      { Mrmime.Date.day;
         date = (date, month, year);
         time = (hours, minutes, seconds);
-        zone;
+        zone
       })
 
 module BBuffer = Buffer

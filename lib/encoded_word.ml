@@ -5,11 +5,11 @@ type charset =
 
 type encoding = Quoted_printable | Base64
 
-type t = {
-  charset : charset;
-  encoding : encoding;
-  data : (string, Rresult.R.msg) result;
-}
+type t =
+  { charset : charset;
+    encoding : encoding;
+    data : (string, Rresult.R.msg) result
+  }
 
 exception Invalid_utf8
 
@@ -448,9 +448,15 @@ module Encoder = struct
     match t.data with
     | Ok data ->
         let fmt =
-          [
-            bbox; string $ "=?"; !!charset; char $ '?'; !!encoding; char $ '?';
-            a; string $ "?="; close;
+          [ bbox;
+            string $ "=?";
+            !!charset;
+            char $ '?';
+            !!encoding;
+            char $ '?';
+            a;
+            string $ "?=";
+            close
           ]
         in
         let encoder =
