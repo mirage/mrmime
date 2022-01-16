@@ -22,8 +22,9 @@ let domain_atom =
       | Error _ -> bad_test ())
 
 let domain =
-  map [ list1 domain_atom ] (fun lst ->
-      `Domain (List.map (fun (`Atom x) -> x) lst))
+  map
+    [ list1 domain_atom ]
+    (fun lst -> `Domain (List.map (fun (`Atom x) -> x) lst))
 
 (* XXX(dinosaure): we did not include [`Literal] domain because [Rfc822.domain]
    excludes it according to RFC 5321 (see [Rfc822.domain]). *)

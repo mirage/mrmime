@@ -185,11 +185,11 @@ module Parameters : sig
   val to_list : t -> (key * value) list
 end
 
-type t = {
-  ty : Type.t;
-  subty : Subtype.t;
-  parameters : (string * Parameters.value) list;
-}
+type t =
+  { ty : Type.t;
+    subty : Subtype.t;
+    parameters : (string * Parameters.value) list
+  }
 (** Type of Content-Type value. *)
 
 val default : t

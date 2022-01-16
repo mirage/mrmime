@@ -181,12 +181,12 @@ module Zone : sig
   val equal : t -> t -> bool
 end
 
-type t = {
-  day : Day.t option;
-  date : int * Month.t * int;
-  time : int * int * int option;
-  zone : Zone.t;
-}
+type t =
+  { day : Day.t option;
+    date : int * Month.t * int;
+    time : int * int * int option;
+    zone : Zone.t
+  }
 (** Type of date according RFC 822 / RFC 2822 / RFC 5322. *)
 
 (** {2 Constructors.} *)

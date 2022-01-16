@@ -35,10 +35,8 @@ let make raw (expect_charset, expect_encoding, expect_data) =
 
 let () =
   Alcotest.run "rfc2047"
-    [
-      ( "encoded-word",
-        [
-          make "=?US-ASCII?Q?Keith_Moore?="
+    [ ( "encoded-word",
+        [ make "=?US-ASCII?Q?Keith_Moore?="
             (`US_ASCII, Mrmime.Encoded_word.q, Ok "Keith Moore");
           make "=?ISO-8859-1?Q?Keld_J=F8rn_Simonsen?="
             (`ISO_8859_1, Mrmime.Encoded_word.q, Ok "Keld Jørn Simonsen");
@@ -55,6 +53,6 @@ let () =
           make "=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?="
             ( `ISO_8859_8,
               Mrmime.Encoded_word.b,
-              Ok "םולש ןב ילטפנ" (* Il est un gentleman *) );
-        ] );
+              Ok "םולש ןב ילטפנ" (* Il est un gentleman *) )
+        ] )
     ]

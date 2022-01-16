@@ -334,12 +334,12 @@ module Zone = struct
   let v x = of_string_exn x
 end
 
-type t = {
-  day : Day.t option;
-  date : int * Month.t * int;
-  time : int * int * int option;
-  zone : Zone.t;
-}
+type t =
+  { day : Day.t option;
+    date : int * Month.t * int;
+    time : int * int * int option;
+    zone : Zone.t
+  }
 
 let pp_ptime_day =
   let f = function
@@ -1043,8 +1043,13 @@ module Encoder = struct
     match seconds with
     | Some seconds ->
         eval ppf
-          [
-            tbox 1; !!number; char $ ':'; !!number; char $ ':'; !!number; close;
+          [ tbox 1;
+            !!number;
+            char $ ':';
+            !!number;
+            char $ ':';
+            !!number;
+            close
           ]
           hours minutes seconds
     | None ->
@@ -1056,9 +1061,18 @@ module Encoder = struct
   let date ppf t =
     let d, m, y = t.date in
     eval ppf
-      [
-        tbox 1; !!(option day); !!int; fws; !!month; fws; !!int; fws; !!time;
-        fws; !!zone; close;
+      [ tbox 1;
+        !!(option day);
+        !!int;
+        fws;
+        !!month;
+        fws;
+        !!int;
+        fws;
+        !!time;
+        fws;
+        !!zone;
+        close
       ]
       t.day d m y t.time t.zone
 end

@@ -363,17 +363,16 @@ module Parameters = struct
   let default = Map.add "charset" (`Token "us-ascii") Map.empty
 end
 
-type t = {
-  ty : Type.t;
-  subty : Subtype.t;
-  parameters : (string * Parameters.value) list;
-}
+type t =
+  { ty : Type.t;
+    subty : Subtype.t;
+    parameters : (string * Parameters.value) list
+  }
 
 let default =
-  {
-    ty = Type.default;
+  { ty = Type.default;
     subty = Subtype.default;
-    parameters = Parameters.to_list Parameters.default;
+    parameters = Parameters.to_list Parameters.default
   }
 
 let ty { ty; _ } = ty
@@ -655,9 +654,17 @@ module Encoder = struct
           t.ty t.subty
     | _ ->
         eval ppf
-          [
-            bbox; !!ty; cut (); char $ '/'; cut (); !!subty; cut (); char $ ';';
-            fws; !!parameters; close;
+          [ bbox;
+            !!ty;
+            cut ();
+            char $ '/';
+            cut ();
+            !!subty;
+            cut ();
+            char $ ';';
+            fws;
+            !!parameters;
+            close
           ]
           t.ty t.subty t.parameters
 end

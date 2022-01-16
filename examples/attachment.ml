@@ -60,9 +60,15 @@ let part1 =
            ( Unstructured,
              Unstructured.Craft.(
                compile
-                 [
-                   v "attachement"; sp 0; v ";"; sp 1; v "filename"; sp 0;
-                   v "="; sp 0; v "mrmime.png";
+                 [ v "attachement";
+                   sp 0;
+                   v ";";
+                   sp 1;
+                   v "filename";
+                   sp 0;
+                   v "=";
+                   sp 0;
+                   v "mrmime.png"
                  ]) )
   in
   Mt.part ~header (stream_of_file "mrmime.png")

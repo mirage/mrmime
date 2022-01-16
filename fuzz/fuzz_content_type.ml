@@ -22,9 +22,14 @@ let x_token =
 
 let ty =
   choose
-    [
-      const `Text; const `Image; const `Audio; const `Video; const `Application;
-      const `Message; const `Multipart; map [ x_token ] (fun v -> `X_token v);
+    [ const `Text;
+      const `Image;
+      const `Audio;
+      const `Video;
+      const `Application;
+      const `Message;
+      const `Multipart;
+      map [ x_token ] (fun v -> `X_token v)
     ]
 
 let iana ty =
@@ -51,7 +56,9 @@ let parameter = map [ key; value ] (fun key value -> (key, value))
 let parameters = list parameter
 
 let content_type =
-  map [ dynamic_bind ty subty; parameters ] (fun (ty_, subty_) parameters_ ->
+  map
+    [ dynamic_bind ty subty; parameters ]
+    (fun (ty_, subty_) parameters_ ->
       Mrmime.Content_type.{ ty = ty_; subty = subty_; parameters = parameters_ })
 
 module BBuffer = Buffer

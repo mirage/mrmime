@@ -75,20 +75,34 @@ module Make (Fuzz : S) = struct
     (* the field name is either in a predefined list of name ("Date",
        "From", "Sender" etc .. or a random one *)
     choose
-      [
-        const Field_name.date; const Field_name.from; const Field_name.sender;
-        const Field_name.reply_to; const Field_name.cc; const Field_name.bcc;
-        const Field_name.subject; (*const Field_name.message_id;*)
-        const Field_name.in_reply_to; const Field_name.references;
-        const Field_name.comments; const Field_name.keywords;
-        const Field_name.received; const Field_name.return_path;
-        const Field_name.content_type; const Field_name.content_encoding;
-        const Field_name.mime_version; const Field_name.content_id;
-        const Field_name.content_description; const Field_name.resent_date;
-        const Field_name.resent_from; const Field_name.resent_sender;
-        const Field_name.resent_to; const Field_name.resent_cc;
-        const Field_name.resent_bcc; const Field_name.resent_message_id;
-        const Field_name.resent_reply_to; field_name;
+      [ const Field_name.date;
+        const Field_name.from;
+        const Field_name.sender;
+        const Field_name.reply_to;
+        const Field_name.cc;
+        const Field_name.bcc;
+        const Field_name.subject;
+        (*const Field_name.message_id;*)
+        const Field_name.in_reply_to;
+        const Field_name.references;
+        const Field_name.comments;
+        const Field_name.keywords;
+        const Field_name.received;
+        const Field_name.return_path;
+        const Field_name.content_type;
+        const Field_name.content_encoding;
+        const Field_name.mime_version;
+        const Field_name.content_id;
+        const Field_name.content_description;
+        const Field_name.resent_date;
+        const Field_name.resent_from;
+        const Field_name.resent_sender;
+        const Field_name.resent_to;
+        const Field_name.resent_cc;
+        const Field_name.resent_bcc;
+        const Field_name.resent_message_id;
+        const Field_name.resent_reply_to;
+        field_name
       ]
 
   (** As mrmime parses the value of some headers, the generator must
@@ -106,23 +120,39 @@ module Make (Fuzz : S) = struct
   let zone =
     choose
       Date.Zone.
-        [
-          const UT; const GMT; const EST; const EDT; const CST; const CDT;
-          const MST; const MDT; const PST; const PDT;
+        [ const UT;
+          const GMT;
+          const EST;
+          const EDT;
+          const CST;
+          const CDT;
+          const MST;
+          const MDT;
+          const PST;
+          const PDT;
           map [ char ] (fun chr ->
               match Date.Zone.military_zone chr with
               | Ok v -> v
               | Error _ -> bad_test "military_zone");
           ( map [ range 24; range 60; bool ] @@ fun mm hh -> function
-            | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) );
+            | true -> Date.Zone.TZ (hh, mm) | false -> Date.Zone.TZ (-hh, mm) )
         ]
 
   let month =
     choose
       Date.Month.
-        [
-          const Jan; const Feb; const Mar; const Apr; const May; const Jun;
-          const Jul; const Aug; const Sep; const Oct; const Nov; const Dec;
+        [ const Jan;
+          const Feb;
+          const Mar;
+          const Apr;
+          const May;
+          const Jun;
+          const Jul;
+          const Aug;
+          const Sep;
+          const Oct;
+          const Nov;
+          const Dec
         ]
 
   (** Date *)
@@ -211,10 +241,14 @@ module Make (Fuzz : S) = struct
 
   let ty : Content_type.Type.t t =
     choose
-      [
-        const `Text; const `Image; const `Audio; const `Video;
-        const `Application; const `Message; const `Multipart;
-        (map [ x_token ] @@ fun v -> `X_token v);
+      [ const `Text;
+        const `Image;
+        const `Audio;
+        const `Video;
+        const `Application;
+        const `Message;
+        const `Multipart;
+        (map [ x_token ] @@ fun v -> `X_token v)
       ]
 
   let subty ty =
@@ -265,9 +299,11 @@ module Make (Fuzz : S) = struct
      generating such an encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
-      [
-        const `Base64; const `Bit8; const `Bit7; const `Binary;
-        const `Quoted_printable;
+      [ const `Base64;
+        const `Bit8;
+        const `Bit7;
+        const `Binary;
+        const `Quoted_printable
       ]
 
   let messageid : Mrmime.MessageID.t t =
@@ -375,9 +411,13 @@ module Make (Fuzz : S) = struct
   let mail : (Header.t * string Mail.t) t =
     fix (fun mail ->
         choose
-          [
-            const `Message; const `Multipart; const `Text; const `Image;
-            const `Audio; const `Video; const `Application;
+          [ const `Message;
+            const `Multipart;
+            const `Text;
+            const `Image;
+            const `Audio;
+            const `Video;
+            const `Application
           ]
         >>= fun ty ->
         header_ct ty >>= fun h_parent ->
