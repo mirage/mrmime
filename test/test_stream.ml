@@ -25,7 +25,7 @@ let blit src src_off dst dst_off len =
   Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
 
 let parse ~emitters =
-  let parser = Mail.stream ~emitters in
+  let parser = Mail.stream emitters in
   let state = ref (Angstrom.Unbuffered.parse parser) in
   let ke = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   fun data ->

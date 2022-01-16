@@ -165,7 +165,8 @@ let test0 () =
   Alcotest.test_case "example 0" `Quick @@ fun () ->
   let res0 = stream_to_string (Mrmime.Mt.to_stream example0) in
   match
-    Angstrom.parse_string ~consume:Angstrom.Consume.All Mrmime.Mail.mail res0
+    Angstrom.parse_string ~consume:Angstrom.Consume.All (Mrmime.Mail.mail None)
+      res0
   with
   | Ok _ -> Fmt.epr "%s%!" res0
   | Error _ -> Fmt.invalid_arg "Generate unparsable email"
@@ -174,7 +175,8 @@ let test1 () =
   Alcotest.test_case "example 1" `Quick @@ fun () ->
   let res0 = stream_to_string (Mrmime.Mt.to_stream example1) in
   match
-    Angstrom.parse_string ~consume:Angstrom.Consume.All Mrmime.Mail.mail res0
+    Angstrom.parse_string ~consume:Angstrom.Consume.All (Mrmime.Mail.mail None)
+      res0
   with
   | Ok mail ->
       Fmt.epr "%s%!" res0;
@@ -235,7 +237,7 @@ let remove_fws (unstrctrd : Unstrctrd.t) =
 let test2 () =
   Alcotest.test_case "large subject" `Quick @@ fun () ->
   let res0 = stream_to_string (Mrmime.Mt.to_stream example2) in
-  match Angstrom.parse_string ~consume:All Mrmime.Mail.mail res0 with
+  match Angstrom.parse_string ~consume:All (Mrmime.Mail.mail None) res0 with
   | Ok (header, _) -> (
       let open Mrmime in
       match Header.assoc Field_name.subject header with
@@ -271,7 +273,9 @@ let contents =
 
 let test3 () =
   Alcotest.test_case "quoted-printable contents" `Quick @@ fun () ->
-  match Angstrom.parse_string ~consume:Prefix Mrmime.Mail.mail example3 with
+  match
+    Angstrom.parse_string ~consume:Prefix (Mrmime.Mail.mail None) example3
+  with
   | Ok (_, Leaf body) -> Alcotest.(check string) "contents" body contents
   | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"
   | Error _ -> Fmt.invalid_arg "Invalid email"
@@ -283,7 +287,9 @@ Hello World!
 
 let test4 () =
   Alcotest.test_case "7-bit contents" `Quick @@ fun () ->
-  match Angstrom.parse_string ~consume:Prefix Mrmime.Mail.mail example4 with
+  match
+    Angstrom.parse_string ~consume:Prefix (Mrmime.Mail.mail None) example4
+  with
   | Ok (_, Leaf body) ->
       Alcotest.(check string) "contents" body "Hello World!\r\n"
   | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"

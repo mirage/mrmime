@@ -86,18 +86,18 @@ let possible_boundary boundary =
 let boundary_or_crlf boundary =
   possible_boundary boundary <|> crlf *> return `CRLF
 
-let body_part boundary body =
-  Header.Decoder.header >>= fun header ->
+let body_part g boundary body =
+  Header.Decoder.header g >>= fun header ->
   (boundary_or_crlf boundary >>= function
    | `CRLF -> body header >>| Option.some
    | `Nothing -> return None)
   >>| fun body -> (header, body)
 
-let encapsulation boundary body =
+let encapsulation g boundary body =
   string (make_delimiter boundary)
   *> transport_padding
   *> crlf
-  *> body_part boundary body
+  *> body_part g boundary body
 
 (* From RFC 2046:
 
@@ -113,14 +113,14 @@ let epilogue parent =
   | Some boundary -> discard_all_to_delimiter boundary
   | None -> skip_while (fun _ -> true)
 
-let multipart_body ?parent boundary body =
+let multipart_body ?g ?parent boundary body =
   option () (preambule boundary) (* see [preambule]. *)
   *> dash_boundary boundary
   *> transport_padding
   *> crlf
-  *> body_part boundary body
+  *> body_part g boundary body
   >>= fun x ->
-  many (encapsulation boundary body) >>= fun r ->
+  many (encapsulation g boundary body) >>= fun r ->
   (close_delimiter boundary *> transport_padding *> option () (epilogue parent)
   <|> return ())
   *> return (x :: r)

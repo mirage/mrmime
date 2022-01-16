@@ -27,7 +27,7 @@ let parse_and_compare ~quiet output mail =
     |> Mrmime.Mt.to_stream
     |> Utils.buffer_stream_to_string
   in
-  match Angstrom.parse_string ~consume:All Mrmime.Mail.mail str_mail with
+  match Angstrom.parse_string ~consume:All (Mrmime.Mail.mail None) str_mail with
   | Ok mail' ->
       let str_mail' =
         Utils.(mail_to_mt mail')

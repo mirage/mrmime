@@ -29,13 +29,15 @@ val light_octet :
   unit Angstrom.t
 (** {i Light} parser of body - it sends contents to given [emitter]. *)
 
-val mail : (Header.t * string t) Angstrom.t
+val mail :
+  Field.witness Field_name.Map.t option -> (Header.t * string t) Angstrom.t
 (** Angstrom parser of an entire RFC 5322 mail (including header). *)
 
 type 'id emitters = Header.t -> (string option -> unit) * 'id
 
 val stream :
-  emitters:(Header.t -> (string option -> unit) * 'id) ->
+  ?g:Field.witness Field_name.Map.t ->
+  (Header.t -> (string option -> unit) * 'id) ->
   (Header.t * 'id t) Angstrom.t
 (** [stream ~emitters] is an Angstrom parser of an entire RFC 5322 mail which
    will use given emitters by [emitters] to store bodies. *)
