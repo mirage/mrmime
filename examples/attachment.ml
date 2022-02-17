@@ -82,6 +82,8 @@ let header =
   |> add (Field_name.v "To")
        Field.(Addresses, Address.[ mailbox romain_calascibetta ])
 
+let () = Random.init 42
+
 let rng ?g:_ len =
   let res = Bytes.create len in
   for i = 0 to len - 1 do
