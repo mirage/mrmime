@@ -92,7 +92,10 @@ let rng ?g:_ len =
   done;
   Bytes.unsafe_to_string res
 
-let email = Mt.make header Mt.multi (Mt.multipart ~rng [ part0; part1 ])
+let boundary = "foo"
+
+let email =
+  Mt.make header Mt.multi (Mt.multipart ~rng:Mt.rng ~boundary [ part0; part1 ])
 
 let email =
   let stream = Mt.to_stream email in

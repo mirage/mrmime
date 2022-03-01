@@ -4,15 +4,15 @@ Simple email with attachment
   From: romain.calascibetta@gmail.com
   Subject: A Simple Email
   Date: Mon, 26 Apr 2021 16:20:50 GMT
-  Content-Type: multipart/mixed; boundary=YlGxbWQC
+  Content-Type: multipart/mixed; boundary=foo
   
-  --YlGxbWQC
+  --foo
   Content-Transfer-Encoding: quoted-printable
   Content-Type: text/plain
   
   Hello=20World!
   
-  --YlGxbWQC
+  --foo
   Content-Disposition: attachement; filename=mrmime.png
   Content-Transfer-Encoding: base64
   Content-Type: image/png
@@ -1093,4 +1093,4 @@ Simple email with attachment
   ZHRoADg1MJ7GNKcAAAAZdEVYdFRodW1iOjpNaW1ldHlwZQBpbWFnZS9wbmc/slZOAAAAF3RFWHRU
   aHVtYjo6TVRpbWUAMTU1NDQ5MjI0MNxNkFcAAAASdEVYdFRodW1iOjpTaXplADQ4NEtCQmZRA9kA
   AAAASUVORK5CYII=
-  --YlGxbWQC--
+  --foo--
