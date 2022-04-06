@@ -157,8 +157,7 @@ let fortuna_cmd =
     ]
   in
   let term = Term.(ret (const fortuna $ setup_logs $ seed $ output))
-  and info = Cmd.info "fortuna" ~doc ~man
-  in
+  and info = Cmd.info "fortuna" ~doc ~man in
   Cmd.v info term
 
 (** Crowbar command*)
@@ -189,13 +188,10 @@ let crowbar_cmd =
     Term.(
       ret
         (const crowbar $ setup_logs $ seed64 $ multi $ output $ randomness_file))
-  and info = Cmd.info "crowbar" ~doc ~man
-  in
+  and info = Cmd.info "crowbar" ~doc ~man in
   Cmd.v info term
 
-let default_cmd =
-  Term.(ret (const (`Help (`Pager, None))))
-
+let default_cmd = Term.(ret (const (`Help (`Pager, None))))
 let cmds = [ fortuna_cmd; crowbar_cmd ]
 
 let () =
