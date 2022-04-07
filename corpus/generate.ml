@@ -104,11 +104,11 @@ let output =
 let common_options = "COMMON OPTIONS"
 
 let verbosity =
-  let env = Arg.env_var "BLAZE_LOGS" in
+  let env = Cmd.Env.info "BLAZE_LOGS" in
   Logs_cli.level ~docs:common_options ~env ()
 
 let renderer =
-  let env = Arg.env_var "BLAZE_FMT" in
+  let env = Cmd.Env.info "BLAZE_FMT" in
   Fmt_cli.style_renderer ~docs:common_options ~env ()
 
 let reporter ppf =
@@ -156,8 +156,9 @@ let fortuna_cmd =
          and the $(i,base64) given seed."
     ]
   in
-  ( Term.(ret (const fortuna $ setup_logs $ seed $ output)),
-    Term.info "fortuna" ~doc ~man )
+  let term = Term.(ret (const fortuna $ setup_logs $ seed $ output))
+  and info = Cmd.info "fortuna" ~doc ~man in
+  Cmd.v info term
 
 (** Crowbar command*)
 let crowbar quiet seed multi dst input =
@@ -183,25 +184,28 @@ let crowbar_cmd =
       `P "Generate a random email using $(i,crowbar) fuzzer."
     ]
   in
-  ( Term.(
+  let term =
+    Term.(
       ret
-        (const crowbar $ setup_logs $ seed64 $ multi $ output $ randomness_file)),
-    Term.info "crowbar" ~doc ~man )
+        (const crowbar $ setup_logs $ seed64 $ multi $ output $ randomness_file))
+  and info = Cmd.info "crowbar" ~doc ~man in
+  Cmd.v info term
 
-let default_cmd =
-  let man =
-    [ `S "DESCRIPTION";
-      `P
-        "Generate a random email using $(i,crowbar) fuzzer or $(i,fortuna) \
-         random number generator."
-    ]
-  in
-  let doc = "a random mails generator" in
-  let sdocs = Manpage.s_common_options in
-  let exits = Term.default_exits in
-  let man = man in
-  ( Term.(ret (const (`Help (`Pager, None)))),
-    Term.info "generate" ~doc ~sdocs ~exits ~man )
-
+let default_cmd = Term.(ret (const (`Help (`Pager, None))))
 let cmds = [ fortuna_cmd; crowbar_cmd ]
-let () = Term.(exit_status @@ eval_choice ~catch:false default_cmd cmds)
+
+let () =
+  let info =
+    let man =
+      [ `S "DESCRIPTION";
+        `P
+          "Generate a random email using $(i,crowbar) fuzzer or $(i,fortuna) \
+           random number generator."
+      ]
+    in
+    let doc = "a random mails generator" in
+    let sdocs = Manpage.s_common_options in
+    Cmd.info "generate" ~doc ~sdocs ~man
+  in
+  let group = Cmd.group ~default:default_cmd info cmds in
+  exit (Cmd.eval' ~catch:false group)

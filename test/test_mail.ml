@@ -69,8 +69,7 @@ let example0 =
   let header1 =
     let content1 =
       let open Content_type in
-      make `Text
-        (Subtype.v `Text "plain")
+      make `Text (Subtype.v `Text "plain")
         Parameters.(of_list [ (k "charset", v "utf-8") ])
     in
     Header.of_list
@@ -131,8 +130,7 @@ let example1 =
   let header0 =
     let content0 =
       let open Content_type in
-      make `Text
-        (Subtype.v `Text "plain")
+      make `Text (Subtype.v `Text "plain")
         Parameters.(of_list [ (k "charset", v "utf-8") ])
     in
     Header.of_list Field.[ Field (Field_name.content_type, Content, content0) ]

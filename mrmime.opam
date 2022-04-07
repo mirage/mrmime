@@ -30,10 +30,9 @@ depends: [
   "pecu"             {>= "0.6"}
   "prettym"          {>= "0.0.2"}
   "bigstringaf"      {>= "0.5.0"}
-  "bigarray-compat"
   "bigarray-overlap" {>= "0.2.0"}
   "angstrom"         {>= "0.14.0"}
-  "cmdliner"
+  "cmdliner"         {>= "1.1.0"}
   "fpath"
   "hxd"
   "mirage-crypto-rng"
