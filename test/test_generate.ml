@@ -37,7 +37,7 @@ let generate_any_bytes_with_newline len max =
 
 open Mrmime
 
-let max = 1_000_000
+let max = 10_000
 let chunk = 0x1000
 
 let part content_encoding max =
