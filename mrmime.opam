@@ -15,32 +15,32 @@ build: [
 ]
 
 depends: [
-  "ocaml"            {>= "4.08.0"}
-  "dune"             {>= "2.7"}
+  "ocaml"             {>= "4.08.0"}
+  "dune"              {>= "2.7"}
   "rresult"
-  "fmt"              {>= "0.8.7"}
-  "ke"               {>= "0.4"}
-  "unstrctrd"        {>= "0.3"}
-  "ptime"            {>= "0.8.2"}
+  "fmt"               {>= "0.8.7"}
+  "ke"                {>= "0.4"}
+  "unstrctrd"         {>= "0.3"}
+  "ptime"             {>= "0.8.2"}
   "uutf"
-  "rosetta"          {>= "0.3.0"}
+  "rosetta"           {>= "0.3.0"}
   "ipaddr"
-  "emile"            {>= "1.0"}
-  "base64"           {>= "3.1.0"}
-  "pecu"             {>= "0.6"}
-  "prettym"          {>= "0.0.2"}
-  "bigstringaf"      {>= "0.5.0"}
-  "bigarray-overlap" {>= "0.2.0"}
-  "angstrom"         {>= "0.14.0"}
-  "cmdliner"         {>= "1.1.0"}
-  "fpath"
-  "hxd"
-  "mirage-crypto-rng"
-  "ocplib-endian"
-  "afl-persistent"
-  "alcotest"         {with-test}
-  "jsonm"            {with-test}
-  "crowbar"          {with-test}
-  "lwt"              {with-test}
-  "logs"
+  "emile"             {>= "1.0"}
+  "base64"            {>= "3.1.0"}
+  "pecu"              {>= "0.6"}
+  "prettym"           {>= "0.0.2"}
+  "bigstringaf"       {>= "0.5.0"}
+  "bigarray-overlap"  {>= "0.2.0"}
+  "angstrom"          {>= "0.14.0"}
+  "fpath"             {with-test}
+  "hxd"               {with-test}
+  "mirage-crypto-rng" {with-test}
+  "ocplib-endian"     {with-test}
+  "afl-persistent"    {with-test}
+  "alcotest"          {with-test}
+  "jsonm"             {with-test}
+  "crowbar"           {with-test}
+  "lwt"               {with-test}
+  "cmdliner"          {with-test}
+  "logs"              {with-test}
 ]
