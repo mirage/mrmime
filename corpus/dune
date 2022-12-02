@@ -1,6 +1,5 @@
 (executable
  (name generate)
- (public_name mrmime.generate)
  (libraries logs.cli fmt.cli hxd.string hxd.core logs logs.fmt fmt.tty
    cmdliner fpath mirage-crypto-rng mrmime ocplib-endian str afl-persistent))
 
