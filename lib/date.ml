@@ -1,4 +1,5 @@
 let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 module Day = struct
   type t = Mon | Tue | Wed | Thu | Fri | Sat | Sun
@@ -12,15 +13,15 @@ module Day = struct
   let sun = Sun
 
   let pp ppf = function
-    | Mon -> Fmt.pf ppf "Mon"
-    | Tue -> Fmt.pf ppf "Tue"
-    | Wed -> Fmt.pf ppf "Wed"
-    | Thu -> Fmt.pf ppf "Thu"
-    | Fri -> Fmt.pf ppf "Fri"
-    | Sat -> Fmt.pf ppf "Sat"
-    | Sun -> Fmt.pf ppf "Sun"
+    | Mon -> Format.pp_print_string ppf "Mon"
+    | Tue -> Format.pp_print_string ppf "Tue"
+    | Wed -> Format.pp_print_string ppf "Wed"
+    | Thu -> Format.pp_print_string ppf "Thu"
+    | Fri -> Format.pp_print_string ppf "Fri"
+    | Sat -> Format.pp_print_string ppf "Sat"
+    | Sun -> Format.pp_print_string ppf "Sun"
 
-  let to_string = Fmt.to_to_string pp
+  let to_string = Format.asprintf "%a" pp
 
   let of_string = function
     | "Mon" -> Ok Mon
@@ -33,7 +34,9 @@ module Day = struct
     | x -> error_msgf "invalid day %s" x
 
   let of_string_exn x =
-    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
+    match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg "%s" err
 
   let v x = of_string_exn x
 
@@ -94,18 +97,18 @@ module Month = struct
     | _, _ -> false
 
   let pp ppf = function
-    | Jan -> Fmt.pf ppf "Jan"
-    | Feb -> Fmt.pf ppf "Feb"
-    | Mar -> Fmt.pf ppf "Mar"
-    | Apr -> Fmt.pf ppf "Apr"
-    | May -> Fmt.pf ppf "May"
-    | Jun -> Fmt.pf ppf "Jun"
-    | Jul -> Fmt.pf ppf "Jul"
-    | Aug -> Fmt.pf ppf "Aug"
-    | Sep -> Fmt.pf ppf "Sep"
-    | Oct -> Fmt.pf ppf "Oct"
-    | Nov -> Fmt.pf ppf "Nov"
-    | Dec -> Fmt.pf ppf "Dec"
+    | Jan -> Format.pp_print_string ppf "Jan"
+    | Feb -> Format.pp_print_string ppf "Feb"
+    | Mar -> Format.pp_print_string ppf "Mar"
+    | Apr -> Format.pp_print_string ppf "Apr"
+    | May -> Format.pp_print_string ppf "May"
+    | Jun -> Format.pp_print_string ppf "Jun"
+    | Jul -> Format.pp_print_string ppf "Jul"
+    | Aug -> Format.pp_print_string ppf "Aug"
+    | Sep -> Format.pp_print_string ppf "Sep"
+    | Oct -> Format.pp_print_string ppf "Oct"
+    | Nov -> Format.pp_print_string ppf "Nov"
+    | Dec -> Format.pp_print_string ppf "Dec"
 
   let to_int = function
     | Jan -> 1
@@ -137,9 +140,9 @@ module Month = struct
     | n -> error_msgf "Invalid number of month: %d" n
 
   let of_int_exn x =
-    match of_int x with Ok v -> v | Error (`Msg err) -> invalid_arg err
+    match of_int x with Ok v -> v | Error (`Msg err) -> invalid_arg "%s" err
 
-  let to_string = Fmt.to_to_string pp
+  let to_string = Format.asprintf "%a" pp
 
   let of_string = function
     | "Jan" -> Ok Jan
@@ -157,7 +160,9 @@ module Month = struct
     | x -> error_msgf "Invalid month %s" x
 
   let of_string_exn x =
-    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
+    match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg "%s" err
 
   let v x = of_string_exn x
 end
@@ -222,25 +227,25 @@ module Zone = struct
     else error_msgf "Invalid time-zone (hours: %d, minutes: %d)" hh mm
 
   let pp ppf = function
-    | UT -> Fmt.pf ppf "UT"
-    | GMT -> Fmt.pf ppf "GMT"
-    | EST -> Fmt.pf ppf "EST"
-    | EDT -> Fmt.pf ppf "EDT"
-    | CST -> Fmt.pf ppf "CST"
-    | CDT -> Fmt.pf ppf "CDT"
-    | MST -> Fmt.pf ppf "MST"
-    | MDT -> Fmt.pf ppf "MDT"
-    | PST -> Fmt.pf ppf "PST"
-    | PDT -> Fmt.pf ppf "PDT"
-    | TZ (hh, mm) -> Fmt.pf ppf "(TZ %02d%02d)" hh mm
-    | Military_zone c -> Fmt.pf ppf "(Military_zone %c)" c
+    | UT -> Format.pp_print_string ppf "UT"
+    | GMT -> Format.pp_print_string ppf "GMT"
+    | EST -> Format.pp_print_string ppf "EST"
+    | EDT -> Format.pp_print_string ppf "EDT"
+    | CST -> Format.pp_print_string ppf "CST"
+    | CDT -> Format.pp_print_string ppf "CDT"
+    | MST -> Format.pp_print_string ppf "MST"
+    | MDT -> Format.pp_print_string ppf "MDT"
+    | PST -> Format.pp_print_string ppf "PST"
+    | PDT -> Format.pp_print_string ppf "PDT"
+    | TZ (hh, mm) -> Format.fprintf ppf "(TZ %02d%02d)" hh mm
+    | Military_zone c -> Format.fprintf ppf "(Military_zone %c)" c
 
   let to_string = function
     | TZ (hh, mm) ->
-        if hh >= 0 then Fmt.str "+%02d%02d" hh mm
-        else Fmt.str "-%02d%02d" (abs hh) mm
+        if hh >= 0 then Format.asprintf "+%02d%02d" hh mm
+        else Format.asprintf "-%02d%02d" (abs hh) mm
     | Military_zone c -> String.make 1 c
-    | x -> Fmt.to_to_string pp x
+    | x -> Format.asprintf "%a" pp x
 
   let to_int = function
     | UT | GMT -> (00, 00)
@@ -280,7 +285,7 @@ module Zone = struct
         | 'X' -> (-11, 00)
         | 'Y' -> (-12, 00)
         | 'Z' -> (00, 00)
-        | c -> Fmt.invalid_arg "Invalid military zone %c" c)
+        | c -> invalid_arg "Invalid military zone %c" c)
 
   let parser_tz =
     let open Angstrom in
@@ -331,7 +336,9 @@ module Zone = struct
             else error_msgf "Invalid time-zone: %S" x)
 
   let of_string_exn x =
-    match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
+    match of_string x with
+    | Ok v -> v
+    | Error (`Msg err) -> invalid_arg "%s" err
 
   let v x = of_string_exn x
 end
@@ -343,7 +350,7 @@ type t =
     zone : Zone.t
   }
 
-let pp_ptime_day =
+let pp_ptime_day ppf x =
   let f = function
     | `Mon -> Day.Mon
     | `Thu -> Day.Thu
@@ -353,7 +360,7 @@ let pp_ptime_day =
     | `Sat -> Day.Sat
     | `Sun -> Day.Sun
   in
-  Fmt.using f Day.pp
+  Day.pp ppf (f x)
 
 let make ?day (y, m, d) (hh, mm, ss) zone =
   let z =
@@ -390,14 +397,14 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
 
 let pp ppf = function
   | { day = Some day; date = d, m, y; time = hh, mm, ss; zone } ->
-      Fmt.pf ppf
+      Format.fprintf ppf
         "{@[<hov>day = %a;@ date = (@[<hov>%d,@ %a,@ %d@]);@ time = \
          (@[<hov>%d,@ %d,@ %d@]);@ zone = %a@]}"
         Day.pp day d Month.pp m y hh mm
         (Option.value ~default:0 ss)
         Zone.pp zone
   | { day = None; date = d, m, y; time = hh, mm, ss; zone } ->
-      Fmt.pf ppf
+      Format.fprintf ppf
         "{@[<hov>date = (@[<hov>%d,@ %a,@ %d@]);@ time = (@[<hov>%d,@ %d,@ \
          %d@]);@ zone = %a@]}"
         d Month.pp m y hh mm
@@ -1038,7 +1045,7 @@ module Encoder = struct
   let month = using Month.to_string string
 
   let time ppf (hours, minutes, seconds) =
-    let string_of_number = Fmt.str "%02d" in
+    let string_of_number = Format.asprintf "%02d" in
     let number ppf x =
       eval ppf [ cut; !!(using string_of_number string); cut ] x
     in

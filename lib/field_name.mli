@@ -30,7 +30,7 @@ val capitalize : t -> t
 val canonicalize : t -> t
 (** [canonicalize t] apply [String.lowercase_ascii] on [t]. *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!t}. *)
 
 val of_string : string -> (t, [ `Msg of string ]) result

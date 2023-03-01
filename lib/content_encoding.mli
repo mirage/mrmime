@@ -49,7 +49,7 @@ val equal : t -> t -> bool
 
 (** {2 Pretty-printers.} *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer for {!t}. *)
 
 (** {2 Decoder of Content-Encoding's value.} *)

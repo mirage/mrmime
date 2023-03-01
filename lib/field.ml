@@ -14,22 +14,32 @@ type field = Field : Field_name.t * 'a t * 'a -> field
 let make : type a. Field_name.t -> a t -> a -> field =
  fun field_name w v -> Field (field_name, w, v)
 
+let pp_list ?(sep = fun ppf () -> Format.fprintf ppf "") pp ppf lst =
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> Format.fprintf ppf "%a" pp x
+    | x :: r ->
+        Format.fprintf ppf "%a%a" pp x sep ();
+        go r
+  in
+  go lst
+
 let pp ppf (Field (field_name, w, v)) =
-  let of_witness : type a. a t -> a Fmt.t = function
+  let of_witness : type a. a t -> Format.formatter -> a -> unit = function
     | Date -> (
         fun ppf v ->
           match Date.to_ptime v with
           | Ok (v, tz_offset_s) -> Ptime.pp_human ~tz_offset_s () ppf v
           | Error _ -> Date.pp ppf v)
-    | Mailboxes -> Fmt.list Mailbox.pp
+    | Mailboxes -> pp_list Mailbox.pp
     | Mailbox -> Mailbox.pp
-    | Addresses -> Fmt.list Address.pp
+    | Addresses -> pp_list Address.pp
     | MessageID -> MessageID.pp
     | Unstructured -> Unstructured.pp
     | Content -> Content_type.pp
     | Encoding -> Content_encoding.pp
   in
-  Fmt.pf ppf "%a: @[<hov>%a@]" Field_name.pp field_name (of_witness w) v
+  Format.fprintf ppf "%a: @[<hov>%a@]" Field_name.pp field_name (of_witness w) v
 
 let of_field_name : Field_name.t -> witness =
  fun field_name ->

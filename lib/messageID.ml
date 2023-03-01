@@ -2,14 +2,15 @@ type domain = [ `Literal of string | `Domain of string list ]
 type t = Emile.local * domain
 
 let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
-let pp_domain : domain Fmt.t =
+let pp_domain : Format.formatter -> domain -> unit =
  fun ppf -> function
   | `Domain _ as x -> Emile.pp_domain ppf x
   | `Literal _ as x -> Emile.pp_domain ppf x
 
 let pp ppf (local, domain) =
-  Fmt.pf ppf "<%a@%a>" Emile.pp_local local pp_domain domain
+  Format.fprintf ppf "<%a@%a>" Emile.pp_local local pp_domain domain
 
 let equal_domain a b =
   match (a, b) with
@@ -115,7 +116,7 @@ module Domain = struct
   let atom_exn x =
     match atom x with
     | Some v -> v
-    | None -> Fmt.invalid_arg "atom_exn: invalid atom value %S" x
+    | None -> invalid_arg "atom_exn: invalid atom value %S" x
 
   let a = atom_exn
 
@@ -146,7 +147,7 @@ module Domain = struct
   let literal_exn x =
     match literal x with
     | Some v -> v
-    | None -> Fmt.invalid_arg "literal_exn: invalid domain literal value %S" x
+    | None -> invalid_arg "literal_exn: invalid domain literal value %S" x
 
   type atom = [ `Atom of string ]
   type literal = [ `Literal of string ]
@@ -180,7 +181,7 @@ module Domain = struct
    fun witness v ->
     match make witness v with
     | Some v -> v
-    | None -> Fmt.invalid_arg "make_exn: invalid domain"
+    | None -> invalid_arg "make_exn: invalid domain"
 
   let to_string x = Prettym.to_string Encoder.domain x
 end

@@ -25,7 +25,7 @@ let make ~name:group mailboxes =
 
 let v ~name mailboxes =
   match make ~name mailboxes with
-  | None -> Fmt.invalid_arg "A group contains at least one mailbox"
+  | None -> invalid_arg "A group contains at least one mailbox"
   | Some t -> t
 
 let pp = Emile.pp_group

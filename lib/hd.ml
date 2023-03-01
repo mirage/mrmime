@@ -87,7 +87,7 @@ let blit_from_string src src_off dst dst_off len =
 
 let src decoder src off len =
   if off < 0 || len < 0 || off + len > String.length src then
-    Fmt.invalid_arg "Invalid bounds";
+    invalid_arg "Invalid bounds";
   Ke.Rke.N.push decoder.queue ~blit:blit_from_string ~length:String.length ~off
     ~len src;
   if len = 0 then decoder.closed <- true

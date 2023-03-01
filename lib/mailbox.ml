@@ -457,7 +457,7 @@ let ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> Emile.mailbox =
   | Ok local, Ok domain -> { Emile.name = None; local; domain = (domain, []) }
   | Error (`Msg err), Ok _ -> invalid_arg err
   | Ok _, Error (`Msg err) -> invalid_arg err
-  | Error _, Error _ -> Fmt.invalid_arg "Invalid local-part and domain"
+  | Error _, Error _ -> invalid_arg "Invalid local-part and domain"
 
 let with_name name mailbox = { mailbox with Emile.name = Some name }
 

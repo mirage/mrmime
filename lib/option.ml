@@ -5,4 +5,4 @@ let ( >>| ) x f = map f x
 let value ~default = function Some x -> x | None -> default
 let some x = Some x
 let is_some = function Some _ -> true | None -> false
-let get_exn = function Some x -> x | None -> Fmt.invalid_arg "Option.get_exn"
+let get_exn = function Some x -> x | None -> invalid_arg "Option.get_exn"

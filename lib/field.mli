@@ -34,7 +34,7 @@ type field = Field : Field_name.t * 'a t * 'a -> field  (** Type of field. *)
 val make : Field_name.t -> 'a t -> 'a -> field
 (** [make field_name w v] returns a field. *)
 
-val pp : field Fmt.t
+val pp : Format.formatter -> field -> unit
 (** Pretty-printer of {!field}. *)
 
 (** {2 Decoder of field.} *)

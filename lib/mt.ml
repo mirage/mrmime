@@ -213,7 +213,7 @@ let multipart_as_part : multipart -> part =
   let boundary =
     match Content_type.boundary (Header.content_type header) with
     | Some v -> v
-    | None -> Fmt.failwith "Multipart MUST have a boundary"
+    | None -> failwith "Multipart MUST have a boundary"
     (* XXX(dinosaure): should never occur! *)
   in
   let beginner = Rfc2046.make_dash_boundary boundary ^ "\r\n" in

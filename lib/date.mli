@@ -52,7 +52,7 @@ module Day : sig
 
   (** {3 Pretty-printers.} *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
 
   (** {3 Equals.} *)
 
@@ -118,7 +118,7 @@ module Month : sig
 
   (** {3 Pretty-printers.} *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
 
   (** {3 Equals.} *)
 
@@ -174,7 +174,7 @@ module Zone : sig
 
   (** {3 Pretty-printers.} *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
 
   (** {3 Equals.} *)
 
@@ -223,7 +223,7 @@ val of_ptime : zone:Zone.t -> Ptime.t -> t
 
 (** {2 Pretty-printers.} *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 
 (** {2 Equals & compares.} *)
 
