@@ -1,3 +1,5 @@
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+
 module Day = struct
   type t = Mon | Tue | Wed | Thu | Fri | Sat | Sun
 
@@ -28,7 +30,7 @@ module Day = struct
     | "Fri" -> Ok Fri
     | "Sat" -> Ok Sat
     | "Sun" -> Ok Sun
-    | x -> Rresult.R.error_msgf "invalid day %s" x
+    | x -> error_msgf "invalid day %s" x
 
   let of_string_exn x =
     match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -132,7 +134,7 @@ module Month = struct
     | 10 -> Ok Oct
     | 11 -> Ok Nov
     | 12 -> Ok Dec
-    | n -> Rresult.R.error_msgf "Invalid number of month: %d" n
+    | n -> error_msgf "Invalid number of month: %d" n
 
   let of_int_exn x =
     match of_int x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -152,7 +154,7 @@ module Month = struct
     | "Oct" -> Ok Oct
     | "Nov" -> Ok Nov
     | "Dec" -> Ok Dec
-    | x -> Rresult.R.error_msgf "Invalid month %s" x
+    | x -> error_msgf "Invalid month %s" x
 
   let of_string_exn x =
     match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -213,11 +215,11 @@ module Zone = struct
     | ('a' .. 'i' | 'k' .. 'z') as chr ->
         let chr = Char.chr (Char.code chr - 32) in
         Ok (Military_zone chr)
-    | chr -> Rresult.R.error_msgf "Invalid military zone '%c'" chr
+    | chr -> error_msgf "Invalid military zone '%c'" chr
 
   let tz hh mm =
     if abs hh >= 0 && abs hh < 24 && mm >= 0 && mm < 60 then Ok (TZ (hh, mm))
-    else Rresult.R.error_msgf "Invalid time-zone (hours: %d, minutes: %d)" hh mm
+    else error_msgf "Invalid time-zone (hours: %d, minutes: %d)" hh mm
 
   let pp ppf = function
     | UT -> Fmt.pf ppf "UT"
@@ -326,7 +328,7 @@ module Zone = struct
         | Error _ ->
             if String.length x = 1 && is_military_zone x.[0] then
               Ok (Military_zone x.[0])
-            else Rresult.R.error_msgf "Invalid time-zone: %S" x)
+            else error_msgf "Invalid time-zone: %S" x)
 
   let of_string_exn x =
     match of_string x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -373,7 +375,7 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
   match
     Ptime.of_date_time ((y, m', d), ((hh, mm, Option.value ~default:0 ss), z))
   with
-  | None -> Rresult.R.error_msgf "Invalid date"
+  | None -> error_msgf "Invalid date"
   | Some t -> (
       let day' = Ptime.weekday ~tz_offset_s:z t in
 
@@ -383,7 +385,7 @@ let make ?day (y, m, d) (hh, mm, ss) zone =
           if same_day day day' then
             Ok { day = Some day; date = (d, m, y); time = (hh, mm, ss); zone }
           else
-            Rresult.R.error_msgf "Expected day mismatch (%a <> %a)" Day.pp day
+            error_msgf "Expected day mismatch (%a <> %a)" Day.pp day
               pp_ptime_day day')
 
 let pp ppf = function
@@ -416,7 +418,7 @@ let to_ptime date =
   let ss = Option.value ~default:0 ss in
   match Ptime.of_date_time ((y, m, d), ((hh, mm, ss), z)) with
   | Some ptime -> Ok (ptime, z)
-  | None -> Rresult.R.error_msgf "Invalid date: %a" pp date
+  | None -> error_msgf "Invalid date: %a" pp date
 
 let of_ptime ~zone ptime =
   let tz_offset_s =

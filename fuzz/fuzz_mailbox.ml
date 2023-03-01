@@ -105,13 +105,13 @@ let parser buf =
   let open Angstrom in
   Unstrctrd_parser.unstrctrd buf >>= fun v ->
   let res =
-    let open Rresult in
-    R.ok v
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
+    Result.ok v
     >>| Unstrctrd.fold_fws
     (* XXX(dinosaure): '(' and ')' can be handle (and have a signification) by
        [Emile]. *)
     >>| Unstrctrd.to_utf_8_string
-    >>= (R.reword_error R.msg
+    >>= (Result.map_error (fun x -> `Msg x)
         <.> Angstrom.parse_string ~consume:Prefix Mrmime.Mailbox.Decoder.mailbox
         )
   in

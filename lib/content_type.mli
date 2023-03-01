@@ -57,10 +57,10 @@ module Type : sig
   val multipart : t
   (** Multipart type. *)
 
-  val ietf : string -> (t, [> Rresult.R.msg ]) result
+  val ietf : string -> (t, [> `Msg of string ]) result
   (** Type defined by IETF. *)
 
-  val extension : string -> (t, [> Rresult.R.msg ]) result
+  val extension : string -> (t, [> `Msg of string ]) result
   (** User-defined type. *)
 
   val pp : t Fmt.t
@@ -79,24 +79,24 @@ module Type : sig
   val is_multipart : t -> bool
   val is_message : t -> bool
   val to_string : t -> string
-  val of_string : string -> (t, [> Rresult.R.msg ]) result
+  val of_string : string -> (t, [> `Msg of string ]) result
 end
 
 module Subtype : sig
   type t = [ `Ietf_token of string | `Iana_token of string | `X_token of string ]
   (** Type of sub-type. *)
 
-  val ietf : string -> (t, [> Rresult.R.msg ]) result
+  val ietf : string -> (t, [> `Msg of string ]) result
   (** Sub-type defined by IETF. *)
 
-  val iana : Type.t -> string -> (t, [> Rresult.R.msg ]) result
+  val iana : Type.t -> string -> (t, [> `Msg of string ]) result
   (** Sub-type from IANA database. Returns [Error] if sub-type
       is not a part of the IANA database. *)
 
   val iana_exn : Type.t -> string -> t
   val v : Type.t -> string -> t
 
-  val extension : string -> (t, [> Rresult.R.msg ]) result
+  val extension : string -> (t, [> `Msg of string ]) result
   (** User-defined sub-type. *)
 
   val pp : t Fmt.t
@@ -129,14 +129,14 @@ module Parameters : sig
   val of_list : (key * value) list -> t
   (** Make {!t} from an association list. *)
 
-  val key : string -> (key, [> Rresult.R.msg ]) result
+  val key : string -> (key, [> `Msg of string ]) result
   (** [key v] makes a new key (according to RFC 2045 - otherwise, it returns an
      error). *)
 
   val key_exn : string -> key
   val k : string -> key
 
-  val value : string -> (value, [> Rresult.R.msg ]) result
+  val value : string -> (value, [> `Msg of string ]) result
   (** [value v] makes a new value (according to RFC 2045 - otherwise, it returns
       an error). *)
 

@@ -1,5 +1,7 @@
 exception Invalid_token
 
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+
 (* From RFC 2045
 
         tspecials :=  "(" / ")" / "<" / ">" / "@" /
@@ -59,12 +61,11 @@ module Type = struct
   let ietf token =
     if Iana.Map.mem (String.lowercase_ascii token) Iana.database then
       Ok (`Ietf_token token)
-    else Rresult.R.error_msgf "%S is not an IETF token" token
+    else error_msgf "%S is not an IETF token" token
 
   let extension token =
     if String.length token < 3 then
-      Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S"
-        token
+      error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
     else
       match (token.[0], token.[1]) with
       | ('x' | 'X'), '-' -> (
@@ -74,11 +75,8 @@ module Type = struct
               (String.sub token 2 (String.length token - 2));
             Ok (`X_token token)
           with Invalid_token ->
-            Rresult.R.error_msgf "Extension token %S does not respect standards"
-              token)
-      | _ ->
-          Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S"
-            token
+            error_msgf "Extension token %S does not respect standards" token)
+      | _ -> error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
     | `Text -> Fmt.string ppf "text"
@@ -114,7 +112,7 @@ module Type = struct
         match (ietf str, extension str) with
         | Ok ietf, _ -> Ok ietf
         | _, Ok extension -> Ok extension
-        | _ -> Rresult.R.error_msgf "Invalid type: %S" str)
+        | _ -> error_msgf "Invalid type: %S" str)
 
   let compare a b =
     String.(
@@ -137,9 +135,8 @@ module Subtype = struct
     | database ->
         if Iana.Set.mem (String.lowercase_ascii token) database then
           Ok (`Iana_token token)
-        else
-          Rresult.R.error_msgf "Subtype %S does not exist (type: %s)" token ty
-    | exception Not_found -> Rresult.R.error_msgf "Type %S does not exist" ty
+        else error_msgf "Subtype %S does not exist (type: %s)" token ty
+    | exception Not_found -> error_msgf "Type %S does not exist" ty
 
   let iana_exn ty token =
     match iana ty token with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -148,8 +145,7 @@ module Subtype = struct
 
   let extension token =
     if String.length token < 3 then
-      Rresult.R.error_msgf "Extension token MUST have, at least, 3 bytes: %S"
-        token
+      error_msgf "Extension token MUST have, at least, 3 bytes: %S" token
     else
       match (token.[0], token.[1]) with
       | ('x' | 'X'), '-' -> (
@@ -159,11 +155,8 @@ module Subtype = struct
               (String.sub token 2 (String.length token - 2));
             Ok (`X_token token)
           with Invalid_token ->
-            Rresult.R.error_msgf "Extension token %S does not respect standards"
-              token)
-      | _ ->
-          Rresult.R.error_msgf "An extension token MUST be prefixed by [X-]: %S"
-            token
+            error_msgf "Extension token %S does not respect standards" token)
+      | _ -> error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
     | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
@@ -202,8 +195,7 @@ module Parameters = struct
         (fun chr -> if not (is_token chr) then raise Invalid_token)
         key;
       Ok (String.lowercase_ascii key)
-    with Invalid_token ->
-      Rresult.R.error_msgf "Key %S does not respect standards" key
+    with Invalid_token -> error_msgf "Key %S does not respect standards" key
 
   let key_exn x =
     match key x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -219,8 +211,7 @@ module Parameters = struct
           (fun chr -> if not (is_token chr) then raise Invalid_token)
           x;
         Ok (`Token x)
-      with Invalid_token ->
-        Rresult.R.error_msgf "Value %S does not respect standards" v
+      with Invalid_token -> error_msgf "Value %S does not respect standards" v
     in
     (* XXX(dinosaure): [is_quoted_pair] accepts characters \000-\127. UTF-8
        extends to \000-\255. However, qtext invalids some of them: \009, \010,
@@ -261,7 +252,7 @@ module Parameters = struct
           () x;
         Ok x
       with Invalid_utf_8 ->
-        Rresult.R.error_msgf "Value %S is not a valid UTF-8 string" x
+        error_msgf "Value %S is not a valid UTF-8 string" x
     in
     match to_token v with
     | Ok _ as v -> v
@@ -280,7 +271,7 @@ module Parameters = struct
            However, order is really important semantically. UTF-8 -> escape
            expects a special process to decoder (escape -> UTF-8). About history,
            unicorn and so on, it should be the best to keep this order. *)
-        Rresult.R.(utf_8 v (* >>| escape_characters *) >>| fun x -> `String x)
+        Result.map (fun x -> `String x) (utf_8 v)
 
   let value_exn x =
     match value x with Ok v -> v | Error (`Msg err) -> invalid_arg err

@@ -108,7 +108,7 @@ module Decoder : sig
   val message_id : t Angstrom.t
 end
 
-val of_string : string -> (t, [> Rresult.R.msg ]) result
+val of_string : string -> (t, [> `Msg of string ]) result
 (** [of_string x] tries to parse [x] as a Message-ID. *)
 
 (** {2 Encoder of message ID.} *)

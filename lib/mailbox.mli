@@ -95,7 +95,7 @@ module Phrase : sig
   val b : Encoded_word.encoding
   (** Base64 encoding. *)
 
-  val word : string -> (elt, [> Rresult.R.msg ]) result
+  val word : string -> (elt, [> `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
      returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
@@ -109,7 +109,7 @@ module Phrase : sig
   val coerce : 'a Peano.s t -> Emile.phrase
   (** [coerce l] returns a valid and safe {!phrase}. *)
 
-  val make : 'a t -> (Emile.phrase, [> Rresult.R.msg ]) result
+  val make : 'a t -> (Emile.phrase, [> `Msg of string ]) result
   (** [make l] returns a {!phrase} only if [l] is a non-empty list. *)
 
   val v : 'a t -> Emile.phrase
@@ -142,7 +142,7 @@ module Literal_domain : sig
   val extension : (string * string) t
   (** An user-defined literal domain kind. *)
 
-  val make : 'a t -> 'a -> (Emile.addr, [> Rresult.R.msg ]) result
+  val make : 'a t -> 'a -> (Emile.addr, [> `Msg of string ]) result
   (** [make kind v] returns a literal-domain according RFC 5321. It should fails
      if [kind] is {!extension} and value does not respect standards. *)
 
@@ -197,7 +197,7 @@ module Domain : sig
       {- A {!Literal_domain.t}}
       {- A [`Literal] domain which is a string surrounded by brackets.}} *)
 
-  val atom : string -> (atom, [> Rresult.R.msg ]) result
+  val atom : string -> (atom, [> `Msg of string ]) result
   (** [atom x] returns a safe {!atom} element. If [x] does not respect RFC 5322,
      it returns [Error]. It accepts any characters excepts controls, space and
      specials characters - for instance, brackets are not allowed. *)
@@ -208,7 +208,7 @@ module Domain : sig
   val a : string -> atom
   (** Alias of {!atom_exn}. *)
 
-  val literal : string -> (literal, [> Rresult.R.msg ]) result
+  val literal : string -> (literal, [> `Msg of string ]) result
   (** [literal x] returns a {!literal} domain. If [x] does not respect RFC 5321,
      it returns [Error]. It will try to escape control characters
      (with {!escape_string}). *)
@@ -231,7 +231,7 @@ module Domain : sig
   val default : string t
   (** Kind of {!literal}. *)
 
-  val make : 'a t -> 'a -> (Emile.domain, [> Rresult.R.msg ]) result
+  val make : 'a t -> 'a -> (Emile.domain, [> `Msg of string ]) result
   (** [make kind v] returns a safe domain. It can fail if an user-defined
      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
      {!domain} don't follow standards:
@@ -242,7 +242,7 @@ module Domain : sig
      {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
      {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
 
-  val of_list : string list -> (Emile.domain, [> Rresult.R.msg ]) result
+  val of_list : string list -> (Emile.domain, [> `Msg of string ]) result
   (** [of_list l] returns a domain from a non-empty list of well-formed atom
      elements. Otherwise, it returns an error. *)
 
@@ -286,7 +286,7 @@ module Local : sig
      [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
      double-quote. *)
 
-  val word : string -> (Emile.word, [> Rresult.R.msg ]) result
+  val word : string -> (Emile.word, [> `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
      returns [Error] if [x] does not respect standards. If contents is an UTF-8
      contents, [word] will surround [x] with double-quote and will escape
@@ -300,10 +300,10 @@ module Local : sig
   val coerce : 'a Peano.s local -> Emile.local
   (** [coerce l] returns a valid and safe {!local}. *)
 
-  val make : 'a local -> (Emile.local, [> Rresult.R.msg ]) result
+  val make : 'a local -> (Emile.local, [> `Msg of string ]) result
   (** [make l] returns a {!local} only if [l] is a non-empty list. *)
 
-  val of_list : string list -> (Emile.local, [> Rresult.R.msg ]) result
+  val of_list : string list -> (Emile.local, [> `Msg of string ]) result
   (** [of_list l] returns a local-part from a non-empty list of well-formed
      words. Otherwise, it returns an error. *)
 
@@ -368,7 +368,7 @@ val with_name : Emile.phrase -> t -> t
 val to_string : t -> string
 (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
 
-val of_string : string -> (t, [> Rresult.R.msg ]) result
+val of_string : string -> (t, [> `Msg of string ]) result
 (** [of_string x] returns a {!t} from a well-formed string [x] according RFC
    5322. A {i mailbox} can have several forms and can include [FWS] tokens. Some
    examples of what is allowed:

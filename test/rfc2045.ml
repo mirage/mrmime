@@ -7,11 +7,11 @@ let parse_content_type x =
     let buf = Bytes.create 0x7f in
     Unstrctrd_parser.unstrctrd buf >>= fun v ->
     let res =
-      let open Rresult in
+      let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
       Unstrctrd.without_comments v
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
-      >>= (R.reword_error R.msg
+      >>= (Result.map_error (fun x -> `Msg x)
           <.> Angstrom.parse_string ~consume:Angstrom.Consume.Prefix
                 Mrmime.Content_type.Decoder.content)
     in
@@ -33,35 +33,35 @@ let make raw expect =
 let content_type_0 =
   let open Mrmime.Content_type in
   let value =
-    let open Rresult.R in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     Parameters.key "charset" >>= fun charset ->
     Parameters.value "us-ascii" >>= fun us_ascii ->
     Subtype.iana Type.text "plain" >>| fun subty ->
     make Type.text subty Parameters.(add charset us_ascii empty)
   in
-  Rresult.R.get_ok value
+  Result.get_ok value
 
 let content_type_1 =
   let open Mrmime.Content_type in
   let value =
-    let open Rresult.R in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     Parameters.key "charset" >>= fun charset ->
     Parameters.value "us-ascii" >>= fun us_ascii ->
     Subtype.iana Type.text "plain" >>| fun subty ->
     make Type.text subty Parameters.(add charset us_ascii empty)
   in
-  Rresult.R.get_ok value
+  Result.get_ok value
 
 let content_type_2 =
   let open Mrmime.Content_type in
   let value =
-    let open Rresult.R in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     Parameters.key "charset" >>= fun charset ->
     Parameters.value (Rosetta.encoding_to_string `ISO_8859_1) >>= fun latin1 ->
     Subtype.iana Type.text "plain" >>| fun subty ->
     make Type.text subty Parameters.(add charset latin1 empty)
   in
-  Rresult.R.get_ok value
+  Result.get_ok value
 
 let () =
   Alcotest.run "rfc2045"

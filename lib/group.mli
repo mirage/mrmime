@@ -26,10 +26,10 @@ module Phrase : sig
   val e : encoding:Encoded_word.encoding -> string -> elt
   val q : Encoded_word.encoding
   val b : Encoded_word.encoding
-  val word : string -> (elt, [> Rresult.R.msg ]) result
+  val word : string -> (elt, [> `Msg of string ]) result
   val word_exn : string -> elt
   val coerce : 'a Peano.s t -> Emile.phrase
-  val make : 'a t -> (Emile.phrase, [> Rresult.R.msg ]) result
+  val make : 'a t -> (Emile.phrase, [> `Msg of string ]) result
   val v : 'a t -> Emile.phrase
   val to_string : Emile.phrase -> string
 end

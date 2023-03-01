@@ -31,7 +31,7 @@ let to_unstrctrd (unstructured : Unstructured.t) =
   List.fold_left fold [] unstructured
   |> List.rev
   |> Unstrctrd.of_list
-  |> Rresult.R.get_ok
+  |> Result.get_ok
 
 let add k v m =
   try
