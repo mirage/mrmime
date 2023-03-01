@@ -16,6 +16,7 @@ exception Invalid_utf8
 let b = Base64
 let q = Quoted_printable
 let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let is_utf8_valid_string x =
   try
@@ -82,7 +83,7 @@ let make ~encoding value =
 let make_exn ~encoding value =
   match make ~encoding value with
   | Ok v -> v
-  | Error (`Msg err) -> invalid_arg err
+  | Error (`Msg err) -> invalid_arg "%s" err
 
 let encoding { encoding; _ } = encoding
 let charset { charset; _ } = charset
@@ -91,22 +92,21 @@ let data { data; _ } = data
 (* XXX(dinosaure): used by encoder, no fancy box or whatever. *)
 let pp_charset ppf = function
   | #uutf_charset as encoding ->
-      Fmt.string ppf (Uutf.encoding_to_string encoding)
+      Format.pp_print_string ppf (Uutf.encoding_to_string encoding)
   | #Rosetta.encoding as encoding ->
-      Fmt.string ppf (Rosetta.encoding_to_string encoding)
-  | `US_ASCII -> Fmt.string ppf "US-ASCII"
-  | `Charset encoding -> Fmt.string ppf encoding
+      Format.pp_print_string ppf (Rosetta.encoding_to_string encoding)
+  | `US_ASCII -> Format.pp_print_string ppf "US-ASCII"
+  | `Charset encoding -> Format.pp_print_string ppf encoding
 
 let pp_encoding ppf = function
-  | Base64 -> Fmt.string ppf "base64"
-  | Quoted_printable -> Fmt.string ppf "quoted-printable"
+  | Base64 -> Format.pp_print_string ppf "base64"
+  | Quoted_printable -> Format.pp_print_string ppf "quoted-printable"
 
 let pp ppf t =
-  Fmt.pf ppf "{ @[<hov>charset = %a;@ encoding = %a;@ data = %a;@] }" pp_charset
-    t.charset pp_encoding t.encoding
-    Fmt.(
-      Dump.result ~ok:Fmt.string ~error:(fun ppf (`Msg msg) ->
-          Format.pp_print_string ppf msg))
+  Format.fprintf ppf "{ @[<hov>charset = %a;@ encoding = %a;@ data = %a;@] }"
+    pp_charset t.charset pp_encoding t.encoding
+    (Format.pp_print_result ~ok:Format.pp_print_string
+       ~error:(fun ppf (`Msg msg) -> Format.pp_print_string ppf msg))
     t.data
 
 let equal_charset a b = (Stdlib.( = ) : charset -> charset -> bool) a b
@@ -143,7 +143,7 @@ let charset_of_string x =
         | Some (#uutf_charset as charset) -> charset
         | _ -> charset_of_uppercase_string x))
 
-let charset_to_string = Fmt.to_to_string pp_charset
+let charset_to_string = Format.asprintf "%a" pp_charset
 
 module Decoder = struct
   open Angstrom
@@ -362,7 +362,7 @@ module Decoder = struct
     | Quoted_printable -> normalize_quoted_printable ?chunk ~charset raw
     | Base64 -> normalize_base64 ?chunk ~charset raw
 
-  let invalid_encoding = Fmt.kstr fail "Invalid encoding '%c'"
+  let invalid_encoding = Format.kasprintf fail "Invalid encoding '%c'"
 
   (* From RFC 2047
 
@@ -432,7 +432,7 @@ module Encoder = struct
     | Base64 -> char ppf 'B'
     | Quoted_printable -> char ppf 'Q'
 
-  let charset = using (Fmt.to_to_string pp_charset) string
+  let charset = using (Format.asprintf "%a" pp_charset) string
 
   let to_quoted_printable input =
     let buffer = Stdlib.Buffer.create (String.length input) in
@@ -467,5 +467,5 @@ module Encoder = struct
         in
         eval ppf fmt t.charset t.encoding encoder data
     | Error (`Msg err) ->
-        Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s" err
+        invalid_arg "Impossible to encode an invalid encoded-word: %s" err
 end

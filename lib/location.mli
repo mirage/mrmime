@@ -37,7 +37,7 @@ val some : zone -> t
 val none : t
 (** [none] is a unknowable location. *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!t}. *)
 
 val left : t -> point option

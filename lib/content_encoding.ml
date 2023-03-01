@@ -8,13 +8,13 @@ type t =
   | `X_token of string ]
 
 let pp ppf = function
-  | `Bit7 -> Fmt.string ppf "7bit"
-  | `Bit8 -> Fmt.string ppf "8bit"
-  | `Binary -> Fmt.string ppf "binary"
-  | `Quoted_printable -> Fmt.string ppf "quoted-printable"
-  | `Base64 -> Fmt.string ppf "base64"
-  | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
-  | `X_token token -> Fmt.pf ppf "x:%s" token
+  | `Bit7 -> Format.pp_print_string ppf "7bit"
+  | `Bit8 -> Format.pp_print_string ppf "8bit"
+  | `Binary -> Format.pp_print_string ppf "binary"
+  | `Quoted_printable -> Format.pp_print_string ppf "quoted-printable"
+  | `Base64 -> Format.pp_print_string ppf "base64"
+  | `Ietf_token token -> Format.fprintf ppf "ietf:%s" token
+  | `X_token token -> Format.fprintf ppf "x:%s" token
 
 let default = `Bit7
 let bit8 = `Bit8
@@ -51,7 +51,7 @@ let equal a b =
 module Decoder = struct
   open Angstrom
 
-  let invalid_token token = Fmt.kstr fail "invalid token: %s" token
+  let invalid_token token = Format.kasprintf fail "invalid token: %s" token
 
   let of_string s a =
     match parse_string ~consume:Consume.All a s with

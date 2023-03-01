@@ -1,6 +1,18 @@
 type t = Field.field Location.with_location list
 
-let pp = Fmt.(list ~sep:(any "@\n") (using Location.prj Field.pp))
+let pp_list ?(sep = fun ppf () -> Format.fprintf ppf ",") pp ppf lst =
+  let rec go = function
+    | [] -> ()
+    | [ x ] -> pp ppf x
+    | x :: r ->
+        Format.fprintf ppf "%a%a" pp x sep ();
+        go r
+  in
+  go lst
+
+let pp =
+  (pp_list ~sep:(fun ppf () -> Format.fprintf ppf "@\n")) (fun ppf x ->
+      Field.pp ppf (Location.prj x))
 
 let assoc field_name header =
   let f acc (Field.Field (field_name', _, _) as field) =

@@ -63,7 +63,7 @@ module Type : sig
   val extension : string -> (t, [> `Msg of string ]) result
   (** User-defined type. *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
   (** Pretty-printer of {!t}. *)
 
   val compare : t -> t -> int
@@ -99,7 +99,7 @@ module Subtype : sig
   val extension : string -> (t, [> `Msg of string ]) result
   (** User-defined sub-type. *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
   (** Pretty-printer of {!t}. *)
 
   val compare : t -> t -> int
@@ -164,13 +164,13 @@ module Parameters : sig
   val iter : (key -> value -> unit) -> t -> unit
   (** [iter f t] applies [f] on any bindings availables in [t]. *)
 
-  val pp_key : key Fmt.t
+  val pp_key : Format.formatter -> key -> unit
   (** Pretty-printer of {!key}. *)
 
-  val pp_value : value Fmt.t
+  val pp_value : Format.formatter -> value -> unit
   (** Pretty-printer of {!value}. *)
 
-  val pp : t Fmt.t
+  val pp : Format.formatter -> t -> unit
   (** Pretty-printers of {!t}. *)
 
   val compare : t -> t -> int
@@ -217,7 +217,7 @@ val boundary : t -> string option
 
 (** {2 Pretty-printers.} *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!t}. *)
 
 (** {2 Equals.} *)

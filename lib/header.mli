@@ -17,7 +17,7 @@
 type t
 (** Type of the header. *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!pp}. *)
 
 val assoc : Field_name.t -> t -> Field.field list

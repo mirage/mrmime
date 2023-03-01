@@ -47,7 +47,7 @@ val equal : t -> t -> bool
 
 (** {2 Pretty-printer.} *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!t}. *)
 
 (** {2 Decoder of group.} *)

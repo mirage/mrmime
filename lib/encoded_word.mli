@@ -59,9 +59,9 @@ val data : t -> (string, [ `Msg of string ]) result
 
 (** Pretty-printer. *)
 
-val pp_charset : charset Fmt.t
-val pp_encoding : encoding Fmt.t
-val pp : t Fmt.t
+val pp_charset : Format.formatter -> charset -> unit
+val pp_encoding : Format.formatter -> encoding -> unit
+val pp : Format.formatter -> t -> unit
 
 (** Equal. *)
 

@@ -12,8 +12,8 @@ let pp ppf t =
   match Unstrctrd.of_list t with
   | Ok l ->
       let s = Unstrctrd.to_utf_8_string l in
-      Fmt.pf ppf "<unstrctrd:%s>" s
-  | Error _ -> Fmt.pf ppf "<invalid-unstrctrd>"
+      Format.fprintf ppf "<unstrctrd:%s>" s
+  | Error _ -> Format.fprintf ppf "<invalid-unstrctrd>"
 
 module Decoder = struct
   let unstructured () =

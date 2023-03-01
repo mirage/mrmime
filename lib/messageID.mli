@@ -96,7 +96,7 @@ end
 
 (** {2 Pretty-printers.} *)
 
-val pp : t Fmt.t
+val pp : Format.formatter -> t -> unit
 
 (** {2 Equals.} *)
 

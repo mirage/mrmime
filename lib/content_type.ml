@@ -79,15 +79,15 @@ module Type = struct
       | _ -> error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
-    | `Text -> Fmt.string ppf "text"
-    | `Image -> Fmt.string ppf "image"
-    | `Audio -> Fmt.string ppf "audio"
-    | `Video -> Fmt.string ppf "video"
-    | `Application -> Fmt.string ppf "application"
-    | `Message -> Fmt.string ppf "message"
-    | `Multipart -> Fmt.string ppf "multipart"
-    | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
-    | `X_token token -> Fmt.pf ppf "x:%s" token
+    | `Text -> Format.pp_print_string ppf "text"
+    | `Image -> Format.pp_print_string ppf "image"
+    | `Audio -> Format.pp_print_string ppf "audio"
+    | `Video -> Format.pp_print_string ppf "video"
+    | `Application -> Format.pp_print_string ppf "application"
+    | `Message -> Format.pp_print_string ppf "message"
+    | `Multipart -> Format.pp_print_string ppf "multipart"
+    | `Ietf_token token -> Format.fprintf ppf "ietf:%s" token
+    | `X_token token -> Format.fprintf ppf "x:%s" token
 
   let to_string = function
     | `Text -> "text"
@@ -159,9 +159,9 @@ module Subtype = struct
       | _ -> error_msgf "An extension token MUST be prefixed by [X-]: %S" token
 
   let pp ppf = function
-    | `Ietf_token token -> Fmt.pf ppf "ietf:%s" token
-    | `Iana_token token -> Fmt.pf ppf "iana:%s" token
-    | `X_token token -> Fmt.pf ppf "x:%s" token
+    | `Ietf_token token -> Format.fprintf ppf "ietf:%s" token
+    | `Iana_token token -> Format.fprintf ppf "iana:%s" token
+    | `X_token token -> Format.fprintf ppf "x:%s" token
 
   let to_string = function
     | `Ietf_token token -> token
@@ -292,15 +292,29 @@ module Parameters = struct
     match Map.find key t with x -> Some x | exception Not_found -> None
 
   let iter f t = Map.iter f t
-  let pp_key : key Fmt.t = Fmt.string
+  let pp_key : Format.formatter -> key -> unit = Format.pp_print_string
 
   let pp_value ppf = function
-    | `Token token -> Fmt.string ppf token
-    | `String value -> Fmt.pf ppf "%S" value
+    | `Token token -> Format.pp_print_string ppf token
+    | `String value -> Format.fprintf ppf "%S" value
+
+  let pp_list ?(sep = fun ppf () -> Format.fprintf ppf "") pp ppf lst =
+    let rec go = function
+      | [] -> ()
+      | [ x ] -> Format.fprintf ppf "%a" pp x
+      | x :: r ->
+          Format.fprintf ppf "%a%a" pp x sep ();
+          go r
+    in
+    go lst
 
   let pp ppf t =
-    let pp ppf (key, value) = Fmt.pf ppf "%a=%a" pp_key key pp_value value in
-    Fmt.list ~sep:(Fmt.any ";@ ") pp ppf (Map.bindings t)
+    let pp ppf (key, value) =
+      Format.fprintf ppf "%a=%a" pp_key key pp_value value
+    in
+    pp_list
+      ~sep:(fun ppf () -> Format.fprintf ppf ";@ ")
+      pp ppf (Map.bindings t)
 
   let of_escaped_character = function
     | '\x61' -> '\x07' (* "\a" *)
@@ -389,7 +403,8 @@ let make ty subty parameters =
   { ty; subty; parameters = Parameters.to_list parameters }
 
 let pp ppf { ty; subty; parameters } =
-  Fmt.pf ppf "%a/%a %a" Type.pp ty Subtype.pp subty (Fmt.hvbox Parameters.pp)
+  Format.fprintf ppf "%a/%a @[<hov>%a@]" Type.pp ty Subtype.pp subty
+    Parameters.pp
     (Parameters.of_list parameters)
 
 let equal a b =
@@ -400,7 +415,7 @@ let equal a b =
 module Decoder = struct
   open Angstrom
 
-  let invalid_token token = Fmt.kstr fail "invalid token: %s" token
+  let invalid_token token = Format.kasprintf fail "invalid token: %s" token
 
   let of_string s a =
     match parse_string ~consume:Consume.All a s with

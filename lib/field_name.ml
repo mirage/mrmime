@@ -43,16 +43,15 @@ let of_string x =
     with Break -> error_msgf "Invalid field: %S" x
 
 let of_string_exn x =
-  match of_string x with
-  | Ok x -> x
-  | Error (`Msg err) -> Fmt.invalid_arg "%s" err
+  match of_string x with Ok x -> x | Error (`Msg err) -> invalid_arg err
 
 let v = of_string_exn
-let pp = Fmt.using capitalize Fmt.string
+let pp ppf x = Format.pp_print_string ppf (capitalize x)
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let prefixed_by prefix field =
   if String.contains prefix '-' then
-    Fmt.invalid_arg "Field.prefixed_by: %s contains '-'" prefix;
+    invalid_arg "Field.prefixed_by: %s contains '-'" prefix;
   match String.(split_on_char '-' (lowercase_ascii field)) with
   | [] -> assert false (* XXX(dinosaure): see invariants of [split_on_char]. *)
   | [ _ ] -> false
