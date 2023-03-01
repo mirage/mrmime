@@ -43,3 +43,6 @@ depends: [
   "cmdliner"          {with-test & >= "1.1.0"}
   "logs"              {with-test}
 ]
+conflicts: [
+  "result"            {< "1.5"}
+]
