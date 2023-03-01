@@ -196,7 +196,7 @@ val make :
   int * Month.t * int ->
   int * int * int option ->
   Zone.t ->
-  (t, [> Rresult.R.msg ]) result
+  (t, [> `Msg of string ]) result
 (** [make ?day (year, month, day) (hh, mm, ss) tz] returns a date corresponding
    to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
    the day in the 7-day week) and [day] must correspond according of timestamp
@@ -214,7 +214,7 @@ val make :
    [make] relies on {!Ptime.of_date_time}. To completely understand implication
    of that, you should read basics about [ptime]. *)
 
-val to_ptime : t -> (Ptime.t * int, [> Rresult.R.msg ]) result
+val to_ptime : t -> (Ptime.t * int, [> `Msg of string ]) result
 (** [to_ptime t] returns a POSIX timestamp {!Ptime.t}. *)
 
 val of_ptime : zone:Zone.t -> Ptime.t -> t

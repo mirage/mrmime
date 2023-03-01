@@ -34,12 +34,12 @@ val q : encoding
 type t =
   { charset : charset;
     encoding : encoding;
-    data : (string, Rresult.R.msg) result
+    data : (string, [ `Msg of string ]) result
   }
 
 val is_normalized : t -> bool
 
-val make : encoding:encoding -> string -> (t, Rresult.R.msg) result
+val make : encoding:encoding -> string -> (t, [ `Msg of string ]) result
 (** [make ~encoding x] returns an {i encoded} word according [encoding] (Quoted
    Printable encoding or Base64 encoding). [x] must be a valid UTF-8 string. {i
    charset} of {i encoded} word will be, by the way, ["UTF-8"].
@@ -55,7 +55,7 @@ val make_exn : encoding:encoding -> string -> t
 
 val encoding : t -> encoding
 val charset : t -> charset
-val data : t -> (string, Rresult.R.msg) result
+val data : t -> (string, [ `Msg of string ]) result
 
 (** Pretty-printer. *)
 
@@ -76,11 +76,11 @@ val charset_of_string : string -> charset
 val charset_to_string : charset -> string
 
 val normalize_to_utf8 :
-  charset:charset -> string -> (string, Rresult.R.msg) result
+  charset:charset -> string -> (string, [ `Msg of string ]) result
 (** [normalize_to_utf8 ~charset s] maps a source [s] which is encoded with the
    charset {!charset} and try to map/normalize it to UTF-8. *)
 
-val of_string : string -> (t, Rresult.R.msg) result
+val of_string : string -> (t, [ `Msg of string ]) result
 (** [of_string v] tries to parse [v] as an encoded-word (according RFC 2047). *)
 
 (** {2 Decoders.} *)

@@ -2,6 +2,7 @@ type t = Emile.mailbox
 
 let pp = Emile.pp_mailbox
 let equal = Emile.equal_mailbox
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
 
 let is_utf8_valid_string_with is x =
   let exception Invalid_utf8 in
@@ -66,7 +67,7 @@ let make_word raw =
   if is_atext_valid_string raw then Ok (`Atom raw)
   else if is_qtext_valid_string raw then Ok (`String raw)
   else if is_utf8_valid_string raw then Ok (`String (escape_string raw))
-  else Rresult.R.error_msgf "word %S does not respect standards" raw
+  else error_msgf "word %S does not respect standards" raw
 
 module Decoder = struct
   let mailbox = Emile.Parser.mailbox
@@ -225,8 +226,8 @@ module Phrase = struct
   let q = Encoded_word.q
   let b = Encoded_word.b
 
-  let word x : (elt, [> Rresult.R.msg ]) result =
-    Rresult.R.(make_word x >>| fun x -> `Word x)
+  let word x : (elt, [> `Msg of string ]) result =
+    Result.map (fun x -> `Word x) (make_word x)
 
   let word_exn x : elt =
     match word x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -245,8 +246,9 @@ module Phrase = struct
     | [ x ] -> [ (x :> elt) ]
     | x :: y :: r -> List.cons (x :> elt) (coerce (y :: r))
 
-  let make : type a. a t -> (Emile.phrase, [> Rresult.R.msg ]) result = function
-    | [] -> Rresult.R.error_msgf "A phrase must contain at least one element"
+  let make : type a. a t -> (Emile.phrase, [> `Msg of string ]) result =
+    function
+    | [] -> error_msgf "A phrase must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
   let v l = match make l with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -289,7 +291,7 @@ module Literal_domain = struct
   let ipv6 = IPv6
   let extension = Ext
 
-  let make : type a. a t -> a -> (Emile.addr, [> Rresult.R.msg ]) result =
+  let make : type a. a t -> a -> (Emile.addr, [> `Msg of string ]) result =
    fun witness v ->
     match witness with
     | IPv4 -> Ok (Emile.IPv4 v)
@@ -299,8 +301,7 @@ module Literal_domain = struct
         if is_ldh_valid_string ldh && is_dcontent_valid_string value then
           Ok (Emile.Ext (ldh, value))
         else
-          Rresult.R.error_msgf "literal-domain %S-%S does not respect standards"
-            ldh value
+          error_msgf "literal-domain %S-%S does not respect standards" ldh value
 
   let v : type a. a t -> a -> Emile.addr =
    fun witness v ->
@@ -310,7 +311,7 @@ end
 module Domain = struct
   let atom x =
     if is_atext_valid_string x then Ok (`Atom x)
-    else Rresult.R.error_msgf "atom %S does not respect standards" x
+    else error_msgf "atom %S does not respect standards" x
 
   let atom_exn x =
     match atom x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -339,7 +340,7 @@ module Domain = struct
     in
     if is_dtext_valid_string x then Ok (`Literal x)
     else if is_utf8_valid_string x then Ok (`Literal (escape_string x))
-    else Rresult.R.error_msgf "literal domain %S does not respect standards" x
+    else error_msgf "literal domain %S does not respect standards" x
 
   let literal_exn x =
     match literal x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -358,7 +359,7 @@ module Domain = struct
           | Ok a, Ok (`Atom x) -> Ok (x :: a))
         (Ok []) l
     in
-    let open Rresult.R in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     l >>| List.rev >>= function
     | [] -> error_msgf "A domain must contain at least one element"
     | v -> Ok (`Domain v)
@@ -371,9 +372,9 @@ module Domain = struct
     | [ `Atom x ] -> [ x ]
     | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
 
-  let make_domain : type a. a domain -> (string list, [> Rresult.R.msg ]) result
-      = function
-    | [] -> Rresult.R.error_msg "A domain must contain at least one element"
+  let make_domain :
+      type a. a domain -> (string list, [> `Msg of string ]) result = function
+    | [] -> error_msgf "A domain must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
   type 'a t =
@@ -387,12 +388,12 @@ module Domain = struct
   let extension = Literal_domain Literal_domain.Ext
   let default = Literal
 
-  let make : type a. a t -> a -> (Emile.domain, [> Rresult.R.msg ]) result =
+  let make : type a. a t -> a -> (Emile.domain, [> `Msg of string ]) result =
    fun witness v ->
     match witness with
-    | Domain -> Rresult.R.(make_domain v >>| fun v -> `Domain v)
+    | Domain -> Result.map (fun v -> `Domain v) (make_domain v)
     | Literal_domain witness ->
-        Rresult.R.(Literal_domain.make witness v >>| fun v -> `Addr v)
+        Result.map (fun v -> `Addr v) (Literal_domain.make witness v)
     | Literal -> literal v
 
   let v : type a. a t -> a -> Emile.domain =
@@ -409,7 +410,7 @@ module Local = struct
 
   let word x =
     if String.length x > 0 then make_word x
-    else Rresult.R.error_msgf "A word can not be empty"
+    else error_msgf "A word can not be empty"
 
   let word_exn x =
     match word x with Ok v -> v | Error (`Msg err) -> invalid_arg err
@@ -420,9 +421,9 @@ module Local = struct
     | [ x ] -> List.cons x []
     | x :: y :: r -> List.cons x (coerce (y :: r))
 
-  let make : type a. a local -> (Emile.local, [> Rresult.R.msg ]) result =
+  let make : type a. a local -> (Emile.local, [> `Msg of string ]) result =
     function
-    | [] -> Rresult.R.error_msg "A local-part must contain at least one element"
+    | [] -> error_msgf "A local-part must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 
   let of_list l =
@@ -436,7 +437,7 @@ module Local = struct
           | Ok a, Ok x -> Ok (List.cons x a))
         (Ok []) l
     in
-    let open Rresult.R in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     l >>| List.rev >>= function
     | [] -> error_msgf "A local-part must contain at least one element"
     | v -> Ok v
@@ -463,6 +464,6 @@ let with_name name mailbox = { mailbox with Emile.name = Some name }
 let of_string x =
   match Emile.of_string x with
   | Ok v -> Ok v
-  | Error (`Invalid _) -> Rresult.R.error_msgf "Invalid email address: %S" x
+  | Error (`Invalid _) -> error_msgf "Invalid email address: %S" x
 
 let to_string = Prettym.to_string Encoder.mailbox

@@ -8,13 +8,14 @@ type encoding = Quoted_printable | Base64
 type t =
   { charset : charset;
     encoding : encoding;
-    data : (string, Rresult.R.msg) result
+    data : (string, [ `Msg of string ]) result
   }
 
 exception Invalid_utf8
 
 let b = Base64
 let q = Quoted_printable
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
 
 let is_utf8_valid_string x =
   try
@@ -36,7 +37,7 @@ let normalize_to_utf8 ~charset raw =
       let encoder = Uutf.encoder `UTF_8 (`Buffer bf) in
       let rec go () =
         match Rosetta.decode decoder with
-        | `Malformed err -> Rresult.R.error_msg err
+        | `Malformed err -> error_msgf "%s" err
         | `Await -> assert false
         | `Uchar _ as uchar ->
             let[@warning "-8"] (`Ok : [ `Ok | `Partial ]) =
@@ -57,7 +58,7 @@ let normalize_to_utf8 ~charset raw =
       let encoder = Uutf.encoder `UTF_8 (`Buffer bf) in
       let rec go () =
         match Uutf.decode decoder with
-        | `Malformed err -> Rresult.R.error_msg err
+        | `Malformed err -> error_msgf "%s" err
         | `Await -> assert false
         | `Uchar _ as uchar ->
             let[@warning "-8"] (`Ok : [ `Ok | `Partial ]) =
@@ -71,12 +72,12 @@ let normalize_to_utf8 ~charset raw =
             Ok (Buffer.contents bf)
       in
       go ()
-  | `Charset v -> Rresult.R.error_msgf "encoding %s is not supported" v
+  | `Charset v -> error_msgf "encoding %s is not supported" v
 
 let make ~encoding value =
   if is_utf8_valid_string value then
     Ok { charset = `UTF_8; encoding; data = Ok value }
-  else Rresult.R.error_msg "%S is not a valid UTF-8 string"
+  else error_msgf "%S is not a valid UTF-8 string" value
 
 let make_exn ~encoding value =
   match make ~encoding value with
@@ -103,7 +104,9 @@ let pp_encoding ppf = function
 let pp ppf t =
   Fmt.pf ppf "{ @[<hov>charset = %a;@ encoding = %a;@ data = %a;@] }" pp_charset
     t.charset pp_encoding t.encoding
-    Fmt.(Dump.result ~ok:Fmt.string ~error:Rresult.R.pp_msg)
+    Fmt.(
+      Dump.result ~ok:Fmt.string ~error:(fun ppf (`Msg msg) ->
+          Format.pp_print_string ppf msg))
     t.data
 
 let equal_charset a b = (Stdlib.( = ) : charset -> charset -> bool) a b
@@ -112,7 +115,7 @@ let equal_encoding a b = (Stdlib.( = ) : encoding -> encoding -> bool) a b
 let equal a b =
   equal_charset a.charset b.charset
   && equal_encoding a.encoding b.encoding
-  && Rresult.R.equal ~ok:String.equal
+  && Result.equal ~ok:String.equal
        ~error:(fun (`Msg _) (`Msg _) -> true) (* XXX(dinosaure): or [false]? *)
        a.data b.data
 
@@ -208,7 +211,7 @@ module Decoder = struct
     in
     match go_qp_decode () with
     | `Ok -> Ok (Buffer.contents res)
-    | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
+    | `Malformed data -> error_msgf "Malformed input: %S" data
 
   let normalize_quoted_printable_with_uutf ?(chunk = 512) ~charset raw =
     let tmp = Bytes.create chunk in
@@ -249,7 +252,7 @@ module Decoder = struct
     in
     match go_qp_decode () with
     | `Ok -> Ok (Buffer.contents res)
-    | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data
+    | `Malformed data -> error_msgf "Malformed input: %S" data
 
   let normalize_base64_with_rosetta ?(chunk = 512) ~charset raw =
     let res = Buffer.create chunk in
@@ -274,7 +277,7 @@ module Decoder = struct
         in
         match go_decode () with
         | `Ok -> Ok (Buffer.contents res)
-        | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data)
+        | `Malformed data -> error_msgf "Malformed input: %S" data)
 
   let normalize_base64_with_uutf ?(chunk = 512) ~charset raw =
     let res = Buffer.create chunk in
@@ -299,7 +302,7 @@ module Decoder = struct
         in
         match go_decode () with
         | `Ok -> Ok (Buffer.contents res)
-        | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data)
+        | `Malformed data -> error_msgf "Malformed input: %S" data)
 
   let normalize_quoted_printable ?(chunk = 512) ~charset raw =
     match charset with
@@ -321,7 +324,7 @@ module Decoder = struct
         in
         match go_qp_decode () with
         | `Ok -> Ok (Buffer.contents res)
-        | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data)
+        | `Malformed data -> error_msgf "Malformed input: %S" data)
     | #uutf_charset as charset ->
         normalize_quoted_printable_with_uutf ~chunk ~charset raw
     | #Rosetta.encoding as charset ->
@@ -340,7 +343,7 @@ module Decoder = struct
         in
         match go_qp_decode () with
         | `Ok -> Ok (Buffer.contents res)
-        | `Malformed data -> Rresult.R.error_msgf "Malformed input: %S" data)
+        | `Malformed data -> error_msgf "Malformed input: %S" data)
 
   let normalize_base64 ?chunk ~charset raw =
     match charset with
@@ -420,7 +423,7 @@ let of_string x =
       x
   with
   | Ok v -> Ok v
-  | Error _ -> Rresult.R.error_msgf "%S is not a valid encoded-word" x
+  | Error _ -> error_msgf "%S is not a valid encoded-word" x
 
 module Encoder = struct
   open Prettym

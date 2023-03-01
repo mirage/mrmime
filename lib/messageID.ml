@@ -1,6 +1,8 @@
 type domain = [ `Literal of string | `Domain of string list ]
 type t = Emile.local * domain
 
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
+
 let pp_domain : domain Fmt.t =
  fun ppf -> function
   | `Domain _ as x -> Emile.pp_domain ppf x
@@ -32,7 +34,7 @@ let of_string x =
     Angstrom.parse_string ~consume:Angstrom.Consume.Prefix Decoder.message_id x
   with
   | Ok v -> Ok v
-  | Error _ -> Rresult.R.error_msgf "Invalid message ID: %S" x
+  | Error _ -> error_msgf "Invalid message ID: %S" x
 
 module Encoder = struct
   open Prettym

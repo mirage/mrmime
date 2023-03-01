@@ -6,6 +6,7 @@ let compare a b =
   String.compare a b
 
 let equal a b = compare a b = 0
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
 
 let capitalize x =
   let capitalize res idx =
@@ -32,14 +33,14 @@ let is_ftext = function
   | _ -> false
 
 let of_string x =
-  if x = "" then Rresult.R.error_msgf "Invalid empty field-name"
+  if x = "" then error_msgf "Invalid empty field-name"
   else
     try
       for i = 0 to String.length x - 1 do
         if not (is_ftext x.[i]) then raise Break
       done;
       Ok x
-    with Break -> Rresult.R.error_msgf "Invalid field: %S" x
+    with Break -> error_msgf "Invalid field: %S" x
 
 let of_string_exn x =
   match of_string x with

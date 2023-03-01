@@ -38,7 +38,7 @@ val default : t
 (** An encoding type of [7bit] requires that the body is already in a 7bit
    mail-ready representation. This is the default value. *)
 
-val of_string : string -> (t, [> Rresult.R.msg ]) result
+val of_string : string -> (t, [> `Msg of string ]) result
 (** [of_string x] is the standard mechanism [x]. If [x] is an invalid mechanism,
    [of_string] returns an error. *)
 

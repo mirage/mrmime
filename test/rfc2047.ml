@@ -15,8 +15,9 @@ let encoding =
 
 let data =
   Alcotest.testable
-    (Fmt.Dump.result ~ok:Fmt.string ~error:Rresult.R.pp_msg)
-    (Rresult.R.equal ~ok:String.equal ~error:(fun (`Msg _) (`Msg _) -> true))
+    (Fmt.Dump.result ~ok:Fmt.string ~error:(fun ppf (`Msg msg) ->
+         Format.pp_print_string ppf msg))
+    (Result.equal ~ok:String.equal ~error:(fun (`Msg _) (`Msg _) -> true))
 
 let make raw (expect_charset, expect_encoding, expect_data) =
   Alcotest.test_case raw `Quick @@ fun () ->

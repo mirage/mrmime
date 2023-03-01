@@ -72,6 +72,7 @@ let encoder : type a. a t -> a Prettym.t = function
   | Encoding -> Content_encoding.Encoder.mechanism
 
 let ( <.> ) f g x = f (g x)
+let msg x = `Msg x
 
 module Decoder = struct
   open Angstrom
@@ -87,14 +88,15 @@ module Decoder = struct
     in
     let parser = parser w in
     let res =
-      let open Rresult in
+      let ( >>| ) x f = Result.map f x in
+      let ( >>= ) = Result.bind in
       Unstrctrd.without_comments v
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
       (* XXX(dinosaure): normalized value can have trailing whitespace
        * such as "value (comment)" returns "value ". Given parser can
        * ignore it (and it does not consume all inputs finally). *)
-      >>= (R.reword_error R.msg
+      >>= (Result.map_error msg
           <.> (parse_string ~consume:Consume.Prefix) parser)
       >>| fun v -> Field (field_name, w, v)
     in

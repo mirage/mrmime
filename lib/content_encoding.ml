@@ -22,6 +22,7 @@ let bit7 = `Bit7
 let binary = `Binary
 let quoted_printable = `Quoted_printable
 let base64 = `Base64
+let error_msgf fmt = Format.kasprintf (fun msg -> Error (`Msg msg)) fmt
 
 let of_string = function
   | "7bit" -> Ok `Bit7
@@ -29,7 +30,7 @@ let of_string = function
   | "binary" -> Ok `Binary
   | "quoted-printable" -> Ok `Quoted_printable
   | "base64" -> Ok `Base64
-  | x -> Rresult.R.error_msgf "Invalid MIME encoding: %s" x
+  | x -> error_msgf "Invalid MIME encoding: %s" x
 (* TODO:
    - let the user to craft an extension token.
    - check IETF database *)

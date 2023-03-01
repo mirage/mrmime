@@ -54,11 +54,11 @@ let parser buf =
   let open Angstrom in
   Unstrctrd_parser.unstrctrd buf >>= fun v ->
   let res =
-    let open Rresult in
+    let ( >>| ) x f = Result.map f x and ( >>= ) = Result.bind in
     Unstrctrd.without_comments v
     >>| Unstrctrd.fold_fws
     >>| Unstrctrd.to_utf_8_string
-    >>= (R.reword_error R.msg
+    >>= (Result.map_error (fun x -> `Msg x)
         <.> Angstrom.parse_string ~consume:Prefix
               Mrmime.MessageID.Decoder.message_id)
   in
