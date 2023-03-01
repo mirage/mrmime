@@ -1,3 +1,14 @@
+### v0.6.0 2023-03-01 Paris (France)
+
+- Be able to set field parsers when we parse an entire email (@dinosaure, #89)
+- Be able to wrap a multipart email into a part (@dinosaure, #90)
+- Don't use RNG to produce the example to be compatible with OCaml 5 (@dinosaure, #93)
+- Upgrade to cmdliner.1.1.0 (@hannesm, #94)
+- Use a smaller email to test isomorphism (@dinosaure, 931c6ad)
+- Lint dependencies (@dinosaure, #95)
+- Delete `rresult` dependency (@dinosaure, @hannesm, #96)
+- Delete `fmt` dependency (@dinosaure, #97)
+
 ### v0.5.0 2021-10-18 Paris (France)
 
 - Replace deprecated functions of `fmt` library (@dinosaure, #86)
