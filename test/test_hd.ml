@@ -18,10 +18,10 @@ let parsers =
   |> Map.add content_encoding unstructured
 
 let test_000 =
-  {|Date:     26 Aug 76 14:29 EDT
-From:     Jones@Registry.Org
-Bcc:
-
+  {|Date:     26 Aug 76 14:29 EDT|}^"\r"^{|
+From:     Jones@Registry.Org|}^"\r"^{|
+Bcc:|}^"\r"^{|
+|}^"\r"^{|
 |}
 
 module Map = Map.Make (Field_name)
@@ -77,14 +77,14 @@ let test_000 =
   Alcotest.(check (list string)) "Bcc" (Map.find Field_name.bcc fields) [ "" ]
 
 let test_001 =
-  {|From  : John Doe <jdoe@machine(comment).  example>
-To    : Mary Smith
-  
-          <mary@example.net>
-Subject     : Saying Hello
-Date  : Fri, 21 Nov 1997 09(comment):   55  :  06 -0600
-Message-ID  : <1234   @   local(blah)  .machine .example>
-
+  {|From  : John Doe <jdoe@machine(comment).  example>|}^"\r"^{|
+To    : Mary Smith|}^"\r"^{|
+  |}^"\r"^{|
+          <mary@example.net>|}^"\r"^{|
+Subject     : Saying Hello|}^"\r"^{|
+Date  : Fri, 21 Nov 1997 09(comment):   55  :  06 -0600|}^"\r"^{|
+Message-ID  : <1234   @   local(blah)  .machine .example>|}^"\r"^{|
+|}^"\r"^{|
 |}
 
 let test_001 =

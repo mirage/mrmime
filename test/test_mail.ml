@@ -249,18 +249,18 @@ let test2 () =
   | Error _ -> Fmt.invalid_arg "Generate unparsable email"
 
 let example3 =
-  {mrmime|From: romain.calascibetta@x25519.net
-To: romain.calascibetta@din.osau.re
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-J'interdis aux marchands de vanter trop leurs marchandises. Car ils se font=
- vite p=C3=A9dagogues et t'enseignent comme but ce qui n'est par essence qu=
-'un moyen, et te trompant ainsi sur la route =C3=A0 suivre les voil=C3=A0 =
-bient=C3=B4t qui te d=C3=A9gradent, car si leur musique est vulgaire il=
-s te fabriquent pour te la vendre une =C3=A2me vulgaire.            
-   =E2=80=94=E2=80=89Antoine de Saint-Exup=C3=A9ry, Citadelle (1948)
-
+  {mrmime|From: romain.calascibetta@x25519.net|mrmime}^"\r"^{mrmime|
+To: romain.calascibetta@din.osau.re|mrmime}^"\r"^{mrmime|
+Content-Type: text/plain; charset=utf-8|mrmime}^"\r"^{mrmime|
+Content-Transfer-Encoding: quoted-printable|mrmime}^"\r"^{mrmime|
+|mrmime}^"\r"^{mrmime|
+J'interdis aux marchands de vanter trop leurs marchandises. Car ils se font=|mrmime}^"\r"^{mrmime|
+ vite p=C3=A9dagogues et t'enseignent comme but ce qui n'est par essence qu=|mrmime}^"\r"^{mrmime|
+'un moyen, et te trompant ainsi sur la route =C3=A0 suivre les voil=C3=A0 =|mrmime}^"\r"^{mrmime|
+bient=C3=B4t qui te d=C3=A9gradent, car si leur musique est vulgaire il=|mrmime}^"\r"^{mrmime|
+s te fabriquent pour te la vendre une =C3=A2me vulgaire.            |mrmime}^"\r"^{mrmime|
+   =E2=80=94=E2=80=89Antoine de Saint-Exup=C3=A9ry, Citadelle (1948)|mrmime}^"\r"^{mrmime|
+|mrmime}^"\r"^{mrmime|
 |mrmime}
 
 let contents =
@@ -278,9 +278,9 @@ let test3 () =
   | Ok _ -> Fmt.invalid_arg "Invalid structure of the email"
   | Error _ -> Fmt.invalid_arg "Invalid email"
 
-let example4 = {mrmime|Subject: A simple email
-
-Hello World!
+let example4 = {mrmime|Subject: A simple email|mrmime}^"\r"^{mrmime|
+|mrmime}^"\r"^{mrmime|
+Hello World!|mrmime}^"\r"^{mrmime|
 |mrmime}
 
 let test4 () =
