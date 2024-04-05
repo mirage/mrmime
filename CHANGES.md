@@ -1,3 +1,7 @@
+### v0.6.1 2024-04-04 Paris (France)
+
+- Upgrade tests to be compatible with OCaml 5.2 (@kit-ty-kate, #99)
+
 ### v0.6.0 2023-03-01 Paris (France)
 
 - Be able to set field parsers when we parse an entire email (@dinosaure, #89)
