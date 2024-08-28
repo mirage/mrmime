@@ -86,7 +86,7 @@ let generate ~quiet (seed : [ `Crowbar of int64 option | `Fortuna of string ])
       crowbar_mail_generator ~quiet s multi dst input
   | `Fortuna s ->
       let g = Mirage_crypto_rng.Fortuna.create () in
-      Mirage_crypto_rng.Fortuna.reseed ~g (Cstruct.of_string s);
+      Mirage_crypto_rng.Fortuna.reseed ~g s;
       fortuna_mail_generator ~quiet dst g
 
 (* Cmdliner function s*)
