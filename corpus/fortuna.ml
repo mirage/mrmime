@@ -89,14 +89,14 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
           Int64.to_int (Bytes.get_int64_le b 0)
       | _ -> assert false)
   | Range { min; max = m } ->
-      if m < 0x100 then
+      if m < 0x100 then (
         let b = Bytes.create 1 in
         Mirage_crypto_rng.Fortuna.generate_into ~g b ~off:0 1;
-        min + (Bytes.get_uint8 b 0 mod m)
-      else if m < 0x1000000 then
+        min + (Bytes.get_uint8 b 0 mod m))
+      else if m < 0x1000000 then (
         let b = Bytes.create 4 in
         Mirage_crypto_rng.Fortuna.generate_into ~g b ~off:0 4;
-        min + Int32.(to_int (abs (rem (Bytes.get_int32_le b 0) (of_int m))))
+        min + Int32.(to_int (abs (rem (Bytes.get_int32_le b 0) (of_int m)))))
       else
         let b = Bytes.create 8 in
         Mirage_crypto_rng.Fortuna.generate_into ~g b ~off:0 8;
