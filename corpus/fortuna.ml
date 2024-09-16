@@ -28,6 +28,11 @@ exception Bad
 
 let bad_test _where = raise Bad
 
+let generate ~g len =
+  let res = Bytes.make len '\000' in
+  Mirage_crypto_rng.Fortuna.generate_into ~g res ~off:0 len;
+  Bytes.unsafe_to_string res
+
 let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
  fun ~g t f ->
   try
@@ -57,40 +62,39 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
       let vb = run ~g b in
       (va, vb)
   | Char ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      Cstruct.get_char cs 0
+      let cs = generate ~g 1 in
+      cs.[0]
   | Float ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-      let a = Int32.abs (Cstruct.LE.get_uint32 cs 0) in
-      let b = Int32.abs (Cstruct.LE.get_uint32 cs 4) in
+      let cs = generate ~g 8 in
+      let a = Int32.abs (String.get_int32_le cs 0) in
+      let b = Int32.abs (String.get_int32_le cs 4) in
       Float.of_string (Fmt.str "%ld.%ld" a b)
   | String ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      let ln = Cstruct.get_uint8 cs 0 in
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g ln in
-      Cstruct.to_string cs
+      let cs = generate ~g 1 in
+      let ln = String.get_uint8 cs 0 in
+      generate ~g ln
   | Bool ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      Cstruct.get_uint8 cs 0 land 1 = 1
+      let cs = generate ~g 1 in
+      String.get_uint8 cs 0 land 1 = 1
   | Int -> (
       match Sys.word_size with
       | 32 ->
-          let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
-          Int32.to_int (Cstruct.LE.get_uint32 cs 0)
+          let cs = generate ~g 4 in
+          Int32.to_int (String.get_int32_le cs 0)
       | 64 ->
-          let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-          Int64.to_int (Cstruct.LE.get_uint64 cs 0)
+          let cs = generate ~g 8 in
+          Int64.to_int (String.get_int64_le cs 0)
       | _ -> assert false)
   | Range { min; max = m } ->
       if m < 0x100 then
-        let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-        min + (Cstruct.get_uint8 cs 0 mod m)
+        let cs = generate ~g 1 in
+        min + (String.get_uint8 cs 0 mod m)
       else if m < 0x1000000 then
-        let cs = Mirage_crypto_rng.Fortuna.generate ~g 4 in
-        min + Int32.(to_int (abs (rem (Cstruct.LE.get_uint32 cs 0) (of_int m))))
+        let cs = generate ~g 4 in
+        min + Int32.(to_int (abs (rem (String.get_int32_le cs 0) (of_int m))))
       else
-        let cs = Mirage_crypto_rng.Fortuna.generate ~g 8 in
-        min + Int64.(to_int (abs (rem (Cstruct.LE.get_uint64 cs 0) (of_int m))))
+        let cs = generate ~g 8 in
+        min + Int64.(to_int (abs (rem (String.get_int64_le cs 0) (of_int m))))
   | Bind (x, f) ->
       let v = run ~g x in
       run ~g (f v)
@@ -115,16 +119,14 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
           in
           go 0 [] lst)
   | List t ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      let nm = Cstruct.get_uint8 cs 0 land 0xf in
+      let cs = generate ~g 1 in
+      let nm = String.get_uint8 cs 0 land 0xf in
       List.init nm (fun _ -> run ~g t)
   | List1 t ->
       let hd = run ~g t in
       let tl = run ~g (list t) in
       hd :: tl
-  | Fixed len ->
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g len in
-      Cstruct.to_string cs
+  | Fixed len -> generate ~g len
   | Fix v -> run ~g (Lazy.force v)
   | Map (ts, f) ->
       let rec go : type f a. (f, a) gens -> f -> a = function
@@ -136,8 +138,8 @@ and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
       in
       go ts f
   | Option t -> (
-      let cs = Mirage_crypto_rng.Fortuna.generate ~g 1 in
-      match Cstruct.get_uint8 cs 0 land 1 = 1 with
+      let cs = generate ~g 1 in
+      match String.get_uint8 cs 0 land 1 = 1 with
       | true ->
           let v = run ~g t in
           Some v

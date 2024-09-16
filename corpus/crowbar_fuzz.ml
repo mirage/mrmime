@@ -152,7 +152,7 @@ let int64 = with_printer pp_int64 (primitive read_int64 0L)
 let int =
   with_printer pp_int
     (if Sys.word_size <= 32 then map [ int32 ] Int32.to_int
-    else map [ int64 ] Int64.to_int)
+     else map [ int64 ] Int64.to_int)
 
 let float =
   with_printer pp_float
@@ -428,16 +428,16 @@ let run_test ~mode ~silent ?(verbose = false) (Test (name, gens, f)) =
     show_status_line ~clear:true "FAIL";
     pp ppf "%a@." print_status status);
   (if not silent then
-   match classify_status status with
-   | `Pass ->
-       show_status_line ~clear:true "PASS";
-       if verbose then pp ppf "%a@." print_status status
-   | `Fail ->
-       show_status_line ~clear:true "FAIL";
-       pp ppf "%a@." print_status status
-   | `Bad ->
-       show_status_line ~clear:true "BAD";
-       pp ppf "%a@." print_status status);
+     match classify_status status with
+     | `Pass ->
+         show_status_line ~clear:true "PASS";
+         if verbose then pp ppf "%a@." print_status status
+     | `Fail ->
+         show_status_line ~clear:true "FAIL";
+         pp ppf "%a@." print_status status
+     | `Bad ->
+         show_status_line ~clear:true "BAD";
+         pp ppf "%a@." print_status status);
   status
 
 exception TestFailure
