@@ -207,13 +207,27 @@ let parse_content_type x (ty, subty, param_count) =
 (* Check that whitespaces are allowed in content type parameter value (PR#72) *)
 let content_type_test =
   let test =
-    {|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>|}^"\r"^{|
-      (=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?=)|}^"\r"^{|
-To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed|}^"\r"^{|
-   <ned@innosoft.com>, Keith Moore <moore@cs.utk.edu>|}^"\r"^{|
-Subject: Test of new header generator|}^"\r"^{|
-MIME-Version: 1.0|}^"\r"^{|
-Content-type: text/plain; wpefjjnqwisj231=" q02eifwe0sn  "; weinfw="qwewqe"|}^"\r"^{|
+    {|From: Nathaniel Borenstein <nsb@thumper.bellcore.com>|}
+    ^ "\r"
+    ^ {|
+      (=?iso-8859-8?b?7eXs+SDv4SDp7Oj08A==?=)|}
+    ^ "\r"
+    ^ {|
+To: Greg Vaudreuil <gvaudre@NRI.Reston.VA.US>, Ned Freed|}
+    ^ "\r"
+    ^ {|
+   <ned@innosoft.com>, Keith Moore <moore@cs.utk.edu>|}
+    ^ "\r"
+    ^ {|
+Subject: Test of new header generator|}
+    ^ "\r"
+    ^ {|
+MIME-Version: 1.0|}
+    ^ "\r"
+    ^ {|
+Content-type: text/plain; wpefjjnqwisj231=" q02eifwe0sn  "; weinfw="qwewqe"|}
+    ^ "\r"
+    ^ {|
 |}
   in
   let ct =
