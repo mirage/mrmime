@@ -174,5 +174,6 @@ let field_to_string : type a. a Field.t -> string = function
   | Addresses -> "addresses"
   | MessageID -> "messageId"
   | Unstructured -> "unstructured"
+  | Unstructured_with_encoded -> "unstructured_with_encoded"
   | Content -> "content"
   | Encoding -> "encoding"
