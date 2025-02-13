@@ -15,21 +15,19 @@
  *)
 
 (** This module provides an alternative to {!Unstructured} which handles encoded
-    words.  It is meant for the Subject and other unstructured header fields,
-    where RFC-2047 adds additional semantics on top of the SMTP protocol.  The
+    words. It is meant for the Subject and other unstructured header fields,
+    where RFC-2047 adds additional semantics on top of the SMTP protocol. The
     addition of encoded words allows sending UTF-8 content in a 7 bit protocol,
     like SMTP without the SMTPUTF8 extension.
 
     When decoding, it is necessary to pass the following witness
     {[
       let witness =
-	Field_name.Map.singleton Field_name.subject
-	  Field.(Witness Unstructured_with_encoded)
-    ]}
- *)
+        Field_name.Map.singleton Field_name.subject
+          Field.(Witness Unstructured_with_encoded)
+    ]} *)
 
 type elt = [ Unstructured.elt | `Encoded of string * Emile.raw ]
-
 type t = elt list
 
 val pp_elt : Format.formatter -> elt -> unit
@@ -46,15 +44,13 @@ end
 
 module Encoder : sig
   val unstructured_with_encoded : t Prettym.t
-  (** Encodes {!t} as unstructured text with encoded words.  The result is 7
-      bits if all non-ASCII characters occur within encoded words. *)
+  (** Encodes {!t} as unstructured text with encoded words. The result is 7 bits
+      if all non-ASCII characters occur within encoded words. *)
 end
 
 module Craft : sig
   val b : Encoded_word.encoding
   val q : Encoded_word.encoding
-  (** [q] and [p] are the two possible encodings for {!e}, imported here for
-      convenience. *)
 
   val sp : int -> elt list
   (** [sp n] adds [n] spaces which may be wrapped. *)
@@ -62,7 +58,7 @@ module Craft : sig
   val v : string -> elt list
   (** [v text] will produce [text] literally. *)
 
-  val e : encoding: Encoded_word.encoding -> string -> elt list
+  val e : encoding:Encoded_word.encoding -> string -> elt list
   (** [e ~encoding text] will produce [text] encoded as [encoding]. *)
 
   val compile : elt list list -> t
@@ -71,6 +67,6 @@ module Craft : sig
   val concat : elt list -> elt list -> elt list
   (** List concatenation, specialized for our purpose. *)
 
-  val (@) : elt list -> elt list -> elt list
+  val ( @ ) : elt list -> elt list -> elt list
   (** This is an alias for {!concat}. *)
 end
