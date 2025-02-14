@@ -134,3 +134,12 @@ let to_end_of_input ~write_data ~write_line =
   peek_char *> available >>= take >>= fun str ->
   Pecu.src dec (Bytes.unsafe_of_string str) 0 (String.length str);
   parser ~write_data ~write_line dec
+
+let encode input =
+  let buffer = Stdlib.Buffer.create (String.length input) in
+  let encoder = Pecu.Inline.encoder (`Buffer buffer) in
+  String.iter
+    (fun chr -> ignore @@ Pecu.Inline.encode encoder (`Char chr))
+    input;
+  ignore @@ Pecu.Inline.encode encoder `End;
+  Stdlib.Buffer.contents buffer

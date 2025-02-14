@@ -82,18 +82,31 @@ module Encoder = struct
 
   let element : elt t =
    fun ppf -> function
-    | `Encoded (charset, Emile.Quoted_printable data) ->
-        Encoded_word.Encoder.encoded_word ppf
-          { Encoded_word.charset = `Charset charset;
-            encoding = Encoded_word.Quoted_printable;
-            data
-          }
-    | `Encoded (charset, Emile.Base64 data) ->
-        Encoded_word.Encoder.encoded_word ppf
-          { Encoded_word.charset = `Charset charset;
-            encoding = Encoded_word.Base64;
-            data
-          }
+    | `Encoded (charset, raw) -> (
+        let encoding, encoder, data =
+          match raw with
+          | Emile.Quoted_printable data -> ('Q', Quoted_printable.encode, data)
+          | Emile.Base64 data ->
+              ('B', (fun s -> Base64.encode_exn ~pad:true s), data)
+        in
+        match data with
+        | Ok data ->
+            let fmt =
+              [ box;
+                string $ "=?";
+                !!string;
+                char $ '?';
+                !!char;
+                char $ '?';
+                !!string;
+                string $ "?=";
+                close
+              ]
+            in
+            eval ppf fmt charset encoding (encoder data)
+        | Error (`Msg err) ->
+            Fmt.invalid_arg "Impossible to encode an invalid encoded-word: %s"
+              err)
     | #Unstructured.elt as elt -> Unstructured.Encoder.element ppf elt
 
   let unstructured_with_encoded : elt list t =
