@@ -433,17 +433,7 @@ module Encoder = struct
     | Quoted_printable -> char ppf 'Q'
 
   let charset = using (Format.asprintf "%a" pp_charset) string
-
-  let to_quoted_printable input =
-    let buffer = Stdlib.Buffer.create (String.length input) in
-    let encoder = Pecu.Inline.encoder (`Buffer buffer) in
-    String.iter
-      (fun chr -> ignore @@ Pecu.Inline.encode encoder (`Char chr))
-      input;
-    ignore @@ Pecu.Inline.encode encoder `End;
-    Stdlib.Buffer.contents buffer
-
-  let quoted_printable = using to_quoted_printable string
+  let quoted_printable = using Quoted_printable.encode string
   let base64 = using (fun x -> Base64.encode_exn ~pad:true x) string
   let is_base64 = function Base64 -> true | _ -> false
 

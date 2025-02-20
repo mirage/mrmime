@@ -28,6 +28,11 @@
  (modules fuzz_date)
  (libraries ptime.clock.os mrmime common crowbar))
 
+(executable
+ (name fuzz_unstructured_with_encoded)
+ (modules fuzz_unstructured_with_encoded)
+ (libraries mrmime common crowbar))
+
 ; (alias
 ;  (name runtest)
 ;  (deps (:fuzz_encoder fuzz_encoder.exe))

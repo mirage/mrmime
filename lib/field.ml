@@ -5,6 +5,7 @@ type 'a t =
   | Addresses : Address.t list t
   | MessageID : MessageID.t t
   | Unstructured : Unstructured.t t
+  | Unstructured_with_encoded : Unstructured_with_encoded.t t
   | Content : Content_type.t t
   | Encoding : Content_encoding.t t
 
@@ -36,6 +37,7 @@ let pp ppf (Field (field_name, w, v)) =
     | Addresses -> pp_list Address.pp
     | MessageID -> MessageID.pp
     | Unstructured -> Unstructured.pp
+    | Unstructured_with_encoded -> Unstructured_with_encoded.pp
     | Content -> Content_type.pp
     | Encoding -> Content_encoding.pp
   in
@@ -68,6 +70,10 @@ let parser : type a. a t -> a Angstrom.t = function
       let open Angstrom in
       Unstructured.Decoder.unstructured () >>= fun v ->
       return (v :> Unstructured.t)
+  | Unstructured_with_encoded ->
+      let open Angstrom in
+      Unstructured_with_encoded.Decoder.unstructured_with_encoded ()
+      >>= fun v -> return (v :> Unstructured_with_encoded.t)
   | Content -> Content_type.Decoder.content
   | Encoding -> Content_encoding.Decoder.mechanism
 
@@ -78,6 +84,8 @@ let encoder : type a. a t -> a Prettym.t = function
   | Addresses -> Address.Encoder.addresses
   | MessageID -> MessageID.Encoder.message_id
   | Unstructured -> Unstructured.Encoder.unstructured
+  | Unstructured_with_encoded ->
+      Unstructured_with_encoded.Encoder.unstructured_with_encoded
   | Content -> Content_type.Encoder.content_type
   | Encoding -> Content_encoding.Encoder.mechanism
 
