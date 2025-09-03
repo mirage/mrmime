@@ -93,50 +93,39 @@ module Encoder = struct
    * really break the mailbox. Note that such point is due to the release of
    * [prettym.0.0.1] which slightly change the semantic of [fws] and [cut]. *)
 
-  let dot = ((fun ppf () -> eval ppf [ cut (); char $ '.'; cut () ]), ())
-  let comma = ((fun ppf () -> eval ppf [ cut (); char $ ','; cut () ]), ())
-  let local ppf lst = eval ppf [ box; !!(list ~sep:dot word); close ] lst
+  let dot = ((fun ppf () -> eval ppf [ char $ '.' ]), ())
+  let comma = ((fun ppf () -> eval ppf [ char $ ','; cut () ]), ())
+  let local ppf lst =
+    eval ppf [ !!(list ~sep:dot word); ]
+      lst
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
 
   let domain ppf = function
-    | `Domain domain ->
-        let boxed_string ppf x = eval ppf [ box; !!string; close ] x in
-        eval ppf [ box; !!(list ~sep:dot boxed_string); close ] domain
+    | `Domain domain -> eval ppf [ !!(list ~sep:dot string); ] domain
     | `Literal literal ->
         eval ppf
-          [ box; char $ '['; cut (); !!string; cut (); char $ ']'; close ]
+          [ char $ '['; !!string; char $ ']' ]
           literal
     | `Addr (Emile.IPv4 ip) ->
         eval ppf
-          [ box; char $ '['; cut (); !!ipaddr_v4; cut (); char $ ']'; close ]
+          [ char $ '['; !!ipaddr_v4; char $ ']' ]
           ip
     | `Addr (Emile.IPv6 ip) ->
         eval ppf
-          [ box;
-            char $ '[';
-            cut ();
+          [ char $ '[';
             string $ "IPv6:";
-            cut ();
             !!ipaddr_v6;
-            cut ();
             char $ ']';
-            close
           ]
           ip
     | `Addr (Emile.Ext (ldh, v)) ->
         eval ppf
-          [ box;
-            char $ '[';
-            cut ();
+          [ char $ '[';
             !!string;
-            cut ();
             char $ ':';
-            cut ();
             !!string;
-            cut ();
             char $ ']';
-            close
           ]
           ldh v
 
@@ -158,7 +147,7 @@ module Encoder = struct
             }
     in
     let space ppf () = eval ppf [ fws ] in
-    eval ppf [ box; !!(list ~sep:(space, ()) elt); close ] lst
+    eval ppf [ !!(list ~sep:(space, ()) elt) ] lst
 
   let mailbox ppf (t : Emile.mailbox) =
     match (t.Emile.name, t.Emile.domain) with
@@ -168,48 +157,38 @@ module Encoder = struct
             !!phrase;
             spaces 1;
             char $ '<';
-            cut ();
             !!local;
-            cut ();
             char $ '@';
-            cut ();
             !!domain;
-            cut ();
             char $ '>';
             close
           ]
           name t.Emile.local x
     | None, (x, []) ->
         eval ppf
-          [ !!local; cut (); char $ '@'; cut (); !!domain ]
+          [ box; !!local; char $ '@'; !!domain; close ]
           t.Emile.local x
     | name, (x, r) ->
         let domains ppf lst =
-          let domain ppf x = eval ppf [ box; char $ '@'; !!domain; close ] x in
+          let domain ppf x = eval ppf [ char $ '@'; !!domain ] x in
           (* XXX(dinosaure): according RFC, comma is surrounded by CFWS. *)
           let comma =
-            ((fun ppf () -> eval ppf [ cut (); char $ ','; cut () ]), ())
+            ((fun ppf () -> eval ppf [ char $ ','; cut () ]), ())
           in
-          eval ppf [ box; !!(list ~sep:comma domain); close ] lst
+          eval ppf [ !!(list ~sep:comma domain) ] lst
         in
-        let phrase ppf x = eval ppf [ box; !!phrase; spaces 1; close ] x in
+        let phrase ppf x = eval ppf [ !!phrase; spaces 1 ] x in
 
         eval ppf
           [ box;
             !!(option phrase);
             cut ();
             char $ '<';
-            cut ();
             !!domains;
-            cut ();
             char $ ':';
-            cut ();
             !!local;
-            cut ();
             char $ '@';
-            cut ();
             !!domain;
-            cut ();
             char $ '>';
             close
           ]
