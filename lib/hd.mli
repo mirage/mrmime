@@ -24,21 +24,20 @@ type decode =
   | `Malformed of string ]
 
 val decoder : Field.witness Field_name.Map.t -> decoder
-(** [decoder parsers] returns a decoder with a set of field-name binded
-   with expected kind of value. When the decoder will decode value of
-   a given field-name, it will try to extract expected value describe by
-   the given {!Field.witness} or it returns a {!Unstructured.t}. *)
+(** [decoder parsers] returns a decoder with a set of field-name binded with
+    expected kind of value. When the decoder will decode value of a given
+    field-name, it will try to extract expected value describe by the given
+    {!Field.witness} or it returns a {!Unstructured.t}. *)
 
 val decode : decoder -> decode
 (** [decode decoder] is:
-    {ul
-    {- [`Field field] when extracted a field.}
-    {- [`Await] when the decoder wants more input.}
-    {- [`End trailer] when we reach end of the header. [trailer] is
-       what the user gaves which is not the part of the header.}
-    {- [`Malformed err] we we reach an error while decoding.}} *)
+    - [`Field field] when extracted a field.
+    - [`Await] when the decoder wants more input.
+    - [`End trailer] when we reach end of the header. [trailer] is what the user
+      gaves which is not the part of the header.
+    - [`Malformed err] we we reach an error while decoding. *)
 
 val src : decoder -> string -> int -> int -> unit
-(** [src decoder src off len] gives more input to [decoder]. The function
-    can fail when given input is bigger than internal buffer of [decoder]
-    (see {!decoder}). *)
+(** [src decoder src off len] gives more input to [decoder]. The function can
+    fail when given input is bigger than internal buffer of [decoder] (see
+    {!decoder}). *)

@@ -17,14 +17,14 @@
 type t = Emile.mailbox
 (** Type of mailbox. Normally, a mailbox is composed of two parts:
 
-    {ul
-    {- an optional display name that indicates the name of the recipient (which
-   can be a person or a system) that could be displayed to the user of a mail
-   application, and}
-    {- an {i addr-spec} address enclosed in angle brackets (["<"] and [">"]).}}
+    - an optional display name that indicates the name of the recipient (which
+      can be a person or a system) that could be displayed to the user of a mail
+      application, and
+    - an {i addr-spec} address enclosed in angle brackets (["<"] and [">"]).
 
-    There is an alternate simple form of a mailbox where the {i addr-spec} address
-   appears alone, without the recipient's name or the angle brackets. *)
+    There is an alternate simple form of a mailbox where the {i addr-spec}
+    address appears alone, without the recipient's name or the angle brackets.
+*)
 
 (** {2 Equals.} *)
 
@@ -32,62 +32,62 @@ val equal : ?case_sensitive:bool -> t -> t -> bool
 
 val escape_string : string -> string
 (** [escape_string x] returns a safe [string] where control characters are
-   escaped ([\x00], [\x5c], [\a], [\b], [\t], [\n], [\v], [\f], [\r] and [\x22] -
-   double quote). *)
+    escaped ([\x00], [\x5c], [\a], [\b], [\t], [\n], [\v], [\f], [\r] and [\x22]
+    \- double quote). *)
 
 module Phrase : sig
   (** A phrase in the context of the mailbox is a {i display-name} that
-     indicates the name of the recipient. We provide an easily way to make it
-     and keep conformances according standards.
+      indicates the name of the recipient. We provide an easily way to make it
+      and keep conformances according standards.
 
-     {[
-       let name = Phrase.(v [ w "Daniel"; w "B" ]) ;;
-       val name : phrase
-       Phrase.to_string name ;;
-       - : string = "Daniel B"
-     ]}
+      {[
+        let name = Phrase.(v [ w "Daniel"; w "B" ]) ;;
+        val name : phrase
+        Phrase.to_string name ;;
+        - : string = "Daniel B"
+      ]}
 
-     About special encoding/{i charset}, a [`Word] can store a valid UTF-8 string.
-     Otherwise, you can use an {!Encoded_word.t} to keep special characters:
+      About special encoding/{i charset}, a [`Word] can store a valid UTF-8
+      string. Otherwise, you can use an {!Encoded_word.t} to keep special
+      characters:
 
-     {[
-       let name = Phrase.(v [ w "Daniel"; e ~encoding:q "Bünzli" ]) ;;
-       - name : phrase
-       Phrase.to_string name ;;
-       - "Daniel =?UTF-8?Q?B=C3=BCnzli?=" : string
-     ]}
+      {[
+        let name = Phrase.(v [ w "Daniel"; e ~encoding:q "Bünzli" ]) ;;
+        - name : phrase
+        Phrase.to_string name ;;
+        - "Daniel =?UTF-8?Q?B=C3=BCnzli?=" : string
+      ]}
 
-     NOTE: we accept only valid UTF-8 contents. Other {i charset} (like [latin1])
-     are NOT allowed - we can compute them but we choose to never produce them.
-  *)
+      NOTE: we accept only valid UTF-8 contents. Other {i charset} (like
+      [latin1]) are NOT allowed - we can compute them but we choose to never
+      produce them. *)
 
   type elt = [ `Dot | `Word of Emile.word | `Encoded of string * Emile.raw ]
 
   type 'a t =
     | [] : Peano.z t
     | ( :: ) : elt * 'a t -> 'a Peano.s t
-        (** Phrase, according RFC 5322, is a non-empty list of three
-      elements ({!elt}):
+        (** Phrase, according RFC 5322, is a non-empty list of three elements
+            ({!elt}):
 
-      {ul
-      {- [`Dot] a dot surrounded by space}
-      {- [`Word w] a {!word}}
-      {- [`Encoded e] an encoded-word}} *)
+            - [`Dot] a dot surrounded by space
+            - [`Word w] a {!word}
+            - [`Encoded e] an encoded-word *)
 
   val o : elt
   (** {!o} produces a [`Dot]. *)
 
   val w : string -> elt
   (** {!w} produces a {b safe} word. {!w} will try to escape control characters
-     and verify if contents respects standards. Otherwise, {!w} raises an
-     [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
-     double-quote. *)
+      and verify if contents respects standards. Otherwise, {!w} raises an
+      [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
+      double-quote. *)
 
   val e : encoding:Encoded_word.encoding -> string -> elt
   (** {!e} is an alias of {!Encoded_word.make_exn}. About [`Encoded] word, user
-     can choose the way to encode the word. {!b} for a Base64 encoding or {!q}
-     for a Quoted-Printable encoding. Both accept {b only} UTF-8 contents - we
-     don't accept any other {i charset}. *)
+      can choose the way to encode the word. {!b} for a Base64 encoding or {!q}
+      for a Quoted-Printable encoding. Both accept {b only} UTF-8 contents - we
+      don't accept any other {i charset}. *)
 
   val q : Encoded_word.encoding
   (** Quoted-Printable encoding. *)
@@ -97,14 +97,15 @@ module Phrase : sig
 
   val word : string -> (elt, [> `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
-     returns [Error] if [x] does not respect standards. If contents is an UTF-8
-     contents, [word] will surround [x] with double-quote and will escape
-     control characters (see {!escape_string}).
+      returns [Error] if [x] does not respect standards. If contents is an UTF-8
+      contents, [word] will surround [x] with double-quote and will escape
+      control characters (see {!escape_string}).
 
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
   val word_exn : string -> elt
-  (** Same as {!word} but raises [Invalid_argument] instead to return [Error]. *)
+  (** Same as {!word} but raises [Invalid_argument] instead to return [Error].
+  *)
 
   val coerce : 'a Peano.s t -> Emile.phrase
   (** [coerce l] returns a valid and safe {!phrase}. *)
@@ -116,22 +117,22 @@ module Phrase : sig
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 
   val to_string : Emile.phrase -> string
-  (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
+  (** [to_string x] returns a string which represents [x] as is it in a e-mails.
+  *)
 end
 
 module Literal_domain : sig
   type 'a t
-  (** A literal-domain type. Sometimes a host is not known to the domain name system
-     and communication (and, in particular, communication to report and repair the
-     error) is blocked. To bypass this barrier, a special literal form of the address
-     is allowed as an alternative to a domain name.
+  (** A literal-domain type. Sometimes a host is not known to the domain name
+      system and communication (and, in particular, communication to report and
+      repair the error) is blocked. To bypass this barrier, a special literal
+      form of the address is allowed as an alternative to a domain name.
 
-     We have three kinds of literal-domain:
+      We have three kinds of literal-domain:
 
-     {ul
-     {- an IPv4 address}
-     {- an IPv6 address (textual form follows RFC 4291)}
-     {- an user-defined literal domain}} *)
+      - an IPv4 address
+      - an IPv6 address (textual form follows RFC 4291)
+      - an user-defined literal domain *)
 
   val ipv4 : Ipaddr.V4.t t
   (** IPv4 kind. *)
@@ -144,7 +145,7 @@ module Literal_domain : sig
 
   val make : 'a t -> 'a -> (Emile.addr, [> `Msg of string ]) result
   (** [make kind v] returns a literal-domain according RFC 5321. It should fails
-     if [kind] is {!extension} and value does not respect standards. *)
+      if [kind] is {!extension} and value does not respect standards. *)
 
   val v : 'a t -> 'a -> Emile.addr
   (** Same as {!make} but raises an exception instead to return [Error]. *)
@@ -169,8 +170,8 @@ module Domain : sig
         - : string = "[127.0.0.1]"
       ]}
 
-      At the end, and according RFC 5322, it's possible to specify a
-      [`Literal] domain like this:
+      At the end, and according RFC 5322, it's possible to specify a [`Literal]
+      domain like this:
 
       {[
         let x25519 = Domain.(v literal "x25519") ;;
@@ -192,15 +193,14 @@ module Domain : sig
   type 'a t
   (** Kind of domain. RFC 5322 and RFC 5321 allows several kinds of domain:
 
-      {ul
-      {- An usual {!domain} which is a non-empty list of {!atom} elements}
-      {- A {!Literal_domain.t}}
-      {- A [`Literal] domain which is a string surrounded by brackets.}} *)
+      - An usual {!domain} which is a non-empty list of {!atom} elements
+      - A {!Literal_domain.t}
+      - A [`Literal] domain which is a string surrounded by brackets. *)
 
   val atom : string -> (atom, [> `Msg of string ]) result
   (** [atom x] returns a safe {!atom} element. If [x] does not respect RFC 5322,
-     it returns [Error]. It accepts any characters excepts controls, space and
-     specials characters - for instance, brackets are not allowed. *)
+      it returns [Error]. It accepts any characters excepts controls, space and
+      specials characters - for instance, brackets are not allowed. *)
 
   val atom_exn : string -> atom
   (** Same as {!atom} but raises an [Invalid_argument] instead [Error]. *)
@@ -210,11 +210,12 @@ module Domain : sig
 
   val literal : string -> (literal, [> `Msg of string ]) result
   (** [literal x] returns a {!literal} domain. If [x] does not respect RFC 5321,
-     it returns [Error]. It will try to escape control characters
-     (with {!escape_string}). *)
+      it returns [Error]. It will try to escape control characters (with
+      {!escape_string}). *)
 
   val literal_exn : string -> literal
-  (** Same as {!literal} but raises an [Invalid_argument] instead to return [Error]. *)
+  (** Same as {!literal} but raises an [Invalid_argument] instead to return
+      [Error]. *)
 
   val domain : 'a domain t
   (** Kind of domain. *)
@@ -233,29 +234,29 @@ module Domain : sig
 
   val make : 'a t -> 'a -> (Emile.domain, [> `Msg of string ]) result
   (** [make kind v] returns a safe domain. It can fail if an user-defined
-     literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
-     {!domain} don't follow standards:
+      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
+      {!domain} don't follow standards:
 
-     {ul
-     {- for a {!Literal_domain.extension}, [make] returns [Error] if
-     {!Literal_domain.make} returns [Error]}
-     {- for a {!literal}, [make] returns [Error] if {!literal} returns [Error]}
-     {- for a {!domain}, [make] returns [Error] if list of {!atom} is empty}} *)
+      - for a {!Literal_domain.extension}, [make] returns [Error] if
+        {!Literal_domain.make} returns [Error]
+      - for a {!literal}, [make] returns [Error] if {!literal} returns [Error]
+      - for a {!domain}, [make] returns [Error] if list of {!atom} is empty *)
 
   val of_list : string list -> (Emile.domain, [> `Msg of string ]) result
   (** [of_list l] returns a domain from a non-empty list of well-formed atom
-     elements. Otherwise, it returns an error. *)
+      elements. Otherwise, it returns an error. *)
 
   val v : 'a t -> 'a -> Emile.domain
   (** Same as {!make} but raises an [Invalid_argument] instead [Error]. *)
 
   val to_string : Emile.domain -> string
-  (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
+  (** [to_string x] returns a string which represents [x] as is it in a e-mails.
+  *)
 end
 
 module Local : sig
-  (** Local part of a mailbox is a non-empty list of {!word} elements.
-      You can construct local-part like this:
+  (** Local part of a mailbox is a non-empty list of {!word} elements. You can
+      construct local-part like this:
 
       {[
         let local = Local.(v [ w "romain"; w "calascibetta" ]) ;;
@@ -273,8 +274,8 @@ module Local : sig
 
       NOTE: [+] permits your MUA to tag e-mails received with this local-part.
 
-      Valid UTF-8 string is allowed according RFC 6532 - and will be
-      surrounded by double-quote. *)
+      Valid UTF-8 string is allowed according RFC 6532 - and will be surrounded
+      by double-quote. *)
 
   type 'a local =
     | [] : Peano.z local
@@ -282,15 +283,15 @@ module Local : sig
 
   val w : string -> Emile.word
   (** {!w} produces a {b safe} word. {!w} will try to escape control characters
-     and verify if contents respects standards. Otherwise, {!w} raises an
-     [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
-     double-quote. *)
+      and verify if contents respects standards. Otherwise, {!w} raises an
+      [Invalid_argument]. [`Word] produced by {!w} can be surrounded by
+      double-quote. *)
 
   val word : string -> (Emile.word, [> `Msg of string ]) result
   (** [word x] tries to normalize [x] as a [`Word] according RFC 5322. It
-     returns [Error] if [x] does not respect standards. If contents is an UTF-8
-     contents, [word] will surround [x] with double-quote and will escape
-     control characters (see {!escape_string}).
+      returns [Error] if [x] does not respect standards. If contents is an UTF-8
+      contents, [word] will surround [x] with double-quote and will escape
+      control characters (see {!escape_string}).
 
       NOTE: UTF-8 is allowed in e-mails according RFC 6532. *)
 
@@ -305,13 +306,14 @@ module Local : sig
 
   val of_list : string list -> (Emile.local, [> `Msg of string ]) result
   (** [of_list l] returns a local-part from a non-empty list of well-formed
-     words. Otherwise, it returns an error. *)
+      words. Otherwise, it returns an error. *)
 
   val v : 'a local -> Emile.local
   (** Same as {!make} but raises an exception instead to return [Error]. *)
 
   val to_string : Emile.local -> string
-  (** [to_string x] returns a string which represents [x] as it is in an e-mail. *)
+  (** [to_string x] returns a string which represents [x] as it is in an e-mail.
+  *)
 end
 
 val make :
@@ -320,9 +322,9 @@ val make :
   ?domains:Emile.domain list ->
   Emile.domain ->
   t
-(** [make ?name local ?domains domain] returns a {!mailbox} with local-part [local],
-    first domain [domain], others domains [domains] (default is an empty list) and
-    an optional name.
+(** [make ?name local ?domains domain] returns a {!mailbox} with local-part
+    [local], first domain [domain], others domains [domains] (default is an
+    empty list) and an optional name.
 
     {[
       let me =
@@ -347,41 +349,41 @@ val ( @ ) : 'a Local.local -> 'b Domain.t * 'b -> t
     ]}
 
     With only one domain and without a {i display-name}. If you want to put
-    multiple domains, you should use {!make} instead. If you want to put a {!phrase},
-    you can use {!with_phrase}.
+    multiple domains, you should use {!make} instead. If you want to put a
+    {!phrase}, you can use {!with_phrase}.
 
     [@] operator can raise [Invalid_argument] where local-part or domain fail to
-    normalize inputs according standards (see {!Local.make} and {!Domain.make}). *)
+    normalize inputs according standards (see {!Local.make} and {!Domain.make}).
+*)
 
 val with_name : Emile.phrase -> t -> t
 (** [with_name phrase t] put or replace {i display name} of mailbox [t].
 
-     {[
-       let dbuenzli = with_name Phrase.(v [ w "Daniel"; e ~encoding:q "Bünzli" ]) dbuenzli
-       val dbuenzli : t = ...
-       (* Stringify dbuenzli! *)
-       to_string dbuenzli ;;
-       - : string = "Daniel =?UTF-8?Q?B=C3=BCnzli?= <daniel.buenzli@erratique.ch>"
-     ]}
-*)
+    {[
+      let dbuenzli = with_name Phrase.(v [ w "Daniel"; e ~encoding:q "Bünzli" ]) dbuenzli
+      val dbuenzli : t = ...
+      (* Stringify dbuenzli! *)
+      to_string dbuenzli ;;
+      - : string = "Daniel =?UTF-8?Q?B=C3=BCnzli?= <daniel.buenzli@erratique.ch>"
+    ]} *)
 
 val to_string : t -> string
-(** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
+(** [to_string x] returns a string which represents [x] as is it in a e-mails.
+*)
 
 val of_string : string -> (t, [> `Msg of string ]) result
 (** [of_string x] returns a {!t} from a well-formed string [x] according RFC
-   5322. A {i mailbox} can have several forms and can include [FWS] tokens. Some
-   examples of what is allowed:
+    5322. A {i mailbox} can have several forms and can include [FWS] tokens.
+    Some examples of what is allowed:
 
-   {ul
-   {- [thomas@gazagnaire.org]}
-   {- [Hannesm <hannes@menhert.org>]}
-   {- [<anil@recoil.org>]}
-   {- [Romain Calascibetta <@gmail.com:romain.calascibetta@x25519.net>]}
-   {- [Daniel =?UTF-8?Q?B=C3=BCnzli?= <daniel.buenzli@erratique.ch>]}}
+    - [thomas@gazagnaire.org]
+    - [Hannesm <hannes@menhert.org>]
+    - [<anil@recoil.org>]
+    - [Romain Calascibetta <@gmail.com:romain.calascibetta@x25519.net>]
+    - [Daniel =?UTF-8?Q?B=C3=BCnzli?= <daniel.buenzli@erratique.ch>]
 
-   Any {i encoded-word} are normalized to a valid UTF-8 string (even if {i
-   charset} is something else than ["UTF-8"]). *)
+    Any {i encoded-word} are normalized to a valid UTF-8 string (even if
+    {i charset} is something else than ["UTF-8"]). *)
 
 (** {2 Pretty-printers.} *)
 

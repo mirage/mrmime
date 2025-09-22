@@ -277,16 +277,14 @@ and generate_list1 : type a. int -> state -> a t -> (a * unit printer) list =
   let ans = generate (size / 2) input gen in
   ans :: generate_list (size / 2) input gen
 
-and gen_apply :
-    type k res.
+and gen_apply : type k res.
     int ->
     state ->
     (k, res) gens ->
     k ->
     (res, exn * Printexc.raw_backtrace) result * unit printer =
  fun size state gens f ->
-  let rec go :
-      type k res.
+  let rec go : type k res.
       int ->
       state ->
       (k, res) gens ->

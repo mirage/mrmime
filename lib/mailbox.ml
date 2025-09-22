@@ -372,8 +372,8 @@ module Domain = struct
     | [ `Atom x ] -> [ x ]
     | `Atom x :: y :: r -> List.cons x (coerce (y :: r))
 
-  let make_domain :
-      type a. a domain -> (string list, [> `Msg of string ]) result = function
+  let make_domain : type a.
+      a domain -> (string list, [> `Msg of string ]) result = function
     | [] -> error_msgf "A domain must contain at least one element"
     | x :: r -> Ok (coerce (x :: r))
 

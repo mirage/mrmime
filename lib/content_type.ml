@@ -247,8 +247,7 @@ module Parameters = struct
       try
         Uutf.String.fold_utf_8
           (fun () _pos -> function
-            | `Malformed _ -> raise Invalid_utf_8
-            | `Uchar _ -> ())
+            | `Malformed _ -> raise Invalid_utf_8 | `Uchar _ -> ())
           () x;
         Ok x
       with Invalid_utf_8 ->

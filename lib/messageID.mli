@@ -18,9 +18,8 @@ type domain = [ `Literal of string | `Domain of string list ]
 type t = Emile.local * domain
 
 module Domain : sig
-  (** An RFC 822 domain can be constructed in two ways.
-      This construction {b differs} from {!Address.domain}.
-      We can construct a common domain via:
+  (** An RFC 822 domain can be constructed in two ways. This construction
+      {b differs} from {!Address.domain}. We can construct a common domain via:
 
       {[
         let isomorphism = Domain.(v domain [ a "isomorphis"; a "me" ]) ;;
@@ -48,14 +47,13 @@ module Domain : sig
   type 'a t
   (** Kind of domain according RFC 822.
 
-      {ul
-      {- An usual {!domain} which is a non-empty list of {!atom} elements}
-      {- A [`Literal] domain which is a string surrounded by brackets.}} *)
+      - An usual {!domain} which is a non-empty list of {!atom} elements
+      - A [`Literal] domain which is a string surrounded by brackets. *)
 
   val atom : string -> atom option
   (** [atom x] returns a safe {!atom} element. If [x] does not respect RFC 5322,
-     it returns [None]. It accepts any characters excepts controls, space and
-     specials characters - for instance, brackets are not allowed. *)
+      it returns [None]. It accepts any characters excepts controls, space and
+      specials characters - for instance, brackets are not allowed. *)
 
   val atom_exn : string -> atom
   (** Same as {!atom} but raises an [Invalid_argument] instead [None]. *)
@@ -65,11 +63,12 @@ module Domain : sig
 
   val literal : string -> literal option
   (** [literal x] returns a {!literal} domain. If [x] does not respect RFC 5321,
-     it returns [None]. It will try to escape control characters
-     (with {!escape_string}). *)
+      it returns [None]. It will try to escape control characters (with
+      {!escape_string}). *)
 
   val literal_exn : string -> literal
-  (** Same as {!literal} but raises an [Invalid_argument] instead to return [None]. *)
+  (** Same as {!literal} but raises an [Invalid_argument] instead to return
+      [None]. *)
 
   val domain : 'a domain t
   (** Kind of domain. *)
@@ -80,18 +79,18 @@ module Domain : sig
   val make :
     'a t -> 'a -> [ `Literal of string | `Domain of string list ] option
   (** [make kind v] returns a safe domain. It can fail if an user-defined
-     literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
-     {!domain} don't follow standards:
+      literal-domain ({!Literal_domain.extension}), a {!literal} domain or a
+      {!domain} don't follow standards:
 
-     {ul
-     {- for a {!literal}, [make] returns [None] if {!literal} returns [None]}
-     {- for a {!domain}, [make] returns [None] if list of {!atom} is empty}} *)
+      - for a {!literal}, [make] returns [None] if {!literal} returns [None]
+      - for a {!domain}, [make] returns [None] if list of {!atom} is empty *)
 
   val v : 'a t -> 'a -> [ `Literal of string | `Domain of string list ]
   (** Same as {!make} but raises an [Invalid_argument] instead [None]. *)
 
   val to_string : [ `Literal of string | `Domain of string list ] -> string
-  (** [to_string x] returns a string which represents [x] as is it in a e-mails. *)
+  (** [to_string x] returns a string which represents [x] as is it in a e-mails.
+  *)
 end
 
 (** {2 Pretty-printers.} *)

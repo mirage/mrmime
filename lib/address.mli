@@ -16,7 +16,7 @@
 
 type t = [ `Group of Group.t | `Mailbox of Mailbox.t ]
 (** Type of address, an address may either be an individual mailbox, or a group
-   of mailboxes. *)
+    of mailboxes. *)
 
 val group : Group.t -> t
 (** [group g] returns an address from a {!Group.t}. *)

@@ -39,11 +39,11 @@ module Day : sig
 
   val of_string : string -> (t, [ `Msg of string ]) result
   (** [of_string v] returns a day from a well-formed string [v]. Process is
-     case-sensitive. Day needs to be capitalized (eg. ["Fri"]). *)
+      case-sensitive. Day needs to be capitalized (eg. ["Fri"]). *)
 
   val of_string_exn : string -> t
   (** [of_string_exn v] returns a day from a well-formed string [v]. Process is
-     case-sensitive. Day needs to be capitalized (eg. ["Fri"]).
+      case-sensitive. Day needs to be capitalized (eg. ["Fri"]).
 
       @raise [Invalid_argument] when [v] is an invalid day. *)
 
@@ -94,24 +94,24 @@ module Month : sig
 
   val of_int : int -> (t, [ `Msg of string ]) result
   (** [of_int n] returns month of the number [n]. If [n < 1] or [n > 12], it
-     returns an error. *)
+      returns an error. *)
 
   val of_int_exn : int -> t
   (** [of_int_exn] is an alias on {!of_int} except that if user give an invalid
-     number, we raise an exception. *)
+      number, we raise an exception. *)
 
   val to_string : t -> string
   (** [to_stirng v] returns a well-formed string from a month [v]. *)
 
   val of_string : string -> (t, [ `Msg of string ]) result
   (** [of_string v] returns a month from a well-formed string [v]. Process is
-     case-sensitive, month needs to be capitalized (eg. ["Nov"]). *)
+      case-sensitive, month needs to be capitalized (eg. ["Nov"]). *)
 
   val of_string_exn : string -> t
   (** [of_string v] returns a month from a well-formed string [v]. Process is
-     case-sensitive, month needs to be capitalized (eg. ["Nov"]).
+      case-sensitive, month needs to be capitalized (eg. ["Nov"]).
 
-     @raise [Invalid_argument] when [v] is an invalid month. *)
+      @raise [Invalid_argument] when [v] is an invalid month. *)
 
   val v : string -> t
   (** Alias of {!of_string_exn}. *)
@@ -160,12 +160,12 @@ module Zone : sig
   (** [to_string v] returns a well-formed string from a time zone [v]. *)
 
   val of_string : string -> (t, [ `Msg of string ]) result
-  (** [of_string v] returns a time zone from a well-formed string [v]. Process is
-     case-sensitive. *)
+  (** [of_string v] returns a time zone from a well-formed string [v]. Process
+      is case-sensitive. *)
 
   val of_string_exn : string -> t
   (** [of_string_exn v] returns a time zone from a well-formed string [v].
-     Process is case-sensitive.
+      Process is case-sensitive.
 
       @raise [Invalid_argument] when [v] is an invalid time zone. *)
 
@@ -198,28 +198,28 @@ val make :
   Zone.t ->
   (t, [> `Msg of string ]) result
 (** [make ?day (year, month, day) (hh, mm, ss) tz] returns a date corresponding
-   to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
-   the day in the 7-day week) and [day] must correspond according of timestamp
-   to [month/day/year] and time zone [tz]. If it's not the case, [make] returns
-   an error.
+    to [month/day/year hh:mm:ss] date-time with time zone [tz]. [?day] (which is
+    the day in the 7-day week) and [day] must correspond according of timestamp
+    to [month/day/year] and time zone [tz]. If it's not the case, [make] returns
+    an error.
 
-   [(year, month, day) (hh, mm, ss)] must correspond to a valid POSIX timestamp.
-   The date-time must be in the range of [0000-01-01 00:00:00 UTC] and
-   [9999-12-31 23:59:59.99 UTC]. Otherwise, [make] returns an error.
+    [(year, month, day) (hh, mm, ss)] must correspond to a valid POSIX
+    timestamp. The date-time must be in the range of [0000-01-01 00:00:00 UTC]
+    and [9999-12-31 23:59:59.99 UTC]. Otherwise, [make] returns an error.
 
-   If [ss = None], seconds are [0]. If [?day = None], it will be the day in the
-   7-day week of POSIX timestamp corresponding to date-time [(year, month, day)
-   (hh, mm, ss)] expressed in the time zone offset [tz].
+    If [ss = None], seconds are [0]. If [?day = None], it will be the day in the
+    7-day week of POSIX timestamp corresponding to date-time
+    [(year, month, day) (hh, mm, ss)] expressed in the time zone offset [tz].
 
-   [make] relies on {!Ptime.of_date_time}. To completely understand implication
-   of that, you should read basics about [ptime]. *)
+    [make] relies on {!Ptime.of_date_time}. To completely understand implication
+    of that, you should read basics about [ptime]. *)
 
 val to_ptime : t -> (Ptime.t * int, [> `Msg of string ]) result
 (** [to_ptime t] returns a POSIX timestamp {!Ptime.t}. *)
 
 val of_ptime : zone:Zone.t -> Ptime.t -> t
 (** [of_ptime ~zone t] is date-time {!t} of POSIX timestamp [t]. [zone] hints
-   the time zone offset used for the resulting daytime {!Day.t} component. *)
+    the time zone offset used for the resulting daytime {!Day.t} component. *)
 
 (** {2 Pretty-printers.} *)
 

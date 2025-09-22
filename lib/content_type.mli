@@ -90,8 +90,8 @@ module Subtype : sig
   (** Sub-type defined by IETF. *)
 
   val iana : Type.t -> string -> (t, [> `Msg of string ]) result
-  (** Sub-type from IANA database. Returns [Error] if sub-type
-      is not a part of the IANA database. *)
+  (** Sub-type from IANA database. Returns [Error] if sub-type is not a part of
+      the IANA database. *)
 
   val iana_exn : Type.t -> string -> t
   val v : Type.t -> string -> t
@@ -131,7 +131,7 @@ module Parameters : sig
 
   val key : string -> (key, [> `Msg of string ]) result
   (** [key v] makes a new key (according to RFC 2045 - otherwise, it returns an
-     error). *)
+      error). *)
 
   val key_exn : string -> key
   val k : string -> key
@@ -147,7 +147,8 @@ module Parameters : sig
   (** Empty parameters. *)
 
   val mem : key -> t -> bool
-  (** [mem key t] returns true if [key] exists in [t]. Otherwise, it retunrs false. *)
+  (** [mem key t] returns true if [key] exists in [t]. Otherwise, it retunrs
+      false. *)
 
   val add : key -> value -> t -> t
   (** [add key value t] adds [key] binded with [value] in [t]. *)

@@ -971,13 +971,13 @@ module Decoder = struct
     skip_while is_wsp *> satisfy (function '+' | '-' -> true | _ -> false)
     <?> "sign"
     >>= (fun sign ->
-          four_digit <?> "four-digit" >>| fun zone ->
-          let one =
-            if sign = '-' then -int_of_string (String.sub zone 0 2)
-            else int_of_string (String.sub zone 0 2)
-          in
-          let two = int_of_string (String.sub zone 2 2) in
-          Zone.TZ (one, two))
+    four_digit <?> "four-digit" >>| fun zone ->
+    let one =
+      if sign = '-' then -int_of_string (String.sub zone 0 2)
+      else int_of_string (String.sub zone 0 2)
+    in
+    let two = int_of_string (String.sub zone 2 2) in
+    Zone.TZ (one, two))
     <|> skip_while is_wsp *> obs_zone
 
   (* From RFC 822
