@@ -30,10 +30,10 @@ let bad_test _where = raise Bad
 
 let generate ~g len =
   let res = Bytes.make len '\000' in
-  Mirage_crypto_rng.Fortuna.generate_into ~g res ~off:0 len;
+  Mirage_crypto_rng.generate_into ~g res ~off:0 len;
   Bytes.unsafe_to_string res
 
-let rec safe : type a b. g:Mirage_crypto_rng.Fortuna.g -> a t -> (a -> b) -> b =
+let rec safe : type a b. g:Mirage_crypto_rng.g -> a t -> (a -> b) -> b =
  fun ~g t f ->
   try
     let v = run ~g t in
@@ -55,7 +55,7 @@ and concat bytes : _ list -> _ = function
       in
       go (bytes - String.length hd) lst
 
-and run : type a. g:Mirage_crypto_rng.Fortuna.g -> a t -> a =
+and run : type a. g:Mirage_crypto_rng.g -> a t -> a =
  fun ~g -> function
   | Pair (a, b) ->
       let va = run ~g a in
