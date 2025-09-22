@@ -3,9 +3,9 @@ module Log = (val Logs.src_log (Logs.Src.create "equality"))
 
 exception Not_equal of string
 
-(** [compare_parameters ct ct'] compares [Content_type.t] parameters
-   values of [ct] and [ct']. If a boundary parameter is present in
-   both [ct] and [ct'] its value is ignored. *)
+(** [compare_parameters ct ct'] compares [Content_type.t] parameters values of
+    [ct] and [ct']. If a boundary parameter is present in both [ct] and [ct']
+    its value is ignored. *)
 let compare_parameters ct ct' =
   let open Content_type in
   let param_without_boundary content_type =
@@ -24,12 +24,11 @@ let compare_parameters ct ct' =
       Log.err (fun m -> m "Content-type parameters are not equal.");
       false
 
-(** [compare_field_value f f'] compares field values [f] and [f']:
-   both must have the same witness and are equal according to the
-   proper equality function. Equality between [unstructured] values is
-   not checked. *)
-let compare_field_value :
-    type a b. a Mrmime.Field.t -> a -> b Mrmime.Field.t -> b -> bool =
+(** [compare_field_value f f'] compares field values [f] and [f']: both must
+    have the same witness and are equal according to the proper equality
+    function. Equality between [unstructured] values is not checked. *)
+let compare_field_value : type a b.
+    a Mrmime.Field.t -> a -> b Mrmime.Field.t -> b -> bool =
  fun w v w' v' ->
   match (w, w') with
   | Field.Date, Field.Date -> Date.equal v v'
@@ -76,8 +75,8 @@ let rec compare_sorted_list (h1 : Field.field list) (h2 : Field.field list) =
               Mrmime.Field.pp field');
       res && compare_sorted_list xs ys
 
-(** [compare_header h h'] compares headers with the supposition that
-   they are in same order.*)
+(** [compare_header h h'] compares headers with the supposition that they are in
+    same order.*)
 let compare_header (h : Header.t) (h' : Header.t) =
   let res =
     compare_sorted_list (Mrmime.Header.to_list h) (Mrmime.Header.to_list h')
@@ -101,10 +100,9 @@ let compare_leaf (encoding : Mrmime.Content_encoding.t) b b' =
 
 (** [equal h h'] is an equality between two headers. The comparison checks that:
 
- - the mail structure (leaf, message and multipart) is the same
- - both content are the same
- - some equalities on headers with [compare_header]
-*)
+    - the mail structure (leaf, message and multipart) is the same
+    - both content are the same
+    - some equalities on headers with [compare_header] *)
 let equal ((h1, m1) : Header.t * _ Mail.t) ((h2, m2) : Header.t * _ Mail.t) =
   let rec go (h1, m1) (h2, m2) =
     Log.debug (fun m ->

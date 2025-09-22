@@ -169,9 +169,8 @@ module Domain = struct
   let domain = Domain
   let default = Literal
 
-  let make :
-      type a. a t -> a -> [ `Literal of string | `Domain of string list ] option
-      =
+  let make : type a.
+      a t -> a -> [ `Literal of string | `Domain of string list ] option =
    fun witness v ->
     match witness with
     | Domain -> Option.(make_domain v >>| fun v -> `Domain v)

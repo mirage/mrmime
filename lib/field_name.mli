@@ -25,7 +25,7 @@ val equal : t -> t -> bool
 
 val capitalize : t -> t
 (** [capitalize t] capitalizes [t] - any letter in front of ['-'] will be a
-   capital letter. *)
+    capital letter. *)
 
 val canonicalize : t -> t
 (** [canonicalize t] apply [String.lowercase_ascii] on [t]. *)
@@ -34,12 +34,12 @@ val pp : Format.formatter -> t -> unit
 (** Pretty-printer of {!t}. *)
 
 val of_string : string -> (t, [ `Msg of string ]) result
-(** [of_string s] tries to return a field-name. [s] must
-   respect standards. Otherwise, we return an [Error]. *)
+(** [of_string s] tries to return a field-name. [s] must respect standards.
+    Otherwise, we return an [Error]. *)
 
 val of_string_exn : string -> t
 (** Same as {!of_string} but raises an {!Invalid_argument} instead of returning
-   [Error]. *)
+    [Error]. *)
 
 val v : string -> t
 (** Alias of {!of_string_exn}. *)

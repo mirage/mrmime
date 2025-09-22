@@ -88,9 +88,9 @@ let boundary_or_crlf boundary =
 
 let body_part g boundary body =
   Header.Decoder.header g >>= fun header ->
-  (boundary_or_crlf boundary >>= function
-   | `CRLF -> body header >>| Option.some
-   | `Nothing -> return None)
+  ( boundary_or_crlf boundary >>= function
+    | `CRLF -> body header >>| Option.some
+    | `Nothing -> return None )
   >>| fun body -> (header, body)
 
 let encapsulation g boundary body =

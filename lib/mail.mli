@@ -40,4 +40,4 @@ val stream :
   (Header.t -> (string option -> unit) * 'id) ->
   (Header.t * 'id t) Angstrom.t
 (** [stream ~emitters] is an Angstrom parser of an entire RFC 5322 mail which
-   will use given emitters by [emitters] to store bodies. *)
+    will use given emitters by [emitters] to store bodies. *)

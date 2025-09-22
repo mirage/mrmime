@@ -1,4 +1,4 @@
-(** Fuzzer monad  *)
+(** Fuzzer monad *)
 module type S = sig
   type 'a t
 
@@ -60,10 +60,10 @@ module Make (Fuzz : S) = struct
     done;
     Bytes.unsafe_to_string res
 
-  (** Header generator: an Header is a pair of a name and a value.  *)
+  (** Header generator: an Header is a pair of a name and a value. *)
 
-  (** [field_name] generates a field name (either a random string or a
-     prefined field name). *)
+  (** [field_name] generates a field name (either a random string or a prefined
+      field name). *)
   let field_name =
     (* generate a random field name *)
     let field_name =
@@ -105,18 +105,17 @@ module Make (Fuzz : S) = struct
         field_name
       ]
 
-  (** As mrmime parses the value of some headers, the generator must
-     be able to generate these values properly. These values have types :
-     {ul
-     {- [Date.t]}
-     {- [Maibox.t] and [Mailbox.t list]}
-     {- [Address.t]}
-     {- [MessageID.t]}
-     {- [Emile.phrase list]}
-     {- [Content_type.t]}
-     {- [Content_encoding.t]}}
+  (** As mrmime parses the value of some headers, the generator must be able to
+      generate these values properly. These values have types :
+      - [Date.t]
+      - [Maibox.t] and [Mailbox.t list]
+      - [Address.t]
+      - [MessageID.t]
+      - [Emile.phrase list]
+      - [Content_type.t]
+      - [Content_encoding.t]
 
-     The following generators are for values of all those types. *)
+      The following generators are for values of all those types. *)
   let zone =
     choose
       Date.Zone.
@@ -168,8 +167,8 @@ module Make (Fuzz : S) = struct
     | Ok date -> date
     | _ -> bad_test "date"
 
-  (** Mailbox : a maibox is composed of three parts: a phrase (optional display name),
-       a local part (username) and a domain part. *)
+  (** Mailbox : a maibox is composed of three parts: a phrase (optional display
+      name), a local part (username) and a domain part. *)
   let local =
     let atext = alphabet_from_predicate Emile.Parser.is_atext in
     let word =
@@ -292,11 +291,11 @@ module Make (Fuzz : S) = struct
     map [ ty >>= subty; parameters ] @@ fun (ty, subty) parameters ->
     Content_type.make ty subty parameters
 
-  (** Content-encoding : `Bit7, `Bit8, `Binary, `Quoted_printable,
-     `Base64, `X_token of string and `Ietf_token.
+  (** Content-encoding : `Bit7, `Bit8, `Binary, `Quoted_printable, `Base64,
+      `X_token of string and `Ietf_token.
 
-     Ietf_token and `X_token are not by mrmime so we avoid
-     generating such an encoding. *)
+      Ietf_token and `X_token are not by mrmime so we avoid generating such an
+      encoding. *)
   let content_encoding : Content_encoding.t t =
     choose
       [ const `Base64;
@@ -325,9 +324,8 @@ module Make (Fuzz : S) = struct
     map [ local; choose [ domain; literal ] ] @@ fun local domain ->
     (local, domain)
 
-  (** [field] randomly generates a single header. As some headers are
-     parsed by mrmime, we make sure to generate these ones with the right
-     value. *)
+  (** [field] randomly generates a single header. As some headers are parsed by
+      mrmime, we make sure to generate these ones with the right value. *)
   let field =
     (* Grammar of unstructured header field follows two rfcs:
         - rfc5322 :
@@ -407,7 +405,7 @@ module Make (Fuzz : S) = struct
     let content_type = Content_type.make ty subty param in
     Header.replace Field_name.content_type (Field.Content, content_type) h
 
-  (** [mail] recursively generates an email.  *)
+  (** [mail] recursively generates an email. *)
   let mail : (Header.t * string Mail.t) t =
     fix (fun mail ->
         choose
