@@ -75,6 +75,7 @@ let crowbar_mail_generator ~quiet seed multi output input =
 let fortuna_mail_generator ~quiet output g =
   let module Generate = Fuzz.Make (Fortuna) in
   assert (Mirage_crypto_rng.Fortuna.seeded ~g);
+  let g = Mirage_crypto_rng.create ~g (module Mirage_crypto_rng.Fortuna) in
   let mail = Fortuna.run ~g Generate.mail in
   parse_and_compare ~quiet output mail
 
