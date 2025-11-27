@@ -1,3 +1,8 @@
+### v0.7.1 2025-11-27 Paris (France)
+
+- Upgrade with last version of `ocamlformat` (@dinosaure, #107, #108)
+- Remove extraneous cuts on mailboxes when we encode them (@madroach, #105)
+
 ### v0.7.0 2025-03-10 Paris (France)
 
 - Upgrade to `mirage-crypto-rng.1.1.0` (@dinosaure, #102)
