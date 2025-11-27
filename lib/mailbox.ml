@@ -95,38 +95,20 @@ module Encoder = struct
 
   let dot = ((fun ppf () -> eval ppf [ char $ '.' ]), ())
   let comma = ((fun ppf () -> eval ppf [ char $ ','; cut () ]), ())
-  let local ppf lst =
-    eval ppf [ !!(list ~sep:dot word); ]
-      lst
+  let local ppf lst = eval ppf [ !!(list ~sep:dot word) ] lst
   let ipaddr_v4 = using Ipaddr.V4.to_string string
   let ipaddr_v6 = using Ipaddr.V6.to_string string
 
   let domain ppf = function
-    | `Domain domain -> eval ppf [ !!(list ~sep:dot string); ] domain
-    | `Literal literal ->
-        eval ppf
-          [ char $ '['; !!string; char $ ']' ]
-          literal
+    | `Domain domain -> eval ppf [ !!(list ~sep:dot string) ] domain
+    | `Literal literal -> eval ppf [ char $ '['; !!string; char $ ']' ] literal
     | `Addr (Emile.IPv4 ip) ->
-        eval ppf
-          [ char $ '['; !!ipaddr_v4; char $ ']' ]
-          ip
+        eval ppf [ char $ '['; !!ipaddr_v4; char $ ']' ] ip
     | `Addr (Emile.IPv6 ip) ->
-        eval ppf
-          [ char $ '[';
-            string $ "IPv6:";
-            !!ipaddr_v6;
-            char $ ']';
-          ]
-          ip
+        eval ppf [ char $ '['; string $ "IPv6:"; !!ipaddr_v6; char $ ']' ] ip
     | `Addr (Emile.Ext (ldh, v)) ->
         eval ppf
-          [ char $ '[';
-            !!string;
-            char $ ':';
-            !!string;
-            char $ ']';
-          ]
+          [ char $ '['; !!string; char $ ':'; !!string; char $ ']' ]
           ldh v
 
   let phrase ppf lst =
@@ -165,16 +147,12 @@ module Encoder = struct
           ]
           name t.Emile.local x
     | None, (x, []) ->
-        eval ppf
-          [ box; !!local; char $ '@'; !!domain; close ]
-          t.Emile.local x
+        eval ppf [ box; !!local; char $ '@'; !!domain; close ] t.Emile.local x
     | name, (x, r) ->
         let domains ppf lst =
           let domain ppf x = eval ppf [ char $ '@'; !!domain ] x in
           (* XXX(dinosaure): according RFC, comma is surrounded by CFWS. *)
-          let comma =
-            ((fun ppf () -> eval ppf [ char $ ','; cut () ]), ())
-          in
+          let comma = ((fun ppf () -> eval ppf [ char $ ','; cut () ]), ()) in
           eval ppf [ !!(list ~sep:comma domain) ] lst
         in
         let phrase ppf x = eval ppf [ !!phrase; spaces 1 ] x in
