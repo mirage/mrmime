@@ -1,3 +1,8 @@
+### v0.7.0 2025-03-10 Paris (France)
+
+- Upgrade to `mirage-crypto-rng.1.1.0` (@dinosaure, #102)
+- Add a new module `Unstructured_with_encoded` to emit value with encoded words (@paurkedal, #103)
+
 ### v0.6.1 2024-04-04 Paris (France)
 
 - Upgrade tests to be compatible with OCaml 5.2 (@kit-ty-kate, #99)
