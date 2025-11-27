@@ -408,9 +408,9 @@ module Decoder = struct
     char '?' *> satisfy (function 'Q' | 'q' | 'B' | 'b' -> true | _ -> false)
     >>= fun encoding_raw ->
     (match encoding_raw with
-    | 'Q' | 'q' -> return Quoted_printable
-    | 'B' | 'b' -> return Base64
-    | encoding -> invalid_encoding encoding)
+      | 'Q' | 'q' -> return Quoted_printable
+      | 'B' | 'b' -> return Base64
+      | encoding -> invalid_encoding encoding)
     >>= fun encoding ->
     char '?' *> encoded_text >>= fun raw ->
     return (normalize ~chunk:512 ~charset ~encoding raw) >>= fun data ->
