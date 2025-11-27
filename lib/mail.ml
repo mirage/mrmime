@@ -75,11 +75,11 @@ let heavy_octet boundary header =
       in
       let write_data = Buffer.add_string buf in
       (match Header.content_encoding header with
-      | `Quoted_printable ->
-          Quoted_printable.to_end_of_input ~write_data ~write_line
-      | `Base64 -> B64.to_end_of_input ~write_data
-      | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
-      | `Ietf_token _x | `X_token _x -> assert false)
+        | `Quoted_printable ->
+            Quoted_printable.to_end_of_input ~write_data ~write_line
+        | `Base64 -> B64.to_end_of_input ~write_data
+        | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
+        | `Ietf_token _x | `X_token _x -> assert false)
       >>| fun () -> Buffer.contents buf
   | Some boundary -> (
       let end_of_body = Rfc2046.make_delimiter boundary in
@@ -96,11 +96,11 @@ let light_octet ~emitter boundary header =
       let write_line line = emitter (Some (line ^ "\n")) in
       let write_data data = emitter (Some data) in
       (match Header.content_encoding header with
-      | `Quoted_printable ->
-          Quoted_printable.to_end_of_input ~write_line ~write_data
-      | `Base64 -> B64.to_end_of_input ~write_data
-      | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
-      | `Ietf_token _ | `X_token _ -> assert false)
+        | `Quoted_printable ->
+            Quoted_printable.to_end_of_input ~write_line ~write_data
+        | `Base64 -> B64.to_end_of_input ~write_data
+        | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
+        | `Ietf_token _ | `X_token _ -> assert false)
       >>= fun () ->
       emitter None;
       return ()
