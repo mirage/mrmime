@@ -54,12 +54,10 @@ let rec decode : decoder -> decode =
       in
       let len = Ke.Rke.length decoder.queue in
       let slice =
-        if len = 0 then Bigstringaf.empty
-        else List.hd (Ke.Rke.N.peek decoder.queue)
+        if len = 0 then Bstr.empty else List.hd (Ke.Rke.N.peek decoder.queue)
       in
       if len > 0 || decoder.closed then (
-        decoder.state <-
-          continue slice ~off:0 ~len:(Bigstringaf.length slice) more;
+        decoder.state <- continue slice ~off:0 ~len:(Bstr.length slice) more;
         protect decoder)
       else `Await
   | Angstrom.Unbuffered.Fail (committed, _, err) ->
@@ -69,7 +67,7 @@ let rec decode : decoder -> decode =
       Ke.Rke.N.shift_exn decoder.queue committed;
       Ke.Rke.compress decoder.queue;
       match Ke.Rke.N.peek decoder.queue with
-      | [ x ] -> `End (Bigstringaf.to_string x)
+      | [ x ] -> `End (Bstr.to_string x)
       | [] -> `End ""
       | _ -> assert false)
   | Angstrom.Unbuffered.Done (committed, `Field v) ->
@@ -83,7 +81,7 @@ and protect decoder =
   | _ -> decode decoder
 
 let blit_from_string src src_off dst dst_off len =
-  Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
+  Bstr.blit_from_string src ~src_off dst ~dst_off ~len
 
 let src decoder src off len =
   if off < 0 || len < 0 || off + len > String.length src then

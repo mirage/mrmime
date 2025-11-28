@@ -41,7 +41,7 @@
 (executable
  (name test_stream)
  (modules test_stream)
- (libraries logs logs.fmt fmt.tty lwt lwt.unix mrmime))
+ (libraries bstr logs logs.fmt fmt.tty lwt lwt.unix mrmime))
 
 (executable
  (name test_generate)

@@ -18,6 +18,7 @@ depends: [
   "ocaml"             {>= "4.08.0"}
   "dune"              {>= "2.7"}
   "ke"                {>= "0.4"}
+  "bstr"              {>= "0.0.3"}
   "unstrctrd"         {>= "0.3"}
   "ptime"             {>= "0.8.2"}
   "uutf"
@@ -27,8 +28,6 @@ depends: [
   "base64"            {>= "3.1.0"}
   "pecu"              {>= "0.6"}
   "prettym"           {>= "0.0.2"}
-  "bigstringaf"       {>= "0.5.0"}
-  "bigarray-overlap"  {>= "0.2.0"}
   "angstrom"          {>= "0.14.0"}
   "fpath"             {with-test}
   "hxd"               {with-test}

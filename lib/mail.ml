@@ -5,15 +5,15 @@ type 'a t =
 
 let rec index v max idx chr =
   if idx >= max then raise Not_found;
-  if Bigstringaf.get v idx = chr then idx else index v max (succ idx) chr
+  if Bstr.get v idx = chr then idx else index v max (succ idx) chr
 
-let index v chr = index v (Bigstringaf.length v) 0 chr
+let index v chr = index v (Bstr.length v) 0 chr
 
 let parser ~write_data end_of_body =
   let open Angstrom in
   let check_end_of_body =
     let len = String.length end_of_body in
-    Unsafe.peek len Bigstringaf.substring >>| String.equal end_of_body
+    Unsafe.peek len Bstr.sub_string >>| String.equal end_of_body
   in
 
   fix @@ fun m ->
@@ -30,15 +30,14 @@ let parser ~write_data end_of_body =
   available >>= function
   | 0 -> peek_char *> m
   | len -> (
-      Unsafe.peek len Bigstringaf.sub >>= fun chunk ->
+      Unsafe.peek len Bstr.sub >>= fun chunk ->
       match index chunk end_of_body.[0] with
       | pos ->
           let tmp = Bytes.create (pos + 1) in
-          Bigstringaf.blit_to_bytes chunk ~src_off:0 tmp ~dst_off:0
-            ~len:(pos + 1);
+          Bstr.blit_to_bytes chunk ~src_off:0 tmp ~dst_off:0 ~len:(pos + 1);
           advance pos *> check_end_of_body <* commit >>= choose tmp
       | exception Not_found ->
-          write_data (Bigstringaf.to_string chunk);
+          write_data (Bstr.to_string chunk);
           advance len *> commit *> m)
 
 let with_buffer end_of_body =
@@ -60,7 +59,7 @@ let to_end_of_input ~write_data =
       available >>= fun n ->
       Unsafe.take n (fun ba ~off ~len ->
           let chunk = Bytes.create len in
-          Bigstringaf.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len;
+          Bstr.blit_to_bytes ba ~src_off:off chunk ~dst_off:0 ~len;
           write_data (Bytes.unsafe_to_string chunk))
       >>= fun () -> m
 
