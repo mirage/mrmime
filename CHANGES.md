@@ -2,6 +2,7 @@
 
 - Upgrade with last version of `ocamlformat` (@dinosaure, #107, #108)
 - Remove extraneous cuts on mailboxes when we encode them (@madroach, #105)
+- Replace `bigstringaf` by `bstr` (@dinosaure, #110)
 
 ### v0.7.0 2025-03-10 Paris (France)
 
