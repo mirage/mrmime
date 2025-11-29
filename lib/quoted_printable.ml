@@ -7,9 +7,9 @@ open Angstrom
 
 let rec index v max idx chr =
   if idx >= max then raise Not_found;
-  if Bigstringaf.get v idx = chr then idx else index v max (succ idx) chr
+  if Bstr.get v idx = chr then idx else index v max (succ idx) chr
 
-let index v chr = index v (Bigstringaf.length v) 0 chr
+let index v chr = index v (Bstr.length v) 0 chr
 
 let rec end_of_stream ~write_data ~write_line closed dec =
   match Pecu.decode dec with
@@ -40,8 +40,7 @@ let rec decode ~write_data ~write_line dec =
 
 let check_end_of_body end_of_body =
   let len = String.length end_of_body in
-  Unsafe.peek len Bigstringaf.substring >>| fun str ->
-  String.equal end_of_body str
+  Unsafe.peek len Bstr.sub_string >>| fun str -> String.equal end_of_body str
 
 let rec choose ~write_data ~write_line end_of_body dec chunk = function
   | true -> (
@@ -71,19 +70,16 @@ and parser ~write_data ~write_line end_of_body dec =
       available >>= function
       | 0 -> peek_char *> parser ~write_data ~write_line end_of_body dec
       | len -> (
-          Unsafe.peek len Bigstringaf.sub >>= fun chunk ->
+          Unsafe.peek len Bstr.sub >>= fun chunk ->
           match index chunk end_of_body.[0] with
           | pos ->
               let tmp = Bytes.create (pos + 1) in
-              Bigstringaf.blit_to_bytes chunk ~src_off:0 tmp ~dst_off:0
-                ~len:(pos + 1);
+              Bstr.blit_to_bytes chunk ~src_off:0 tmp ~dst_off:0 ~len:(pos + 1);
               advance pos *> check_end_of_body end_of_body
               <* commit
               >>= choose ~write_data ~write_line end_of_body dec tmp
           | exception Not_found ->
-              let chunk =
-                Bytes.unsafe_of_string (Bigstringaf.to_string chunk)
-              in
+              let chunk = Bytes.unsafe_of_string (Bstr.to_string chunk) in
               Pecu.src dec chunk 0 (Bytes.length chunk);
               advance len
               *> commit
@@ -125,7 +121,7 @@ let rec parser ~write_data ~write_line dec =
           commit
       | Some _ ->
           available >>= fun len ->
-          Unsafe.take len Bigstringaf.substring >>= fun str ->
+          Unsafe.take len Bstr.sub_string >>= fun str ->
           Pecu.src dec (Bytes.unsafe_of_string str) 0 len;
           commit *> parser ~write_data ~write_line dec)
 

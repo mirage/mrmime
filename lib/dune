@@ -2,4 +2,4 @@
  (name mrmime)
  (public_name mrmime)
  (libraries emile unstrctrd unstrctrd.parser base64 base64.rfc2045 pecu ptime
-   ipaddr rosetta angstrom prettym ke uutf))
+   ipaddr rosetta angstrom prettym bstr ke uutf))

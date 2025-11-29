@@ -22,7 +22,7 @@ let () = Logs.set_reporter (reporter Fmt.stdout)
 let () = Logs.set_level ~all:true (Some Logs.Debug)
 
 let blit src src_off dst dst_off len =
-  Bigstringaf.blit_from_string src ~src_off dst ~dst_off ~len
+  Bstr.blit_from_string src ~src_off dst ~dst_off ~len
 
 let parse ~emitters =
   let parser = Mail.stream emitters in
@@ -42,19 +42,16 @@ let parse ~emitters =
               Ke.Rke.N.push ke ~blit ~length:String.length ~off:0
                 ~len:(String.length str) str;
               let[@warning "-8"] (slice :: _) = Ke.Rke.N.peek ke in
-              state :=
-                continue slice ~off:0 ~len:(Bigstringaf.length slice) Incomplete
+              state := continue slice ~off:0 ~len:(Bstr.length slice) Incomplete
           | `Eof -> (
               match Ke.Rke.N.peek ke with
-              | [] -> state := continue Bigstringaf.empty ~off:0 ~len:0 Complete
+              | [] -> state := continue Bstr.empty ~off:0 ~len:0 Complete
               | [ slice ] ->
                   state :=
-                    continue slice ~off:0 ~len:(Bigstringaf.length slice)
-                      Complete
+                    continue slice ~off:0 ~len:(Bstr.length slice) Complete
               | slice :: _ ->
                   state :=
-                    continue slice ~off:0 ~len:(Bigstringaf.length slice)
-                      Incomplete)
+                    continue slice ~off:0 ~len:(Bstr.length slice) Incomplete)
         in
         `Continue
 
@@ -121,7 +118,7 @@ let stream ?(bounds = 10) ~identify stream =
   (`Parse (go ()), output)
 
 let blit src src_off dst dst_off len =
-  Bigstringaf.blit_to_bytes src ~src_off dst ~dst_off ~len
+  Bstr.blit_to_bytes src ~src_off dst ~dst_off ~len
 
 let line_of_queue queue =
   let exists ~p queue =
@@ -145,7 +142,7 @@ let line_of_queue queue =
       Some (Bytes.to_string tmp)
 
 let blit src src_off dst dst_off len =
-  Bigstringaf.blit_from_bytes src ~src_off dst ~dst_off ~len
+  Bstr.blit_from_bytes src ~src_off dst ~dst_off ~len
 
 let rec getline fd tmp queue =
   match line_of_queue queue with

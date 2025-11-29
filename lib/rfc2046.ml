@@ -38,7 +38,7 @@ let discard_all_to_dash_boundary boundary =
     let dash_boundary = make_dash_boundary boundary in
     let expected_len = String.length dash_boundary in
     Unsafe.peek expected_len (fun ba ~off ~len ->
-        let raw = Bigstringaf.substring ba ~off ~len in
+        let raw = Bstr.sub_string ba ~off ~len in
         String.equal raw dash_boundary)
   in
   fix @@ fun m ->
@@ -65,7 +65,7 @@ let discard_all_to_delimiter boundary =
     let delimiter = make_delimiter boundary in
     let expected_len = String.length delimiter in
     Unsafe.peek expected_len (fun ba ~off ~len ->
-        let raw = Bigstringaf.substring ba ~off ~len in
+        let raw = Bstr.sub_string ba ~off ~len in
         String.equal raw delimiter)
   in
   fix @@ fun m ->

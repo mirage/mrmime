@@ -43,7 +43,7 @@ let emitter_of_buffer buf =
         BBuffer.add_subbytes buf x off len;
         a + len
     | { IOVec.buffer = Buffer.Bigstring x; off; len } ->
-        BBuffer.add_string buf (Bigstringaf.substring x ~off ~len);
+        BBuffer.add_string buf (Bstr.sub_string x ~off ~len);
         a + len
   in
   List.fold_left write 0
