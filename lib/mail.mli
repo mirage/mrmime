@@ -19,10 +19,12 @@ type 'a t =
   | Multipart of (Header.t * 'a t option) list
   | Message of Header.t * 'a t
 
-val heavy_octet : string option -> Header.t -> string Angstrom.t
+val heavy_octet :
+  ?transfer_encoding:bool -> string option -> Header.t -> string Angstrom.t
 (** {i Heavy} parser of a body - it will stores bodies into [string]. *)
 
 val light_octet :
+  ?transfer_encoding:bool ->
   emitter:(string option -> unit) ->
   string option ->
   Header.t ->
@@ -30,12 +32,15 @@ val light_octet :
 (** {i Light} parser of body - it sends contents to given [emitter]. *)
 
 val mail :
-  Field.witness Field_name.Map.t option -> (Header.t * string t) Angstrom.t
+  ?transfer_encoding:bool ->
+  Field.witness Field_name.Map.t option ->
+  (Header.t * string t) Angstrom.t
 (** Angstrom parser of an entire RFC 5322 mail (including header). *)
 
 type 'id emitters = Header.t -> (string option -> unit) * 'id
 
 val stream :
+  ?transfer_encoding:bool ->
   ?g:Field.witness Field_name.Map.t ->
   (Header.t -> (string option -> unit) * 'id) ->
   (Header.t * 'id t) Angstrom.t

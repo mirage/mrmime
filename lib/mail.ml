@@ -63,7 +63,7 @@ let to_end_of_input ~write_data =
           write_data (Bytes.unsafe_to_string chunk))
       >>= fun () -> m
 
-let heavy_octet boundary header =
+let heavy_octet ?(transfer_encoding = true) boundary header =
   let open Angstrom in
   match boundary with
   | None ->
@@ -75,20 +75,28 @@ let heavy_octet boundary header =
       let write_data = Buffer.add_string buf in
       (match Header.content_encoding header with
         | `Quoted_printable ->
-            Quoted_printable.to_end_of_input ~write_data ~write_line
-        | `Base64 -> B64.to_end_of_input ~write_data
+            if transfer_encoding then
+              Quoted_printable.to_end_of_input ~write_data ~write_line
+            else to_end_of_input ~write_data
+        | `Base64 ->
+            if transfer_encoding then B64.to_end_of_input ~write_data
+            else to_end_of_input ~write_data
         | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
-        | `Ietf_token _x | `X_token _x -> assert false)
+        | `Ietf_token _x | `X_token _x -> to_end_of_input ~write_data)
       >>| fun () -> Buffer.contents buf
   | Some boundary -> (
       let end_of_body = Rfc2046.make_delimiter boundary in
       match Header.content_encoding header with
-      | `Quoted_printable -> Quoted_printable.with_buffer end_of_body
-      | `Base64 -> B64.with_buffer end_of_body
+      | `Quoted_printable ->
+          if transfer_encoding then Quoted_printable.with_buffer end_of_body
+          else with_buffer end_of_body
+      | `Base64 ->
+          if transfer_encoding then B64.with_buffer end_of_body
+          else with_buffer end_of_body
       | `Bit7 | `Bit8 | `Binary -> with_buffer end_of_body
-      | `Ietf_token _x | `X_token _x -> assert false)
+      | `Ietf_token _x | `X_token _x -> with_buffer end_of_body)
 
-let light_octet ~emitter boundary header =
+let light_octet ?(transfer_encoding = true) ~emitter boundary header =
   let open Angstrom in
   match boundary with
   | None ->
@@ -96,43 +104,56 @@ let light_octet ~emitter boundary header =
       let write_data data = emitter (Some data) in
       (match Header.content_encoding header with
         | `Quoted_printable ->
-            Quoted_printable.to_end_of_input ~write_line ~write_data
-        | `Base64 -> B64.to_end_of_input ~write_data
+            if transfer_encoding then
+              Quoted_printable.to_end_of_input ~write_line ~write_data
+            else to_end_of_input ~write_data
+        | `Base64 ->
+            if transfer_encoding then B64.to_end_of_input ~write_data
+            else to_end_of_input ~write_data
         | `Bit7 | `Bit8 | `Binary -> to_end_of_input ~write_data
-        | `Ietf_token _ | `X_token _ -> assert false)
+        | `Ietf_token _ | `X_token _ -> to_end_of_input ~write_data)
       >>= fun () ->
       emitter None;
       return ()
   | Some boundary -> (
       let end_of_body = Rfc2046.make_delimiter boundary in
       match Header.content_encoding header with
-      | `Quoted_printable ->
+      | `Quoted_printable when transfer_encoding ->
           Quoted_printable.with_emitter ~emitter end_of_body >>= fun () ->
           emitter None;
           return ()
-      | `Base64 ->
+      | `Base64 when transfer_encoding ->
           B64.with_emitter ~emitter end_of_body >>= fun () ->
           emitter None;
           return ()
-      | `Bit7 | `Bit8 | `Binary ->
+      | _ ->
           with_emitter ~emitter end_of_body >>= fun () ->
           emitter None;
-          return ()
-      | `Ietf_token _ | `X_token _ -> assert false)
+          return ())
 
 let boundary header =
   let content_type = Header.content_type header in
-  Content_type.boundary content_type
+  match Content_type.boundary content_type with
+  | Some _ as value -> value
+  | None -> None
+
+(*
+      let { Content_type.parameters; _ } = content_type in
+      Logs.debug (fun m ->
+          m "Content-Type parameters: @[<hov>%a@]"
+            Fmt.(Dump.list (Dump.pair string Content_type.Parameters.pp_value))
+            parameters);
+      None
+*)
 
 (* Literally the hard part of [mrmime]. You need to know that inside a mail, we
    can have a [`Multipart] (a list of bodies) but a [`Message] too. *)
-let mail g =
+let mail ?transfer_encoding g =
   let open Angstrom in
   let rec body parent header =
     match Content_type.ty (Header.content_type header) with
-    | `Ietf_token _x | `X_token _x -> assert false
-    | #Content_type.Type.discrete ->
-        heavy_octet parent header >>| fun body -> Leaf body
+    | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
+        heavy_octet ?transfer_encoding parent header >>| fun body -> Leaf body
     | `Message ->
         mail parent >>| fun (header', body') -> Message (header', body')
     | `Multipart -> (
@@ -145,9 +166,9 @@ let mail g =
   and mail parent =
     Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
     match Content_type.ty (Header.content_type header) with
-    | `Ietf_token _x | `X_token _x -> assert false
-    | #Content_type.Type.discrete ->
-        heavy_octet parent header >>| fun body -> (header, Leaf body)
+    | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
+        heavy_octet ?transfer_encoding parent header >>| fun body ->
+        (header, Leaf body)
     | `Message ->
         mail parent >>| fun (header', message') ->
         (header, Message (header', message'))
@@ -164,17 +185,18 @@ let mail g =
 type 'id emitters = Header.t -> (string option -> unit) * 'id
 
 let stream :
+    ?transfer_encoding:bool ->
     ?g:Field.witness Field_name.Map.t ->
     'id emitters ->
     (Header.t * 'id t) Angstrom.t =
- fun ?g emitters ->
+ fun ?transfer_encoding ?g emitters ->
   let open Angstrom in
   let rec body parent header =
     match Content_type.ty (Header.content_type header) with
-    | `Ietf_token _x | `X_token _x -> assert false
-    | #Content_type.Type.discrete ->
+    | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
         let emitter, id = emitters header in
-        light_octet ~emitter parent header >>| fun () -> Leaf id
+        light_octet ?transfer_encoding ~emitter parent header >>| fun () ->
+        Leaf id
     | `Message ->
         mail parent >>| fun (header', body') -> Message (header', body')
     | `Multipart -> (
@@ -187,10 +209,10 @@ let stream :
   and mail parent =
     Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
     match Content_type.ty (Header.content_type header) with
-    | `Ietf_token _x | `X_token _x -> assert false
-    | #Content_type.Type.discrete ->
+    | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
         let emitter, id = emitters header in
-        light_octet ~emitter parent header >>| fun () -> (header, Leaf id)
+        light_octet ?transfer_encoding ~emitter parent header >>| fun () ->
+        (header, Leaf id)
     | `Message ->
         mail parent >>| fun (header', body') ->
         (header, Message (header', body'))
