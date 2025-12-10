@@ -11,6 +11,11 @@ let rec index v max idx chr =
 
 let index v chr = index v (Bstr.length v) 0 chr
 
+let rep =
+  let buf = Buffer.create 0x7f in
+  Uutf.Buffer.add_utf_8 buf Uchar.rep;
+  Buffer.contents buf
+
 let rec end_of_stream ~write_data ~write_line closed dec =
   match Pecu.decode dec with
   | `Await when not closed ->
@@ -24,7 +29,9 @@ let rec end_of_stream ~write_data ~write_line closed dec =
       write_line line;
       end_of_stream ~write_data ~write_line closed dec
   | `End -> Ok ()
-  | `Malformed err -> Error err
+  | `Malformed _err ->
+      write_data rep;
+      end_of_stream ~write_data ~write_line closed dec
 
 let rec decode ~write_data ~write_line dec =
   match Pecu.decode dec with
@@ -36,7 +43,9 @@ let rec decode ~write_data ~write_line dec =
       write_line line;
       decode ~write_data ~write_line dec
   | `Await -> `Await
-  | `Malformed err -> `Malformed err
+  | `Malformed _err ->
+      write_data rep;
+      decode ~write_data ~write_line dec
 
 let check_end_of_body end_of_body =
   let len = String.length end_of_body in
@@ -65,7 +74,6 @@ let rec choose ~write_data ~write_line end_of_body dec chunk = function
 and parser ~write_data ~write_line end_of_body dec =
   match decode ~write_data ~write_line dec with
   | `End -> commit
-  | `Malformed err -> commit *> fail err
   | `Await -> (
       available >>= function
       | 0 -> peek_char *> parser ~write_data ~write_line end_of_body dec
@@ -113,7 +121,9 @@ let rec parser ~write_data ~write_line dec =
   | `Line line ->
       write_line line;
       commit *> parser ~write_data ~write_line dec
-  | `Malformed err -> commit *> fail err
+  | `Malformed _err ->
+      write_data rep;
+      commit *> parser ~write_data ~write_line dec
   | `Await -> (
       peek_char >>= function
       | None ->
