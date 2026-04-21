@@ -1,3 +1,8 @@
+### v0.7.2 2026-04-20 Paris (France)
+
+- Add `Uchar.rep` when `pecu` is not able to parse ISO-8859 characters (@dinosaure, #112)
+- Be more best-effort than before about body parts and remove some `assert false` (@dinosaure, #113)
+
 ### v0.7.1 2025-11-27 Paris (France)
 
 - Upgrade with last version of `ocamlformat` (@dinosaure, #107, #108)
