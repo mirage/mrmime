@@ -37,9 +37,9 @@ let () =
     Angstrom.parse_string ~consume:All decoder (input_str ^ "\r\n")
     |> Result.fold ~ok:Fun.id ~error:(Crowbar.failf "parse failed: %s")
   in
-  let reparsed_str =
-    Prettym.to_string ~margin:max_int ~new_line:"\r\n" encoder reparsed
-  in
+  let margin = Some max_int in
+  let new_line = "\r\n" in
+  let reparsed_str = Prettym.to_string ~margin ~new_line encoder reparsed in
   (* Restort to comparing the rendered output, since we don't have equality or
    * fully normalized representation. *)
   check_eq

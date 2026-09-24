@@ -239,7 +239,9 @@ let () =
     List.fold_left write 0
   in
 
-  let encoder = Prettym.create ~emitter ~margin:78 ~new_line:"\n" 0x100 in
+  let margin = Some 78 in
+  let new_line = "\n" in
+  let encoder = Prettym.create ~emitter ~margin ~new_line 0x100 in
   let encoder = Prettym.eval encoder Prettym.[ !!value; new_line ] json in
 
   Crowbar.check_eq ~pp:Fmt.bool ~eq:( = ) (Prettym.is_empty encoder) true;

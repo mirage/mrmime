@@ -68,8 +68,10 @@ let () =
   let open Mrmime in
   Crowbar.add_test ~name:"message_id" [ message_id ] @@ fun message_id ->
   let buffer = Buffer.create 0x100 in
+  let margin = Some 78 in
+  let new_line = "\r\n" in
   let encoder =
-    Prettym.create ~margin:78 ~new_line:"\r\n" 0x100
+    Prettym.create ~margin ~new_line 0x100
       ~emitter:(emitter_of_buffer buffer)
   in
   let encoder =

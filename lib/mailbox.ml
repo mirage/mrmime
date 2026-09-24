@@ -78,7 +78,7 @@ module Encoder = struct
   open Prettym
 
   let atom = [ !!string ]
-  let str = [ box; char $ '"'; !!string; char $ '"'; close ]
+  let str = [ !!(using (fun x -> "\"" ^ x ^ "\"") string) ]
 
   let word ppf = function
     | `Atom x -> eval ppf atom x
@@ -111,6 +111,25 @@ module Encoder = struct
           [ char $ '['; !!string; char $ ':'; !!string; char $ ']' ]
           ldh v
 
+  (* NOTE(dinosaure): try to encode [addr_spec] as an atom value (and avoid
+     [prettym] to break it). *)
+  let addr_spec =
+    let word = function
+      | `Atom x -> x
+      | `String x -> "\"" ^ escape_string x ^ "\""
+    in
+    let domain = function
+      | `Domain domain -> String.concat "." domain
+      | `Literal literal -> "[" ^ literal ^ "]"
+      | `Addr (Emile.IPv4 ip) -> "[" ^ Ipaddr.V4.to_string ip ^ "]"
+      | `Addr (Emile.IPv6 ip) -> "[IPv6:" ^ Ipaddr.V6.to_string ip ^ "]"
+      | `Addr (Emile.Ext (ldh, v)) -> "[" ^ ldh ^ ":" ^ v ^ "]"
+    in
+    let fn (local, d) =
+      let local = List.map word local in
+      String.concat "." local ^ "@" ^ domain d in
+    using fn string
+
   let phrase ppf lst =
     let elt ppf = function
       | `Dot -> char ppf '.'
@@ -135,19 +154,16 @@ module Encoder = struct
     match (t.Emile.name, t.Emile.domain) with
     | Some name, (x, []) ->
         eval ppf
-          [ box;
+          [ tbox 1;
             !!phrase;
             spaces 1;
             char $ '<';
-            !!local;
-            char $ '@';
-            !!domain;
+            !!addr_spec;
             char $ '>';
             close
           ]
-          name t.Emile.local x
-    | None, (x, []) ->
-        eval ppf [ box; !!local; char $ '@'; !!domain; close ] t.Emile.local x
+          name (t.Emile.local, x)
+    | None, (x, []) -> eval ppf [ tbox 1; !!addr_spec; close ] (t.Emile.local, x)
     | name, (x, r) ->
         let domains ppf lst =
           let domain ppf x = eval ppf [ char $ '@'; !!domain ] x in
@@ -158,19 +174,17 @@ module Encoder = struct
         let phrase ppf x = eval ppf [ !!phrase; spaces 1 ] x in
 
         eval ppf
-          [ box;
+          [ tbox 1;
             !!(option phrase);
             cut ();
             char $ '<';
             !!domains;
             char $ ':';
-            !!local;
-            char $ '@';
-            !!domain;
+            !!addr_spec;
             char $ '>';
             close
           ]
-          name r t.Emile.local x
+          name r (t.Emile.local, x)
 
   let mailboxes = list ~sep:comma mailbox
 end
