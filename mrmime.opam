@@ -27,7 +27,7 @@ depends: [
   "emile"             {>= "1.0"}
   "base64"            {>= "3.1.0"}
   "pecu"              {>= "0.6"}
-  "prettym"           {>= "0.0.2"}
+  "prettym"           {>= "0.0.5"}
   "angstrom"          {>= "0.14.0"}
   "fpath"             {with-test}
   "hxd"               {with-test}
