@@ -14,6 +14,10 @@ let parser ~write_data end_of_body =
   let check_end_of_body =
     let len = String.length end_of_body in
     Unsafe.peek len Bstr.sub_string >>| String.equal end_of_body
+    <|> return false
+    (* NOTE(dinosaure): we do our best effort, if we can not recognize
+       [end_of_body], we consider the rest of the mail as the body. It's invalid
+       according RFCs. *)
   in
 
   fix @@ fun m ->
@@ -28,7 +32,7 @@ let parser ~write_data end_of_body =
   in
 
   available >>= function
-  | 0 -> peek_char *> m
+  | 0 -> begin peek_char >>= function None -> commit | Some _ -> m end
   | len -> (
       Unsafe.peek len Bstr.sub >>= fun chunk ->
       match index chunk end_of_body.[0] with
