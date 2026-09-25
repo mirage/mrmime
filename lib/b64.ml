@@ -20,9 +20,8 @@ let rec end_of_stream ~write_data closed dec =
   | `Flush data ->
       write_data data;
       end_of_stream ~write_data closed dec
-  | `Malformed err -> Error err
-  | `Wrong_padding -> Error "wrong padding"
-  | `End -> Ok ()
+  | `Malformed _ -> end_of_stream ~write_data closed dec (* NOTE(dinosaure): best effort. *)
+  | `Wrong_padding | `End -> Ok ()
 
 let rec decode ~write_data dec =
   match Base64_rfc2045.decode dec with
@@ -30,9 +29,8 @@ let rec decode ~write_data dec =
   | `Flush data ->
       write_data data;
       decode ~write_data dec
-  | `Malformed err -> `Malformed err
-  | `Wrong_padding -> `Wrong_padding
-  | `End -> `End
+  | `Malformed _ -> decode ~write_data dec (* NOTE(dinosaure): best effort. *)
+  | `Wrong_padding | `End -> `End
 
 let check_end_of_body end_of_body =
   let len = String.length end_of_body in
@@ -54,8 +52,6 @@ let rec choose ~write_data end_of_body dec chunk = function
 and parser ~write_data end_of_body dec =
   match decode ~write_data dec with
   | `End -> commit
-  | `Malformed err -> fail err
-  | `Wrong_padding -> fail "wrong padding"
   | `Await -> (
       available >>= function
       | 0 -> peek_char *> parser ~write_data end_of_body dec
@@ -93,8 +89,8 @@ let rec parser ~write_data dec =
   | `Flush data ->
       write_data data;
       commit *> parser ~write_data dec
-  | `Malformed err -> fail err
-  | `Wrong_padding -> fail "wrong padding"
+  | `Malformed _ -> parser ~write_data dec (* NOTE(dinosaure): best effort. *)
+  | `Wrong_padding -> commit
   | `Await -> (
       peek_char >>= function
       | None ->
