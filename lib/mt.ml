@@ -116,7 +116,7 @@ let part ?(encoding = true) ?(header = Header.empty) stream =
       | `Quoted_printable -> to_quoted_printable stream
       | `Base64 -> to_base64 stream
       | `Bit8 | `Binary | `Bit7 -> stream
-      | `Ietf_token _ | `X_token _ -> assert false
+      | `Ietf_token _ | `X_token _ -> stream
     else stream
   in
   (* XXX(dinosaure): TODO [`Bit7], IETF and extension encoding. *)
