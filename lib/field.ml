@@ -109,6 +109,12 @@ module Decoder = struct
       let ( >>| ) x f = Result.map f x in
       let ( >>= ) = Result.bind in
       Unstrctrd.without_comments v
+      >>= (Unstrctrd.of_list
+          <.> List.rev
+          <.> Unstrctrd.fold [] ~f:(fun acc -> function
+                `CR -> acc | x -> x :: acc))
+      (* XXX(dinosaure): remove trailing CR characters **after**
+         [without_comments]. *)
       >>| Unstrctrd.fold_fws
       >>| Unstrctrd.to_utf_8_string
       (* XXX(dinosaure): normalized value can have trailing whitespace
