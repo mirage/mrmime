@@ -231,7 +231,12 @@ let multipart_as_part : multipart -> part =
         go stream r
   in
 
-  { header; body = go (stream_of_string beginner) parts }
+  let body =
+    match parts with
+    | [] -> stream_of_lines []
+    | parts -> go (stream_of_string beginner) parts
+  in
+  { header; body }
 
 type 'x body = Simple : part body | Multi : multipart body
 
