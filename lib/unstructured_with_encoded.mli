@@ -37,6 +37,10 @@ val pp : Format.formatter -> t -> unit
 (** Pretty printer of {!t} mostly useful for debugging. *)
 
 module Decoder : sig
+  val post_process : Unstrctrd.t -> t
+  (** [post_process v] recognizes encoded-words into the given unstructured
+      value. *)
+
   val unstructured_with_encoded : unit -> t Angstrom.t
   (** [unstructured_with_encoded ()] creates a single-use Angstrom parser for
       unstructured content with the encoded words. *)
