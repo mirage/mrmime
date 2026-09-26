@@ -1,0 +1,175 @@
+Received: (from majordomo@localhost) by pauillac.inria.fr (8.7.6/8.7.3) id KAA31583; Fri, 3 Aug 2001 10:58:22 +0200 (MET DST)
+X-Authentication-Warning: pauillac.inria.fr: majordomo set sender to owner-caml-list@pauillac.inria.fr using -f
+Received: from nez-perce.inria.fr (nez-perce.inria.fr [192.93.2.78]) by pauillac.inria.fr (8.7.6/8.7.3) with ESMTP id KAA31578 for <caml-list@pauillac.inria.fr>; Fri, 3 Aug 2001 10:58:20 +0200 (MET DST)
+Received: from maties1.sun.ac.za (maties1.sun.ac.za [146.232.128.1])
+	by nez-perce.inria.fr (8.11.1/8.10.0) with ESMTP id f738wE912123;
+	Fri, 3 Aug 2001 10:58:15 +0200 (MET DST)
+Received: from bywoner.sun.ac.za ([146.232.129.121] helo=bywoner)
+	by maties1.sun.ac.za with esmtp (Exim 3.31 #1)
+	id 15SamP-0006kP-00; Fri, 03 Aug 2001 10:58:01 +0200
+Received: from js by bywoner with local (Exim 3.22 #1 (Debian))
+	id 15SceZ-0002Rv-00; Fri, 03 Aug 2001 10:58:03 +0000
+To: ocaml mailing list <caml-list@inria.fr>
+Cc: Sylvain Pogodalla <Sylvain.Pogodalla@xrce.xerox.com>,
+        Francois.Thomasset@inria.fr, Brian Rogoff <bpr@best.com>,
+        Dave Berry <Dave@kal.com>, luther <luther@dpt-info.u-strasbg.fr>
+Message-Id: <E15SceZ-0002Rv-00@bywoner>
+From: Johann Spies <jspies@maties.sun.ac.za>
+Date: Fri, 03 Aug 2001 10:58:03 +0000
+Sender: owner-caml-list@pauillac.inria.fr
+Precedence: bulk
+Content-Type: multipart/mixed;
+  boundary="Frank Atanassow <franka@cs.uu.nl>, Francois.Pottier@inria.fr,"
+
+Frank Atanassow <franka@cs.uu.nl>, Francois.Pottier@inria.fr,
+    Basile.Starynkevitch@cea.fr, Benedikt.Rosenau@dlr.de,
+    Wolfgang Lux <lux@wi.uni-muenster.de>,
+    Stefano Lanzavecchia <stf@apl.it>,
+    Sebastien Briais <sbriais@ens-lyon.fr
+Subject: Re: [Caml-list] Please help a newbie
+References: <87lml2a896.fsf@#maties.sun.ac.za> <3B6949D5.784BAC9F@xrce.xerox.com>
+From: Johann Spies <jspies@maties.sun.ac.za>
+Date: 03 Aug 2001 10:58:03 +0000
+In-Reply-To: Sylvain Pogodalla's message of "Thu, 02 Aug 2001 14:38:45 +0200"
+Message-ID: <87g0b98l6s.fsf@#maties.sun.ac.za>
+Lines: 132
+User-Agent: Gnus/5.0803 (Gnus v5.8.3) Emacs/20.7
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+
+Thank you to everyone that replied. I have realized now that it is not
+that easy to start programming in ocaml (or a functional language)
+when you are an amateur and coming from a procedural/imperative
+programming background.
+
+My knowledge of the theory of programming is not good.  I started
+programming as a hobby using Basic, Pascal, Dbase III, a little bit of
+Prolog and for the past few years, Python.
+
+Maybe Sylvain summarized my problems with his questions:
+
+> There are many different things in your code. Answering to some
+> questions might help you:
+> + what is the type of lys?
+> + what is the type of the elements of lys?
+
+I am not sure about the difference between these two questions.  I
+realised my mistake that lys was a char list and I expected wys_dit to
+print strings.
+
+> + what is the type of wys_dit?
+
+As I understand it wys_dit is a function.  I always thought of
+functions as using types not necessarily having types.
+
+> + do you think wys_dit is able to print one element of lys?
+
+Answered above.
+
+> + how many parameters do you want for wys_die_lys?
+
+I thought it needed one, originally, but it did not work, so I tried a
+second.  At least the interpreter did not complain.  Another response
+to my question, explained why I did not see an interpreter complaint.
+
+> + do you see the interpreter answers that it "expects" two
+>   parameters?
+
+No, I did not see that.  I do not always understand the messages of
+the interpreter.
+
+> + can you compare the function f1 and f2 such that:
+> let f1 x = match x with
+> | [] -> print_string "empty list";print_newline()
+> | h::t -> print_string "not empty list";print_newline();;
+> let f2 = function 
+> | [] -> print_string "empty list";print_newline()
+> | h::t -> print_string "not empty list";print_newline();;
+> + how many parameters do they need?
+
+Maybe this is what I am struggling to understand.  I can not see how
+f2 can work.  What data does it use?
+
+Related to this is what Benedikt referred to:
+
+> But the easiest way is:
+> 
+> let wys_die_lys = List.iter print_string;;
+
+In this function, there is no explicit parameter.  Where is this
+behaviour documented?
+
+Francois Thomasset's remark on the same topic also underlines my lack
+of understanding of the handling of arguments a function:
+
+> 2/ your wys_die_lys has 2 arguments, as can be seen from the
+> signature val wys_die_lys : 'a -> string list -> unit list = <fun>
+> (the system deduced the string list type for the type of the second
+> argument from the call to print_string in wys_dit).
+
+
+
+> + do you expect wys_dit to return a result?
+I did.
+> + what type for that result?
+A printed string.
+> + what is the exact meaning of the :: operator?
+
+I am not sure.  I could not find an explanation for it.  I have just
+now searched the "operator" section of the ocaml-manual for :: again
+and could only find :
+
+     type 'a list = [] | :: of 'a * 'a list
+
+>From that I suspect that :: is an alternative for [] - telling the
+compiler that the tipe is a list?
+
+I tried to figure out what it does by reading examples of it's use.
+
+
+> + do you really want to build a unit list, as the type of wys_die_lys
+> describes ?
+
+No.  I am do not see the of what use a "unit list" can be. 
+
+Some of you also helped me to see the necessity of flushing the
+output:
+
+> You need to flush stdout or print_newline; also the function
+> wys_die_lys does not need to return a unit list but just a unit;
+
+Someone wrote:
+
+> I would recommend not to use print_string as long as
+> you're not comfortable with the language; writing purely
+> functional code (no side effects) will be easier.
+
+I have always used print statements in programs to help me with
+debugging and to see what is going on (that is besides the necessity
+to get some output from the program).  A program with no side effects
+does not make sense to me.  What is the use of it?
+
+As you can see, these questions revealed my lack of understanding of
+some of the basics.  I suspect the only way to get to understand it is
+by reading, asking and trying.
+
+I have not responded to everything. I appreciate all the help, remarks
+and code sent to me and I will probably ask some more questions in the
+future.
+
+Johann
+-- 
+Johann Spies          Telefoon: 021-808 4036
+Informasietegnologie, Universiteit van Stellenbosch
+
+     "Love is patient, love is kind. It does not envy, it
+      does not boast, it is not proud. It is not rude, it is
+      not self seeking, it is not easily angered, it keeps
+      no record of wrongs. Love does not delight in evil but
+      rejoices with the truth. It always protects, always
+      trusts, always hopes, always perseveres." 
+                                I Corinthians 13:4-7 
+-------------------
+Bug reports: http://caml.inria.fr/bin/caml-bugs  FAQ: http://caml.inria.fr/FAQ/
+To unsubscribe, mail caml-list-request@inria.fr  Archives: http://caml.inria.fr
+

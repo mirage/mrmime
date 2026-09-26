@@ -1,0 +1,336 @@
+Received: (from weis@localhost) by pauillac.inria.fr (8.7.6/8.7.3) id QAA23341 for caml-redistribution; Wed, 3 Feb 1999 16:43:08 +0100 (MET)
+Received: from nez-perce.inria.fr (nez-perce.inria.fr [192.93.2.78]) by pauillac.inria.fr (8.7.6/8.7.3) with ESMTP id QAA15587 for <caml-list@pauillac.inria.fr>; Tue, 2 Feb 1999 16:06:16 +0100 (MET)
+Received: from post.tepkom.ru (relay.tepkom.ru [195.9.240.162])
+	by nez-perce.inria.fr (8.8.7/8.8.7) with ESMTP id QAA01651
+	for <caml-list@inria.fr>; Tue, 2 Feb 1999 16:06:10 +0100 (MET)
+Received: from localhost (msk@localhost)
+	by post.tepkom.ru (8.8.7/8.8.7) with ESMTP id SAA01464
+	for <caml-list@inria.fr>; Tue, 2 Feb 1999 18:06:14 +0300
+Date: Tue, 2 Feb 1999 18:06:14 +0300 (MSK)
+From: Anton Moscal <msk@post.tepkom.ru>
+To: caml-list@inria.fr
+Subject: O'Caml native code can be easily improved in size by 10%
+Message-ID: <Pine.LNX.4.03.9902021757050.1195-101000@post.tepkom.ru>
+MIME-Version: 1.0
+Sender: weis
+Content-Type: multipart/mixed;
+  boundary="---------------------------------------------------------------------------"
+
+Hello!
+
+Subj.
+
+In functional languages many sequential constructors frequently occur. Each 
+constructor with arguments causes memory allocation. For example:
+
+    let f x y z = [x+y;y+z;z+x]
+
+compiled by O'Caml into the following (real code for x86 placed at the end of 
+the message) code:
+
+	t  := alloc list item ; t.cdr  := NIL; 	t.car  := z+x
+	t' := alloc list item ; t'.cdr := t; 	t'.car := y+z
+	t" := alloc list item ; t".cdr := t'; 	t".car := x+y
+	return t"
+
+For x86 each allocation takes 6 commands:
+
+.L101:	movl	young_ptr, %eax
+	subl	$12, %eax
+	movl	%eax, young_ptr
+	cmpl	young_limit, %eax
+	jb	.L102
+	leal	4(%eax), %edx
+
+(and also `caml_call_gc; jmp .L101' at the function end, and frame for GC with 
+approx 8-16B size) - total about 40B.
+
+If we allocate memory for all 3 list items by one request, then we can replace 
+each of the two last allocations by the following:
+
+       mov young_ptr, %eax
+       lea offset(%eax), %reg
+
+8B and nothing more.
+	
+This optimization is valid only in basic blocks and olny if code between
+allocations can't call a garbage collection.
+
+I made it. This takes about 90 lines of added/changed code in compiler
+(together with the two changes described below). This optimization
+reduces code size of ocamlopt.opt+ocamlc.opt by 8.7%. I think this is an
+excellent result for 90-lines changes.
+
+Bootstrapping of ocamlopt.opt was successfull. This means that my changes
+are correct, I hope.
+
+This is an optimization which can be applied to all architectures. For  
+architectures with `young_ptr' in the memory (x86, m68k) yet another
+improvement exists: in many cases instead of loading `young_ptr' from 
+memory we can use address of the object created by previous constructor which 
+is `young_ptr + offset' and is frequently located in one of the registers 
+because it is the argument of the constructor following it. In this case we 
+eliminate the first of the two remaining commands. This optimization 
+reduces ocamlopt.opt+ocamlc.opt code for x86 by 1.6%.
+
+And the last: on x86 and m68k architectures `selection.ml' contains the
+following method:
+
+method select_store addr exp =
+  match exp with
+    Cconst_int n -> (Ispecific(Istore_int(n, addr)), Ctuple [])
+  | Cconst_pointer n -> (Ispecific(Istore_int(n, addr)), Ctuple [])
+  | Cconst_symbol s -> (Ispecific(Istore_symbol(s, addr)), Ctuple [])
+  | _ -> super#select_store addr exp
+
+the alternative
+    Cconst_int n -> (Ispecific(Istore_int(n, addr)), Ctuple [])
+
+processes storing of the Cconst_int immediate constants, but ignores the  
+Cconst_natint constants. This causes generating the following bad code  
+immediately after each memory allocation:
+
+	mov	$tag, %r1
+	mov	%r1, -4(%r2)
+
+instead of a better:
+
+	mov	$tag, -4(%r2).
+
+I fixed this by adding the following match pattern:
+
+  | Cconst_natint n 
+      when Nativeint.cmp n min_int >= 0  
+      &&   Nativeint.cmp n max_int <= 0 
+    ->
+      (Ispecific(Istore_int(Nativeint.to_int n, addr)), Ctuple [])
+
+This change improves code size of ocamlc.opt+ocamlopt.opt by yet 0.7%.
+The same change needed for m68k.
+A better solution probably will be to add the operator Istore_natint.
+
+
+I estimated the number of memory allocations in ocamlopt.opt+ocamlc.opt. 
+I found about 12,000 memory allocations approximately 7,000 of which is the 
+subject of the described optimizations.
+
+Table of code sizes:
+
+             old size:   new size-1:     new size-2:     new size-3:   total:
+-----------------------------------------------------------------------------
+ocamlopt.opt:1,061,028   971,229 8.46%   956,173 1.57%   949,421 0.71% 10.52%
+  ocamlc.opt:1,375,599 1,254,322 8.82% 1,234,178 1.61% 1,225,434 0.69% 10.90%
+  ocamlc+opt:2,436,627 2,225,551 8.66% 2,190,351 1.58% 2,175,027 0.70% 10.74%
+
+Patches with changes in the compiler are attached to this message in the
+file ocaml-2.01.patch.gz
+
+=================================================
+
+Appendix: code for function
+	let f a b c = [a+b; b+c; c+a]
+
+Optimized code:
+
+T_f_39:
+.L100:
+	movl	%eax, %edi
+.L101:	movl	young_ptr, %eax
+	subl	$36, %eax
+	movl	%eax, young_ptr
+	cmpl	young_limit, %eax
+	jb	.L102
+	leal	4(%eax), %edx
+	movl	$2048, -4(%edx)
+	lea	-1(%ecx, %edi), %eax
+	movl	%eax, (%edx)
+	movl	$1, 4(%edx)
+
+        leal	12(%edx), %esi
+	movl	$2048, -4(%esi)
+	lea	-1(%ebx, %ecx), %eax
+	movl	%eax, (%esi)
+	movl	%edx, 4(%esi)
+
+        leal	12(%esi), %eax
+	movl	$2048, -4(%eax)
+	lea	-1(%edi, %ebx), %ebx
+	movl	%ebx, (%eax)
+	movl	%esi, 4(%eax)
+	ret
+.L102:	call	caml_call_gc
+.L103:	jmp	.L101
+
+	.long	.L103
+	.word	4
+	.word	3
+	.word	5
+	.word	3
+	.word	11
+	.align	4
+
+
+Original code:
+
+T_f_38:
+.L100:
+	movl	%eax, %edi
+.L101:	movl	young_ptr, %eax
+	subl	$12, %eax
+	movl	%eax, young_ptr
+	cmpl	young_limit, %eax
+	jb	.L102
+	leal	4(%eax), %edx
+	movl	$2048, %eax
+	movl	%eax, -4(%edx)
+	lea	-1(%ecx, %edi), %eax
+	movl	%eax, (%edx)
+	movl	$1, 4(%edx)
+
+.L104:	movl	young_ptr, %eax
+	subl	$12, %eax
+	movl	%eax, young_ptr
+	cmpl	young_limit, %eax
+	jb	.L105
+	leal	4(%eax), %esi
+	movl	$2048, %eax
+	movl	%eax, -4(%esi)
+	lea	-1(%ebx, %ecx), %eax
+	movl	%eax, (%esi)
+	movl	%edx, 4(%esi)
+
+.L107:	movl	young_ptr, %eax
+	subl	$12, %eax
+	movl	%eax, young_ptr
+	cmpl	young_limit, %eax
+	jb	.L108
+	leal	4(%eax), %eax
+	movl	$2048, %ecx
+	movl	%ecx, -4(%eax)
+	lea	-1(%edi, %ebx), %ebx
+	movl	%ebx, (%eax)
+	movl	%esi, 4(%eax)
+
+	ret
+
+.L108:	call	caml_call_gc
+.L109:	jmp	.L107
+.L105:	call	caml_call_gc
+.L106:	jmp	.L104
+.L102:	call	caml_call_gc
+.L103:	jmp	.L101
+
+	.long	.L109
+	.word	4
+	.word	3
+	.word	9
+	.word	3
+	.word	11
+	.align	4
+	.long	.L106
+	.word	4
+	.word	4
+	.word	7
+	.word	5
+	.word	3
+	.word	11
+	.align	4
+	.long	.L103
+	.word	4
+	.word	3
+	.word	5
+	.word	3
+	.word	11
+	.align	4
+
+============================================================
+
+Regards,
+Anton E.Moscal
+
+Content-Type: APPLICATION/x-gunzip; name="ocaml-2.01.patch.gz"
+Content-Transfer-Encoding: BASE64
+Content-ID: <Pine.LNX.4.03.9902021806140.1195@post.tepkom.ru>
+Content-Description: 
+Content-Disposition: attachment; filename="ocaml-2.01.patch.gz"
+
+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
+k/8Dx4T+Z3FFAAA=
+
+
+

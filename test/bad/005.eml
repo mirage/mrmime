@@ -1,0 +1,510 @@
+Received: from MR1P264MB3108.FRAP264.PROD.OUTLOOK.COM (2603:10a6:501:3d::9) by
+ PAZP264MB2848.FRAP264.PROD.OUTLOOK.COM with HTTPS; Fri, 14 Oct 2022 20:50:37
+ +0000
+Received: from PA7P264CA0082.FRAP264.PROD.OUTLOOK.COM (2603:10a6:102:349::16)
+ by MR1P264MB3108.FRAP264.PROD.OUTLOOK.COM (2603:10a6:501:3d::9) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5723.29; Fri, 14 Oct
+ 2022 20:50:35 +0000
+Received: from MR2FRA01FT008.eop-fra01.prod.protection.outlook.com
+ (2603:10a6:102:349:cafe::d4) by PA7P264CA0082.outlook.office365.com
+ (2603:10a6:102:349::16) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5723.30 via Frontend
+ Transport; Fri, 14 Oct 2022 20:50:35 +0000
+Authentication-Results: spf=pass (sender IP is 192.134.164.81)
+ smtp.mailfrom=inria.fr; dkim=pass (signature was verified)
+ header.d=inria.fr;dmarc=fail action=none header.from=gmail.com;compauth=fail
+ reason=001
+Received-SPF: Pass (protection.outlook.com: domain of inria.fr designates
+ 192.134.164.81 as permitted sender) receiver=protection.outlook.com;
+ client-ip=192.134.164.81; helo=mail2-smtp-roc.national.inria.fr; pr=C
+Received: from mail2-smtp-roc.national.inria.fr (192.134.164.81) by
+ MR2FRA01FT008.mail.protection.outlook.com (10.152.50.193) with Microsoft SMTP
+ Server id 15.20.5723.20 via Frontend Transport; Fri, 14 Oct 2022 20:50:35
+ +0000
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=inria.fr; s=dc;
+  h=mime-version:references:in-reply-to:from:date:message-id:
+   to:cc:subject:reply-to:sender:list-id:list-help:
+   list-subscribe:list-unsubscribe:list-post:list-owner:
+   list-archive;
+  bh=6N6fJgMpwft/zCxSgTQQdmKsUT33IFLHqzIEW0RPi1c=;
+  b=Mf4lSV26teKLiwOrFth3zHii+xQCokJjxygwabyO67G75GFgwCOrnsU2
+   dEwIrgKZkKSiVb7zz7E376E+sl5lBz0YTOm1YWCgV6b6np1MTid2zkrea
+   AvtKHyVB1JRKdjC/16q5cOtaXhiKaLkQciDFgWqP+/5iucwoNg9jVHmwr
+   M=;
+Received-SPF: SoftFail (mail2-relais-roc.national.inria.fr:
+  domain of caml-list-owner@inria.fr is inclined to not
+  designate 128.93.162.160 as permitted sender)
+  identity=mailfrom; client-ip=128.93.162.160;
+  receiver=mail2-relais-roc.national.inria.fr;
+  envelope-from="caml-list-owner@inria.fr";
+  x-sender="caml-list-owner@inria.fr"; x-conformance=spf_only;
+  x-record-type="v=spf1"; x-record-text="v=spf1
+  ip4:192.134.164.0/24 mx ~all"
+Received-SPF: None (mail2-relais-roc.national.inria.fr: no sender
+  authenticity information available from domain of
+  postmaster@sympa.inria.fr) identity=helo;
+  client-ip=128.93.162.160;
+  receiver=mail2-relais-roc.national.inria.fr;
+  envelope-from="caml-list-owner@inria.fr";
+  x-sender="postmaster@sympa.inria.fr"; x-conformance=spf_only
+Authentication-Results-Original: mail2-relais-roc.national.inria.fr;
+ spf=SoftFail smtp.mailfrom=caml-list-owner@inria.fr; spf=None
+ smtp.helo=postmaster@sympa.inria.fr; dkim=hardfail (signature did not verify
+ [final]) header.i=@gmail.com
+X-IronPort-AV: E=Sophos;i="5.95,185,1661810400"; 
+   d="scan'208,217";a="65259450"
+Received: from prod-listesu18.inria.fr (HELO sympa.inria.fr) ([128.93.162.160])
+  by mail2-relais-roc.national.inria.fr with ESMTP; 14 Oct 2022 22:50:35 +0200
+Received: by sympa.inria.fr (Postfix, from userid 20132)
+	id 0CE33E0269; Fri, 14 Oct 2022 22:50:35 +0200 (CEST)
+Received: from mail3-relais-sop.national.inria.fr (mail3-relais-sop.national.inria.fr [192.134.164.104])
+	by sympa.inria.fr (Postfix) with ESMTPS id 1CCD2E0038
+	for <caml-list@sympa.inria.fr>; Fri, 14 Oct 2022 22:50:24 +0200 (CEST)
+IronPort-SDR: 6349cb8f_TBvMUF8U53vpuwVtrABBax7cDaXAHfIiCSb2Uoi1hA/6ZPp
+ 7iPA7HMnGqiUGkmo/w3WsvxkXw3xNQSKy3XZK1Q==
+X-IPAS-Result: =?us-ascii?q?A0D2AwCSykljfzLaVdFahH0zAU1VLwQLRYROgSOPdoxIi?=
+ =?us-ascii?q?gyIQgsBAwENOQkEAQE/hEYChGwCHQcBBDQTAQIEAQEBAQMCAwEBAQEBAQMBA?=
+ =?us-ascii?q?QUBAQECAQECBAQBEwEBGAkZBw4OBSSFaA2CNSkBg2QBAQECARIRBBkBGx0BA?=
+ =?us-ascii?q?wwGBQQHNwICIgERAQUBHAYTGweCXIJsAQMNIwMQnXmBBEKLMn8WBQIWgQGCC?=
+ =?us-ascii?q?QaETwoZKA1oA4FZAgcSgSuHBwIbU1gBAYZoeicQgVVEgUuCdD6CYgICgguDK?=
+ =?us-ascii?q?oJmBJpUBAcDBAUBBg4DAwIhAQIBQx0CCQMjDwMLCQgTFyQGBgECAQEKAgEEA?=
+ =?us-ascii?q?QUDAQQFAwcCAQUGAgkDAQgDAQEFAQMEAwMDAgcDAQIMBAgDAwIDBAICAgIBA?=
+ =?us-ascii?q?wIHBQgEAgcCAgIBAgICBAIBAwkBAgMFAgIJCwEEAgIDAQMBAQIIBAkEAgMEA?=
+ =?us-ascii?q?gEBAwIBAgIBBQIMBQEBAQECBQECAwEGBwIIAhwKAQMEAgIFAgIBAgMNAQEEA?=
+ =?us-ascii?q?gECAQIGAQMBAgIDAQMBAgIDAgYJAgQBBQMDAgIDAQEFDwUCBAIBAgYFAgEBA?=
+ =?us-ascii?q?QQBAwQEBgICAQMDAg4CBAEEAQIBASMDBAIDAQMXAQIBAgMDAwQGBwUCAQITA?=
+ =?us-ascii?q?QIBAQEFAQIBAQMEBAcJAwICBAMDBQEBAgMCAQEBBwwCAgISAhMDAQYBDgUUA?=
+ =?us-ascii?q?wIEAgIBAgIKAwECAgEDAgkCAQIBBSADAQEPJAEBAgICAwQHAgEEBgMNAgIBA?=
+ =?us-ascii?q?QEFBg0DAgMIAQwCBwMCAQMFAgIEAQIECgkBAgIBAgQFBwIBCAYFDQUJCwEBA?=
+ =?us-ascii?q?gEDBwQDEQIFAwUFAwMCAQoFAgMBAgEBAwQDBAQBAQIDAgIBBgICAQEDAwQDA?=
+ =?us-ascii?q?QIGAgIHAgMCAQQCAwMBAQECAgICAgIDAwkCCAcFAQYBAgEEAwICAQIHAQQBC?=
+ =?us-ascii?q?AMDBQUBCg8DBQMBAwMCFAoFAQMIBgkCBAUCBQMCBAIDAgIIAwIEAwsDBQQCB?=
+ =?us-ascii?q?wQPBwIDAgIFAgICAgIFBAMBAgICAgICBQIDAgEFAQICAQICAgQBAgIHBAIDA?=
+ =?us-ascii?q?QMEDgQDAgICBQECAgEGAgcDAQIBBAMBAQQCBAECBQIEAQMGAgQDCgICAwICA?=
+ =?us-ascii?q?gYFAwMKCAIDBQIEAQECBwQCAgsBBgIHAgIDEAEDAQQFBQMDAwkCAgMCBAICC?=
+ =?us-ascii?q?gEBAQECAgEHAgQHDwICAgQCAgIBAwICAQECAgULEgEBAgMGBAYFAwIIGAEGA?=
+ =?us-ascii?q?gEBAgIDAwIGAgECCAIEAQQFAgECAgICBAEDBgIDAQECAQICAwMCAQQCBAMDA?=
+ =?us-ascii?q?QIBAgICAwICAgMCAgEPAgYGAQICAgICAgICAgEFAQIBAgQCBwIEAwIBAgIFA?=
+ =?us-ascii?q?gICAwEBBgIECwEDAgcGAQMCBwUCAwEEAwQDAwsFDAgBBQEDAR4DAgIIAgcCA?=
+ =?us-ascii?q?QYFAQ8DAgIDAgIBBAoCAwUCBAIBBAkHAgQBAgkDAgYCBwUYAQICBwQMCgICA?=
+ =?us-ascii?q?gUGAgQBAQEBAwECAQECAwQCAwIEBQEFAgECBQQCAgEBAgUCDAECAQcGAgcCA?=
+ =?us-ascii?q?gICAwEEAgECAQMDAgMBAQEDBgYFBAQCAwMGAgICBgICAwISAwcCBgMCBAEND?=
+ =?us-ascii?q?gUEBQgBAgEBBwIEAgcJDgIBBgEFAgIDAgIBBQIBBgMBAgICAgUIBQMEBQMGD?=
+ =?us-ascii?q?wMBAQQDAgECAQQDAgMHAwIEBAMBAgMEBgYBCQMCAgYDAgICDQMEAgIBAgECA?=
+ =?us-ascii?q?wQEBgICAQICAQICAgIDAQQCAgEBAwMDAgICAwIEAgMDCwYKCAICAgMCAQULB?=
+ =?us-ascii?q?AIDAgEDBgkCBAICBgECBAICAgICAgIDAQEDCgQCAQIDAgIGAwYCAQIBAgEJB?=
+ =?us-ascii?q?QIBCQMBAgECAQQBAwYEAQICBAkCBAcFBAYEAgICAggCAg4DAwIBAQQDAgQFA?=
+ =?us-ascii?q?gILAgECBwIFAQEDBQcCAgECAgEEAwEJBAECAgMCAQEDAxEDAwMBBAICBQMDD?=
+ =?us-ascii?q?QkGAgIBAwIDAQ4DAwECAQIDAQUFFwMCAQgHAxYBAwIBAQMCAQICAwYEAQgCA?=
+ =?us-ascii?q?gIDAwMCAQIFAgUDAwEFAgECAwEFAwIOAwIImyuCFIEFNQEgghsPkmGvDzQHg?=
+ =?us-ascii?q?2KBRAYMiEiBI5UAMoVGo0mXEo1AlHUvhH8QIxKBRCOBWzMaI1AxgjYJRQMZD?=
+ =?us-ascii?q?5ISgQGJX0IxOwIGAQoBAQMJiiYEgkQBAQ?=
+IronPort-PHdr: A9a23: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
+ zY5jwJ/ZaIm8zK+uz8K
+IronPort-Data: A9a23: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
+ IT+eYyIrIxXh6I8/QaMtkO5wC0kgQ4=
+IronPort-HdrOrdr: A9a23:acvqTKAA3LD/ZfvlHemT55DYdb4zR+YMi2TDGXoBMCC9E/bo7/
+ xG+c5w6faaskd1ZJhNo6HjBEDEewK+yXcX2+gs1NWZLW3bUQKTRekI0WKh+V3d8kbFh4lgPM
+ lbAs5D4R7LYWSST/yW3OB1KbkdKRC8npyVuQ==
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-AV: E=Sophos;i="5.95,185,1661810400"; 
+   d="scan'208,217";a="31498845"
+X-MGA-submission: =?us-ascii?q?MDEafGziagiH/sNU8cIQ74cTQPj8o4l+wKC/+J?=
+ =?us-ascii?q?n+Z3f47XB/6T/VjM1C+zSXAbWvmpYijl2RB0iKn+dMi3sdCu4aj7M5ei?=
+ =?us-ascii?q?O7zbT/V0FiCfixOjrq+n3owpPR+YuNWOcn88EJjBkfVVaAEciKlXL6Fp?=
+ =?us-ascii?q?Wv41ND91W2knujofdzzRssGw=3D=3D?=
+Received: from mail-ej1-f50.google.com ([209.85.218.50])
+  by mail3-smtp-sop.national.inria.fr with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 14 Oct 2022 22:50:24 +0200
+Received: by mail-ej1-f50.google.com with SMTP id q9so13067585ejd.0
+        for <caml-list@inria.fr>; Fri, 14 Oct 2022 13:50:23 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=6N6fJgMpwft/zCxSgTQQdmKsUT33IFLHqzIEW0RPi1c=;
+        b=DnigabiprTeh64Q7YVQ36bA9AgzZd1HON1LuTvTH8AT3K5cdR6+MdAQJqREmoL1D1R
+         ZW9PYhv/SKiWaMpArBNY442YIM4aDtyGel7dNx7ZxW/vQAVqv1tolxasD81ZhtcHGxkd
+         eaL9u91tfjTUil2VoTlyd66nl1w51XeXUrHcMtHd12hXzqsVGVb8NugoopoUaw1q8qn+
+         DNXOSWmga1TRojNG3Yb9uB2Kkx9U3GM29vAkbY/cMhLevVEi3IoVxZ0GXCWyp5boU0VZ
+         K0+RicB/OkQpfJlUSdewDwOTCMRed/IzpGjf99WPZHS734PHsTxGDZdRrJa6m5QjpOH/
+         +ijg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=6N6fJgMpwft/zCxSgTQQdmKsUT33IFLHqzIEW0RPi1c=;
+        b=b2jAPBB9VHwZZOunpQ0D5URCJvSaHOzsSj6o6B99DwPKpV9GPsHvb9gu6sqfMadUbJ
+         eSnKAXDwcKzJuZe3xycjAB03iidck4fjVBF6yAw7zQ86eAAzxQ4x1AR+c7bopEMD37ZQ
+         d+QjDK9k0wcEMzybXlB672o79sZ5hVxpFh8eu2/ZjEMbZiDZLCet+pT5FpLEjMagGbtD
+         IZNIXlpsdwmkLSmA7M/YdGH9ct7i2Y/xqicuQpyPjN4nsX9r2rc5qwGpReCmyfzpebnS
+         cRaj00KLiXBRWDzSFIREYa7B8fl2sfN0TzfdeUmWJ5MnLL0ReWRfR1BEJjsm2YpjGzmr
+         bV9g==
+X-Gm-Message-State: ACrzQf2coGiwJzzIQuKAoAyJDiVbpIYmMlpWH10FfrOZHQwP4DHXKjKp
+	jOyWk5H71R0Um7im8DulJldR317Eb51t4EsvQwsvrm1eE0U=
+X-Google-Smtp-Source: AMsMyM40XG4V2kKucb8rFn35/d42rKg18lmBi0z5xuL6yqcqvRi3tYam4OYxYimoePxWzJvHAXOHvk93jLoiYRXaK+4=
+X-Received: by 2002:a17:906:ef8c:b0:78d:46b7:6847 with SMTP id
+ ze12-20020a170906ef8c00b0078d46b76847mr4756776ejb.241.1665780622438; Fri, 14
+ Oct 2022 13:50:22 -0700 (PDT)
+References: <20221013040040.sfcmxo3h6ao63fiw@oulala>
+In-Reply-To: <20221013040040.sfcmxo3h6ao63fiw@oulala>
+From: Gabriel Scherer <gabriel.scherer@gmail.com>
+Date: Fri, 14 Oct 2022 22:49:46 +0200
+Message-ID: <CAPFanBEzzVLv3Zo6dEmdX3G-F2Wcki9EgbGDN3DH1Egfrw16ew@mail.gmail.com>
+To: Christophe Raffalli <christophe@raffalli.eu>
+Cc: caml-list@inria.fr
+Content-Type: multipart/alternative; boundary="0000000000004635ca05eb04c6b9"
+Subject: Re: [Caml-list] Parallel for with exception
+Reply-To: Gabriel Scherer <gabriel.scherer@gmail.com>
+X-Loop: caml-list@inria.fr
+X-Sequence: 18878
+Errors-To: caml-list-owner@inria.fr
+Precedence: bulk
+Sender: caml-list-request@inria.fr
+X-no-archive: yes
+List-Id: <caml-list.inria.fr>
+List-Help: <mailto:sympa_inria@inria.fr?subject=help>
+List-Subscribe: <mailto:sympa_inria@inria.fr?subject=subscribe%20caml-list>
+List-Unsubscribe: <mailto:sympa_inria@inria.fr?subject=unsubscribe%20caml-list>
+List-Post: <mailto:caml-list@inria.fr>
+List-Owner: <mailto:caml-list-request@inria.fr>
+List-Archive: <https://sympa.inria.fr/sympa/arc/caml-list>
+Archived-At: <https://sympa.inria.fr/sympa/arcsearch_id/caml-list/2022-10/CAPFanBEzzVLv3Zo6dEmdX3G-F2Wcki9EgbGDN3DH1Egfrw16ew%40mail.gmail.com>
+Return-Path: caml-list-owner@inria.fr
+X-MS-Exchange-Organization-ExpirationStartTime: 14 Oct 2022 20:50:35.3842
+ (UTC)
+X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
+X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000
+X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit
+X-MS-Exchange-Organization-Network-Message-Id:
+ 4b18c06a-ec15-4d99-c1d1-08daae25be2a
+X-EOPAttributedMessage: 0
+X-EOPTenantAttributedMessage: 9c9628ec-e5c3-4aa7-afa1-e7bf99470874:0
+X-MS-Exchange-Organization-MessageDirectionality: Incoming
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: MR2FRA01FT008:EE_|MR1P264MB3108:EE_
+X-MS-Exchange-Organization-AuthSource:
+ MR2FRA01FT008.eop-fra01.prod.protection.outlook.com
+X-MS-Exchange-Organization-AuthAs: Anonymous
+X-MS-Office365-Filtering-Correlation-Id: 4b18c06a-ec15-4d99-c1d1-08daae25be2a
+X-MS-Exchange-Organization-SCL: -1
+X-Microsoft-Antispam: BCL:0;
+X-Forefront-Antispam-Report:
+ CIP:192.134.164.81;CTRY:FR;LANG:en;SCL:-1;SRV:;IPV:NLI;SFV:SFE;H:mail2-smtp-roc.national.inria.fr;PTR:mail2-smtp-roc.national.inria.fr;CAT:NONE;SFS:;DIR:INB;
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Oct 2022 20:50:35.3373
+ (UTC)
+X-MS-Exchange-CrossTenant-Network-Message-Id: 4b18c06a-ec15-4d99-c1d1-08daae25be2a
+X-MS-Exchange-CrossTenant-Id: 9c9628ec-e5c3-4aa7-afa1-e7bf99470874
+X-MS-Exchange-CrossTenant-AuthSource:
+ MR2FRA01FT008.eop-fra01.prod.protection.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Anonymous
+X-MS-Exchange-CrossTenant-FromEntityHeader: Internet
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MR1P264MB3108
+X-MS-Exchange-Transport-EndToEndLatency: 00:00:01.6920193
+X-MS-Exchange-Processed-By-BccFoldering: 15.20.5723.029
+X-Microsoft-Antispam-Mailbox-Delivery:
+	wl:1;pcwl:1;ucf:0;jmr:0;auth:0;dest:I;ENG:(910001)(944506478)(944626604)(920097)(811225)(250001)(410001)(930097);
+X-Microsoft-Antispam-Message-Info:
+	=?utf-8?B?bStMVVc2VnByYXFsd040MnVFUEJKejlENzB2T0c3d09nMWFMNjlFK0dOU0NI?=
+ =?utf-8?B?blRvWGpJVzV6b0phZEhHODRmbG12REN2cFB4QWVkOG9vUVdJSlB5RmF2d2pU?=
+ =?utf-8?B?b1VGeXM4OVh1bnZKN2l4OFlneUliOTR5TnBjM1hiU3JFZzl0VGFlSkk5Y1pS?=
+ =?utf-8?B?azRib1d5b2wvS3RReWFocVJkcHhaU1NOVmpOSmRZaDN6b3lwS1MzTUdnano0?=
+ =?utf-8?B?cDQ4a0xjRXRpOGdHR2RuRVRWSDJyNzN0ZFN4cmdMKzlZSktXSS9uUTRwKzJV?=
+ =?utf-8?B?bzR1Z2tqSzVraXhmTGZIOGEyaXcxekcvNGxsY2Rzd2szZ0RCc1YyTVJXMlpI?=
+ =?utf-8?B?ZzJYTW9ISXByUDlkODdiaThHbzlia1k0eFJZbW5xcFcrU0ZVb0lPWU1EVlFI?=
+ =?utf-8?B?YTBpZFVPc29vZGZ3MStiUDlPWXh2em5IS2ExcnJTaHJSRVpZUVpjNWN3bEtw?=
+ =?utf-8?B?cmRkYTNwT2gyR0c1K1JiZ1BxRmpKSHNodVpxdHJLQUR6UkxPSDVhRlZuOUpD?=
+ =?utf-8?B?a2VRbnN4dVlIbXU2NFdGbFNqOHB3MUhZTnNiTGJ5KzZxb0J3amtsdGtXUks2?=
+ =?utf-8?B?SVc2VHhqU0NSNndxQUtlNTBFRFRRM3lwaFhJVjhuNElBZWNzZGppQ1pKYllT?=
+ =?utf-8?B?amliOVBuUmViV0FXRWZzQjVNVnFMallGTWFaYjVEYXlNUm5JRkR4MzEwZGo5?=
+ =?utf-8?B?VmxrbTN0VVo2dlRzazBhc2ZjbElHNFZEV21tU3VBbTU3U213UVpQSWVrLzJw?=
+ =?utf-8?B?bUpLcVIzMXlybkEwMDgxM2pEVEpRcXlrcEI0U3Q0UHA0aEFNb2lycTM4S1c3?=
+ =?utf-8?B?eE5NOFQ2bUUxOFMrWmp0azc4bVVFNmpVRkxHK3ZxcENDU1k4UVgvdnNLSHRw?=
+ =?utf-8?B?Ung1ODg2TXRscVhscDRrb2c1UzlTR1V5YXVmdHBMMTVjTnFueFJmMTFwU1BX?=
+ =?utf-8?B?MzhEeHpOdHcwdEtkVjVYdXg1UnVSWTBOVkdqY2ZCVHAzeGVXcFJoWVhudFZI?=
+ =?utf-8?B?S3JNL1BhbmcyLzJTSmNWV3lIenNjVjl6SHA5SmFjOHYxSVJDcGFaSllESERF?=
+ =?utf-8?B?ZUsrVU9WeGpqZ0dyM1p5N0twYU5WdVFoc3JFYU9LQWcyMHRQK0ZnWWZzVlQy?=
+ =?utf-8?B?VWw1UnVXVkdaS1g5bzBxNGhhQnM4ckprZEZiVUU3VmxhQ0tLcWE5Z2k0dzBa?=
+ =?utf-8?B?Q0N4ZW5ETW4wWlpYTk5kdTA5aTFuclg0RkdWM281ZlphSTRLNkU1SC9GMVps?=
+ =?utf-8?B?WS85T25HSkI1R20zSS96ZStIUUJjKzFWeHgrMGpYcTM3N1V1ZVFrRTMxQTdF?=
+ =?utf-8?B?anpoeXJpQVR4ZzFqQ0h3L3VvWDQ5eFdFNE1DbDBmTnJUK2x2d3hrdHl2bXlq?=
+ =?utf-8?B?VlZkeWZld2M1ck1XVko4TlFRS1RPU3BGMmxaWnNFSG5aZzFTaTNFS2thNTVo?=
+ =?utf-8?B?NTcrVTIwYVNPcURUZ09iZ1hpVFpRaVJXbUpKYUtPdDl5REptUEJHLzYxOVUv?=
+ =?utf-8?B?VHNuSGlWTnM5T1J5WThsM3RvQUNLYWROR1g2TitZTEVqSEN6OW1HenNLU2lL?=
+ =?utf-8?B?UEprMkRHRTRiMjdsdjFrQWNBR1d3WTZQS25qdVlBeU00Y2NqT2p4L3JteGFk?=
+ =?utf-8?B?MDFjTUFjaC9xMDhzNGZlT0xrdDN6Z0ZxQ0JJUlZxTGpPK01qSUlEVzFlam1p?=
+ =?utf-8?B?U3BxV0UxbENUd21iaE4xeVl5dGpicEpqMmhCM3Zka2tlRlpaZE1mUlJHMlpp?=
+ =?utf-8?B?REtCbXhnMk1jNGE1L3FIV3hKVGpibW8rMHE1ak5WV3VxcFJwcy9OUThPQlps?=
+ =?utf-8?B?QW9UN3RBVXF2WnhRRkVOaGpjbHJzVDBhem1oZGlNRHd0TkhsMy9wR3hVRmtS?=
+ =?utf-8?B?L2Q5TWJWa1JZWGJGZllqY3VUekdka1VYdnY3dHNhQ3BKMWhkRFZ6WTQxQjgy?=
+ =?utf-8?B?TDN1ZHp1eHNvcXBKblRGbTM3a0lvb3NQNkFBUmVBYzdueERIMjFZMHY1RFZO?=
+ =?utf-8?B?RnJaZVNjd3A5ei9HSzFwdjJXRzJFeHFTeGdiZkVIWDZhMzhwYXoyZS9JNFRI?=
+ =?utf-8?B?R1dmUGU0RE5KWWkzTmJJQUhuTVRtMEtua0pTeGJLUjZrR2JYK2gySDhzSnA0?=
+ =?utf-8?B?OGMxdXRaaXMzclFoVGo3U0hKWlQrRTB1akprdFRVWGoydGRJQm9iNHRiY2RN?=
+ =?utf-8?B?Y2xCeGw0YzF2R2ExR2RkYVJyTmJDWjBZU0xaQjNYbzVod1MxaENVSVB0Ukxy?=
+ =?utf-8?B?L210ZzFTQmRTV1VHeS9mSllkbkxMZFhLRzJIM3VKYWgwUVJocmRQZ2d1Nmhz?=
+ =?utf-8?B?ZlhkbUpOMGY1ZEJ1dm44cHlRNTNLcXJJbDBCblI4UlZucXJBZjZwUk04dGlE?=
+ =?utf-8?B?aitseW05Z1c2aGpqK1dGd2RsQmxGZXM0d24yTzFML0xRVzhzL2F4KzlSdjlv?=
+ =?utf-8?B?T3pSSGhLVDBLZWVURkdaRGJYdlJnbVdtaG90ZlhXNmVWd0RHS2hlT2xQV2NV?=
+ =?utf-8?B?MndWRXpsWWZ4SE8yc3l5MW5nai9vMlVRWXRlUlo1RnBWbGtVcTFXMG11NTJ5?=
+ =?utf-8?B?ZzhWUDhXZ3lPaGpVZGw0dlVIWlV0NERCeGtpT3FSWTY1ZUN5TTVwbHFlVkVE?=
+ =?utf-8?B?d1c0V2RvRmxYZEhHUGx6ZkVQSzR3bUhleGZGRWpXZlZxSVdDbGlZUS8zOEtt?=
+ =?utf-8?B?cTkyNVdZSGRhT042WDk3TUFZMTZWZ2w2ZzZ0NS9aYnBPeUhkWjRDVnNReDR3?=
+ =?utf-8?B?WXJEWTIxRC9DWHQzQU1wSHo2aHBrVE1JT2FFV2FKM2hKYTNGTnVYNXN1Z3VX?=
+ =?utf-8?B?dDBLYmlpYndWdm93SzRlZFdTTTNIOXNWQ2RrVlk4eFhIc3RqL3RWd2JlV3RV?=
+ =?utf-8?B?YmJvSjFGZkNGQWFKK2pycG1keG55d1Juc0daaitVdmpPak9sTXBHZUZFK3Ft?=
+ =?utf-8?B?YWJMWWhvb3p2NDRpRzdLRDRVK2N0UW5EQTlRZ25wd2ZUc0tBQklSNDk2dDdF?=
+ =?utf-8?B?RVdzUGpZcTRJc0tyRENxUzVQcHczclB3aEJONStLQkJQQVBSc1AvWmZGd1Mz?=
+ =?utf-8?B?NTNqZlhROW50WndOYWpPQytJRUFETFBRYXFDNnlYWUJvcUlLWHRoZjhCZ2hl?=
+ =?utf-8?B?NGVubGVFaUtYMUd5RTB6TE1vZndOeHBxeGFqRFFLQ3l5Y1lIWEJvOHVzMlFn?=
+ =?utf-8?Q?pkwwMKvUAYWsl1mFVsjyrFpqJFNT?=
+MIME-Version: 1.0
+
+--0000000000004635ca05eb04c6b9
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+CAUTION: This email originated from outside of the organization. Do not cli=
+ck links or open attachments unless you recognize the sender and know the c=
+ontent is safe.
+
+
+If I understand correctly, you are asking about cancellation for Domainslib=
+ tasks, specifically for Task.parallel_for.
+(I would have created an issue against Domainslib to ask. Interestingly, I =
+can find only one vague mention of cancellation there,
+  https://github.com/ocaml-multicore/domainslib/pull/51#discussion_r7292967=
+62
+)
+
+I haven't tried it, but I would think that the simple approach is to turn
+
+  Task.parallel_for ~start ~finish pool ~body:(fun i ->
+    ... raise Exit ...
+  )
+
+into
+
+  let stop : exn option Atomic.t =3D Atomic.make None
+
+  Task.parallel_for ~start ~finish pool ~body:(fun i ->
+    Option.iter raise (Atomic.get stop);
+    .. (Atomic.set stop Exit; raise Exit) ...
+  )
+
+which guarantees prompt termination by checking a shared failure value at e=
+ach iteration of the loop. But of course this adds a small amount of overhe=
+ad, which may be undesirable if each loop iteration is supposed to be very =
+fast. (Then the simple approach is to change "Option.iter" into "if i mod 1=
+00 =3D 0 then Option.iter ...".)
+
+This is an instance of the general approach of letting users do cancellatio=
+n explicitly on their side, if they want to.
+
+On Thu, Oct 13, 2022 at 6:01 AM Christophe Raffalli <christophe@raffalli.eu=
+<mailto:christophe@raffalli.eu>> wrote:
+
+Hello,
+
+I am trying ocaml 5.0 and Task.parralel_for in
+domainlib is not compatible with exception to interrupt the loop.
+When an exception is raised by a task, we need to interrupt or wait for the
+other tasks to finish before raising the exception.
+
+What is the recommanded solution for that pattern ?
+
+Cheers,
+Christophe
+
+--
+Christophe Raffalli
+t=C3=A9l: +689 87 23 11 48
+web: http://raffalli.eu
+
+--0000000000004635ca05eb04c6b9
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head>
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8">
+</head>
+<body>
+<p></p>
+<div style=3D"background-color:#FFEB9C; border-style: solid; border-color:#=
+9C6500; border-width:1pt; padding:2pt; font-size:10pt; line-height:12pt; fo=
+nt-family:'Calibri'; color:Black; text-align: left;">
+<span style=3D"color:#9C6500; font-weight:bold;">CAUTION:</span> This email=
+ originated from outside of the organization. Do not click links or open at=
+tachments unless you recognize the sender and know the content is safe.</di=
+v>
+<br>
+<p></p>
+<div>
+<div dir=3D"ltr">
+<div>If I understand correctly, you are asking about cancellation for Domai=
+nslib tasks, specifically for Task.parallel_for.</div>
+<div>(I would have created an issue against Domainslib to ask. Interestingl=
+y, I can find only one vague mention of cancellation there,</div>
+<div>&nbsp; <a href=3D"https://github.com/ocaml-multicore/domainslib/pull/5=
+1#discussion_r729296762">
+https://github.com/ocaml-multicore/domainslib/pull/51#discussion_r729296762=
+</a></div>
+<div>)</div>
+<div><br>
+</div>
+<div>I haven't tried it, but I would think that the simple approach is to t=
+urn</div>
+<div><br>
+</div>
+<div>&nbsp; Task.parallel_for ~start ~finish pool ~body:(fun i -&gt;</div>
+<div>&nbsp;&nbsp;&nbsp; ... raise Exit ...<br>
+</div>
+&nbsp; )
+<div><br>
+</div>
+<div>into</div>
+<div><br>
+</div>
+<div>&nbsp; let stop : exn option Atomic.t =3D Atomic.make None</div>
+<div><br>
+</div>
+<div>
+<div>&nbsp; Task.parallel_for ~start ~finish pool ~body:(fun i -&gt;</div>
+<div>&nbsp;&nbsp;&nbsp; Option.iter raise (Atomic.get stop);</div>
+<div>&nbsp;&nbsp;&nbsp; .. (Atomic.set stop Exit; raise Exit) ...<br>
+</div>
+&nbsp; )
+<div><br>
+</div>
+<div>which guarantees prompt termination by checking a shared failure value=
+ at each iteration of the loop. But of course this adds a small amount of o=
+verhead, which may be undesirable if each loop iteration is supposed to be =
+very fast. (Then the simple approach
+ is to change &quot;Option.iter&quot; into &quot;if i mod 100 =3D 0 then Op=
+tion.iter ...&quot;.)<br>
+</div>
+<div><br>
+</div>
+<div>This is an instance of the general approach of letting users do cancel=
+lation explicitly on their side, if they want to.<br>
+</div>
+</div>
+</div>
+<br>
+<div class=3D"gmail_quote">
+<div dir=3D"ltr" class=3D"gmail_attr">On Thu, Oct 13, 2022 at 6:01 AM Chris=
+tophe Raffalli &lt;<a href=3D"mailto:christophe@raffalli.eu">christophe@raf=
+falli.eu</a>&gt; wrote:<br>
+</div>
+<blockquote class=3D"gmail_quote" style=3D"margin:0px 0px 0px 0.8ex;border-=
+left:1px solid rgb(204,204,204);padding-left:1ex">
+<br>
+Hello,<br>
+<br>
+I am trying ocaml 5.0 and Task.parralel_for in<br>
+domainlib is not compatible with exception to interrupt the loop.<br>
+When an exception is raised by a task, we need to interrupt or wait for the=
+<br>
+other tasks to finish before raising the exception.<br>
+<br>
+What is the recommanded solution for that pattern ?<br>
+<br>
+Cheers,<br>
+Christophe<br>
+<br>
+--<br>
+Christophe Raffalli<br>
+t=C3=A9l: +689 87 23 11 48<br>
+web: <a href=3D"http://raffalli.eu" rel=3D"noreferrer" target=3D"_blank">ht=
+tp://raffalli.eu</a><br>
+</blockquote>
+</div>
+</div>
+</body>
+</html>
+
+--0000000000004635ca05eb04c6b9--
