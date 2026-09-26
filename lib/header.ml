@@ -131,8 +131,7 @@ module Decoder = struct
          *> char '\n')
 
   let header g =
-    many
-      (with_location (field g) >>| Option.some <|> garbage *> return None)
+    many (with_location (field g) >>| Option.some <|> garbage *> return None)
     >>| List.filter_map Fun.id
 end
 

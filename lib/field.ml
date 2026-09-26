@@ -112,7 +112,8 @@ module Decoder = struct
       >>= (Unstrctrd.of_list
           <.> List.rev
           <.> Unstrctrd.fold [] ~f:(fun acc -> function
-                `CR -> acc | x -> x :: acc))
+            | `CR -> acc
+            | x -> x :: acc))
       (* XXX(dinosaure): remove trailing CR characters **after**
          [without_comments]. *)
       >>| Unstrctrd.fold_fws

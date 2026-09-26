@@ -20,7 +20,8 @@ let rec end_of_stream ~write_data closed dec =
   | `Flush data ->
       write_data data;
       end_of_stream ~write_data closed dec
-  | `Malformed _ -> end_of_stream ~write_data closed dec (* NOTE(dinosaure): best effort. *)
+  | `Malformed _ ->
+      end_of_stream ~write_data closed dec (* NOTE(dinosaure): best effort. *)
   | `Wrong_padding | `End -> Ok ()
 
 let rec decode ~write_data dec =

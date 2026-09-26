@@ -13,7 +13,8 @@ let parser ~write_data end_of_body =
   let open Angstrom in
   let check_end_of_body =
     let len = String.length end_of_body in
-    Unsafe.peek len Bstr.sub_string >>| String.equal end_of_body
+    Unsafe.peek len Bstr.sub_string
+    >>| String.equal end_of_body
     <|> return false
     (* NOTE(dinosaure): we do our best effort, if we can not recognize
        [end_of_body], we consider the rest of the mail as the body. It's invalid

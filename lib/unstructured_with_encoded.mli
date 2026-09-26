@@ -22,9 +22,9 @@
 
     When decoding, it is necessary to pass the following witness
     {[
-      let witness =
-        Field_name.Map.singleton Field_name.subject
-          Field.(Witness Unstructured_with_encoded)
+    let witness =
+      Field_name.Map.singleton Field_name.subject
+        Field.(Witness Unstructured_with_encoded)
     ]} *)
 
 type elt = [ Unstructured.elt | `Encoded of string * Emile.raw ]

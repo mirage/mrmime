@@ -127,7 +127,8 @@ module Encoder = struct
     in
     let fn (local, d) =
       let local = List.map word local in
-      String.concat "." local ^ "@" ^ domain d in
+      String.concat "." local ^ "@" ^ domain d
+    in
     using fn string
 
   let phrase ppf lst =

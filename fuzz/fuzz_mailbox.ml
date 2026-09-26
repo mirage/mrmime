@@ -124,8 +124,7 @@ let () =
   let margin = Some 78 in
   let new_line = "\r\n" in
   let encoder =
-    Prettym.create ~margin ~new_line 0x100
-      ~emitter:(emitter_of_buffer buffer)
+    Prettym.create ~margin ~new_line 0x100 ~emitter:(emitter_of_buffer buffer)
   in
   let encoder =
     Prettym.keval Prettym.flush encoder

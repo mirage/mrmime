@@ -119,8 +119,7 @@ let epilogue parent =
   | None -> skip_while (fun _ -> true)
 
 let multipart_body ?g ?parent boundary body =
-  option () (preambule boundary) (* see [preambule]. *)
-  *> at_end_of_input
+  option () (preambule boundary) (* see [preambule]. *) *> at_end_of_input
   >>= function
   (* NOTE(dinosaure): this is clearly not a valid case but it can appears for
      bad emails. The [boundary] never appears and we just discard everything. *)

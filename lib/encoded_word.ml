@@ -458,6 +458,9 @@ module Encoder = struct
         eval ppf fmt t.charset t.encoding encoder data
     | Error (`Msg _) ->
         encoded_word ppf
-          { charset = `UTF_8; encoding = Quoted_printable; data = Ok "\u{FFFD}" }
-        (* NOTE(dinosaure): emit even if it's invalid. *)
+          { charset = `UTF_8;
+            encoding = Quoted_printable;
+            data = Ok "\u{FFFD}"
+          }
+  (* NOTE(dinosaure): emit even if it's invalid. *)
 end

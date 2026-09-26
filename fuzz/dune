@@ -35,25 +35,35 @@
 
 (rule
  (alias runtest)
- (deps (:fuzz_encoder fuzz_encoder.exe))
- (action (run %{fuzz_encoder})))
+ (deps
+  (:fuzz_encoder fuzz_encoder.exe))
+ (action
+  (run %{fuzz_encoder})))
 
 (rule
  (alias runtest)
- (deps (:fuzz_message_id fuzz_message_id.exe))
- (action (run %{fuzz_message_id})))
+ (deps
+  (:fuzz_message_id fuzz_message_id.exe))
+ (action
+  (run %{fuzz_message_id})))
 
 (rule
  (alias runtest)
- (deps (:fuzz_mailbox fuzz_mailbox.exe))
- (action (run %{fuzz_mailbox})))
+ (deps
+  (:fuzz_mailbox fuzz_mailbox.exe))
+ (action
+  (run %{fuzz_mailbox})))
 
 (rule
  (alias runtest)
- (deps (:fuzz_content_type fuzz_content_type.exe))
- (action (run %{fuzz_content_type})))
+ (deps
+  (:fuzz_content_type fuzz_content_type.exe))
+ (action
+  (run %{fuzz_content_type})))
 
 (rule
  (alias runtest)
- (deps (:fuzz_date fuzz_date.exe))
- (action (run %{fuzz_date})))
+ (deps
+  (:fuzz_date fuzz_date.exe))
+ (action
+  (run %{fuzz_date})))
