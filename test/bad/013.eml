@@ -1,0 +1,113 @@
+Received: (from majordomo@localhost) by pauillac.inria.fr (8.7.6/8.7.3) id LAA20004; Fri, 19 Dec 2003 11:17:16 +0100 (MET)
+X-Authentication-Warning: pauillac.inria.fr: majordomo set sender to owner-caml-list@pauillac.inria.fr using -f
+Received: from nez-perce.inria.fr (nez-perce.inria.fr [192.93.2.78]) by pauillac.inria.fr (8.7.6/8.7.3) with ESMTP id LAA20150 for <caml-list@pauillac.inria.fr>; Fri, 19 Dec 2003 11:17:14 +0100 (MET)
+Received: from pigpen.bl.physik.uni-muenchen.de (pigpen.bl.physik.uni-muenchen.de [129.187.160.7])
+	by nez-perce.inria.fr (8.11.1/8.11.1) with ESMTP id hBJAHDX07186
+	for <caml-list@inria.fr>; Fri, 19 Dec 2003 11:17:13 +0100 (MET)
+Received: from mailhost.cip.physik.uni-muenchen.de (kaiser.cip.physik.uni-muenchen.de [141.84.136.1])
+	by pigpen.bl.physik.uni-muenchen.de (8.12.9/8.12.9) with ESMTP id hBJAHCii030700
+	for <caml-list@inria.fr>; Fri, 19 Dec 2003 11:17:12 +0100
+Received: from seekar.cip.physik.uni-muenchen.de (seekar.cip.physik.uni-muenchen.de [141.84.136.52])
+	by mailhost.cip.physik.uni-muenchen.de (Postfix) with ESMTP id F1BA785113
+	for <caml-list@inria.fr>; Fri, 19 Dec 2003 11:17:11 +0100 (CET)
+Received: by seekar.cip.physik.uni-muenchen.de (Postfix, from userid 3092)
+	id B9D5C7A3B; Fri, 19 Dec 2003 11:17:11 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+	by seekar.cip.physik.uni-muenchen.de (Postfix) with ESMTP id B69237A3A
+	for <caml-list@inria.fr>; Fri, 19 Dec 2003 11:17:11 +0100 (CET)
+Date: Fri, 19 Dec 2003 11:17:11 +0100 (CET)
+From: Thomas Fischbacher <Thomas.Fischbacher@Physik.Uni-Muenchen.DE>
+To: caml-list@inria.fr
+Subject: [Caml-list] Problem with the old Num implementation of ocaml (fwd)
+Message-ID: <Pine.LNX.4.58.0312191113120.11483@seekar.cip.physik.uni-muenchen.de>
+X-BOFH: Daemons did it
+MIME-Version: 1.0
+Content-Type: MULTIPART/MIXED; BOUNDARY="1418540168-270534528-1071777902=:32347"
+Content-ID: <Pine.LNX.4.58.0312182105130.32347@seekar.cip.physik.uni-muenchen.de>
+X-Scanned-By: MIMEDefang 2.37
+X-Loop: caml-list@inria.fr
+X-Spam: no; 0.00; physik:01 mime-aware:01 docserver:01 bug:01 sven:01 luther:01 cip:99 physik:01 3.06:01 grave:01 bug:01 cip:99 sven:01 luther:01 3.06:01 
+X-Attachments: name="ym-debug.ml" name="ym-debug.ml" 
+Sender: owner-caml-list@pauillac.inria.fr
+Precedence: bulk
+
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+  Send mail to mime@docserver.cac.washington.edu for more info.
+
+--1418540168-270534528-1071777902=:32347
+Content-Type: TEXT/PLAIN; CHARSET=US-ASCII
+Content-ID: <Pine.LNX.4.58.0312182105131.32347@seekar.cip.physik.uni-muenchen.de>
+
+
+The following pieces of email I just submitted to the Debian Bug Tracking 
+System; Sven Luther (the Debian Maintainer) recommended to also forward it 
+to this list, as this may be of interest to more people...
+
+---------- Forwarded message ----------
+Date: Thu, 18 Dec 2003 21:15:40 +0100 (CET)
+From: Thomas Fischbacher <tf@cip.physik.uni-muenchen.de>
+To: submit@bugs.debian.org
+Subject: Problem with the old Num implementation of ocaml
+
+
+Package:  ocaml 
+Version: 3.06-21
+Severity: grave
+
+
+Please note that this bug concerns the "old" Num implementation that was 
+removed in a recent update. I nevertheless use(d) it as I am right 
+now doing research for a new string theory paper and wanted to 
+consistently use one and the same somewhat environment throughout the 
+process. Nevertheless, I suppose this affects all versions having the old num 
+implementation (next thing I'll do is to upgrade my entire system to the 
+new implementation and check the behaviour of that one for some large test 
+calculations).
+
+The attachment will reproduce a condition where doing the same calculation 
+(which is purely functional to the outside and does not use global state 
+or side effects, but involves Num) many times in sequence will give 
+different results.
+
+As you see, about half of this file is data; I did not manage to find a 
+smaller test case creating that condition. Although I consider this highly
+unlikely, this piece of code may involve an "int"-type related integer 
+overflow. (Nevertheless, even so, subsequent identical calculations should 
+not give different results...)
+
+
+On my system(*), the output of a num_ocaml interpreter built as described 
+in the Num section of the documentation, but also including the Unix 
+module is:
+
+0 ==> -12747938802280433395210374808335212773156996019062242486412495785350259890027861091589626807758181401556588623046875/764762496031801254357991532266868085634832685275244705613839817948600630474284529321916381431208558769420593384116260078281979735715302794541235545562947747053568
+1 ==> -24799801902139948285742077521010897923261300584495629346339410063333039539280530883995185222932342824043982837509521484375/4156317913216311164989084414493848291493655898235025573988259880155438209099372441966936855604394341138155398826718804773271628998452732579028454051972542103552
+2 ==> -39148920061803210956691061036397438426365134774540146675772774556810648122275561412271743926625375084180283661376953125/2294287488095403763073974596800604256904498055825734116841519453845801891422853587965749144293625676308261780152348780234845939207145908383623706636688843241160704
+3 ==> -39148920061803210956691061036397438426365134774540146675772774556810648122275561412271743926625375084180283661376953125/2294287488095403763073974596800604256904498055825734116841519453845801891422853587965749144293625676308261780152348780234845939207145908383623706636688843241160704
+4 ==> -24799801902139948285742077521010897923261300584495629346339410063333039539280530883995185222932342824043982837509521484375/4156317913216311164989084414493848291493655898235025573988259880155438209099372441966936855604394341138155398826718804773271628998452732579028454051972542103552
+5 ==> -24799801902139948285742077521010897923261300584495629346339410063333039539280530883995185222932342824043982837509521484375/4156317913216311164989084414493848291493655898235025573988259880155438209099372441966936855604394341138155398826718804773271628998452732579028454051972542103552
+6 ==> -39148920061803210956691061036397438426365134774540146675772774556810648122275561412271743926625375084180283661376953125/2294287488095403763073974596800604256904498055825734116841519453845801891422853587965749144293625676308261780152348780234845939207145908383623706636688843241160704
+7 ==> -39148920061803210956691061036397438426365134774540146675772774556810648122275561412271743926625375084180283661376953125/2294287488095403763073974596800604256904498055825734116841519453845801891422853587965749144293625676308261780152348780234845939207145908383623706636688843241160704
+8 ==> -39148920061803210956691061036397438426365134774540146675772774556810648122275561412271743926625375084180283661376953125/2294287488095403763073974596800604256904498055825734116841519453845801891422853587965749144293625676308261780152348780234845939207145908383623706636688843241160704
+9 ==> 0
+- : unit = ()
+
+The correct result is zero.
+
+(*) uname -a
+
+Linux djinn 2.4.23 #6 Thu Dec 4 18:13:28 CET 2003 i686 GNU/Linux
+
+
+I would like to know whether this can be confirmed.
+
+-- 
+regards,                  tf@cip.physik.uni-muenchen.de              (o_
+Dr. Thomas Fischbacher -  http://www.cip.physik.uni-muenchen.de/~tf  //\
+(lambda (n) ((lambda (p q r) (p p q r)) (lambda (g x y)              V_/_
+(if (= x 0) y (g g (- x 1) (* x y)))) n 1))                     (Debian GNU)
+
+
+===================
+

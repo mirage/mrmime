@@ -1,0 +1,75 @@
+Return-Path: <club@dive-orel.ru>
+X-Spam-Checker-Version: SpamAssassin 3.1.3 (2006-06-01) on yquem.inria.fr
+X-Spam-Level: 
+X-Spam-Status: No, score=0.7 required=5.0 tests=NO_REAL_NAME,SUBJECT_NOVOWEL 
+	autolearn=disabled version=3.1.3
+Received: from mail3-relais-sop.national.inria.fr (mail3-relais-sop.national.inria.fr [192.134.164.104])
+	by yquem.inria.fr (Postfix) with ESMTP id 43F0EBBAF
+	for <caml-list@yquem.inria.fr>; Tue,  5 Aug 2008 18:57:13 +0200 (CEST)
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-Anti-Spam-Result: AnITADwjmEjAXQIm/2dsb2JhbAARgnOGUYEdhVeQBYhaLoR1
+X-IronPort-AV: E=Sophos;i="4.31,311,1215381600"; 
+   d="scan'208";a="15743514"
+Received: from discorde.inria.fr ([192.93.2.38])
+  by mail3-smtp-sop.national.inria.fr with ESMTP; 05 Aug 2008 18:57:12 +0200
+Received: from mail1-relais-roc.national.inria.fr (mail1-relais-roc.national.inria.fr [192.134.164.82])
+	by discorde.inria.fr (8.13.6/8.13.6) with ESMTP id m75GvACf026789
+	(version=TLSv1/SSLv3 cipher=RC4-SHA bits=128 verify=OK)
+	for <caml-list@inria.fr>; Tue, 5 Aug 2008 18:57:10 +0200
+X-IronPort-Anti-Spam-Filtered: true
+X-IronPort-Anti-Spam-Result: AnwGADwjmEhRsQPNomdsb2JhbAARgnOGUYEdhVduAQEBAQEBBwUGCRGOZYhaLoR1
+X-IronPort-AV: E=Sophos;i="4.31,311,1215381600"; 
+   d="scan'208";a="15829880"
+Received: from server5.servera.info ([81.177.3.205])
+  by mail1-smtp-roc.national.inria.fr with ESMTP/TLS/DHE-RSA-AES256-SHA; 05 Aug 2008 18:57:10 +0200
+Received: from divo by server5.servera.info with local (Exim 4.69)
+	(envelope-from <club@dive-orel.ru>)
+	id 1KQPqK-0000pN-Vv
+	for caml-list@inria.fr; Tue, 05 Aug 2008 20:57:06 +0400
+X-Boxtrapper: gpOqoxN0qzdU9dt5rjb188eD_zOsOJf4
+X-Autorespond: gpOqoxN0qzdU9dt5rjb188eD_zOsOJf4
+Precedence: auto_reply
+X-Precedence: auto_reply
+From: club@dive-orel.ru
+To: caml-list@inria.fr
+Subject: Your email requires verification verify#lDvFUUSYGhpbQzAEYXZQlsBnwYh9u8d6
+Message-Id: <E1KQPqK-0000pN-Vv@server5.servera.info>
+Date: Tue, 05 Aug 2008 20:57:04 +0400
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - server5.servera.info
+X-AntiAbuse: Original Domain - inria.fr
+X-AntiAbuse: Originator/Caller UID/GID - [32205 32207] / [47 12]
+X-AntiAbuse: Sender Address Domain - dive-orel.ru
+X-Miltered: at discorde with ID 48988666.000 by Joe's j-chkmail (http://j-chkmail . ensmp . fr)!
+X-Spam: no; 0.00; ceb:01 1.0:98 caml-list:01 caml-list:01 tue:06 tue:06 marketing:93 inria:06 inria:06 0000:91 real:10 verification:10 verification:10 aug:10 aug:10 
+Content-Type: multipart/mixed;
+  boundary="The message you sent requires that you verify that you "
+
+The message you sent requires that you verify that you 
+are a real live human being and not a spam source.
+
+To complete this verification, simply reply to this message and leave
+the subject line intact.
+
+The headers of the message sent from your address are shown below:
+
+>From |caml-list@inria.fr Tue Aug 05 20:57:02 2008
+Received: from [190.172.56.223] (helo=sol)
+ by server5.servera.info with esmtp (Exim 4.69)
+ (envelope-from <|caml-list@inria.fr>)
+ id 1KQPq4-0000iy-5Q; Tue, 05 Aug 2008 20:56:50 +0400
+Received: from [190.172.56.223] by mail1-smtp-roc.national.inria.fr; Tue, 5 Aug 2008 13:56:47 -0300
+Message-ID: <01c8f703$19ceb980$df38acbe@|caml-list>
+From: =?koi8-r?B?+8HNyMHMIPDF1NLP1w==?= <|caml-list@inria.fr>
+To: <marketing@dive-orel.ru>
+Subject: =?koi8-r?B?8sHT09nMy8kgLSDT1dDF0iDTy8nEy8k=?=
+Date: Tue, 5 Aug 2008 13:56:47 -0300
+MIME-Version: 1.0
+Content-Type: text/plain;
+  charset="koi8-r"
+Content-Transfer-Encoding: 8bit
+X-Priority: 3
+X-MSMail-Priority: Normal
+X-Mailer: Microsoft Outlook Express 4.72.2106.4
+X-MimeOLE: Produced By Microsoft MimeOLE V4.72.2106.4
+

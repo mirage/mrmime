@@ -48,6 +48,11 @@
  (modules test_generate)
  (libraries base64 mrmime))
 
+(executable
+ (name test_bad)
+ (modules test_bad)
+ (libraries alcotest mrmime))
+
 (cram
  (deps test_generate.exe test_stream.exe))
 
@@ -106,3 +111,11 @@
   (:header test_header.exe))
  (action
   (run %{header} --color=always)))
+
+(rule
+ (alias runtest)
+ (deps
+  (:bad test_bad.exe)
+  (source_tree bad))
+ (action
+  (run %{bad} --color=always)))

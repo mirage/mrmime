@@ -1,0 +1,45 @@
+Received: (from weis@localhost) by pauillac.inria.fr (8.7.6/8.7.3) id QAA17239 for caml-redistribution; Thu, 12 Dec 1996 16:39:34 +0100 (MET)
+Received: from concorde.inria.fr (concorde.inria.fr [192.93.2.39]) by pauillac.inria.fr (8.7.6/8.7.3) with ESMTP id NAA13352 for <caml-list@pauillac.inria.fr>; Thu, 12 Dec 1996 13:13:56 +0100 (MET)
+Received: from madiran.inria.fr (madiran.inria.fr [128.93.8.77]) by concorde.inria.fr (8.7.6/8.7.1) with ESMTP id NAA19636 for <caml-list@pauillac.inria.fr>; Thu, 12 Dec 1996 13:13:56 +0100 (MET)
+Received: from madiran.inria.fr (localhost.inria.fr [127.0.0.1]) by madiran.inria.fr (8.7.4/8.6.6) with ESMTP id NAA03371 for <caml-list@pauillac>; Thu, 12 Dec 1996 13:13:54 +0100
+Date: Thu, 12 Dec 1996 13:13:54 +0100
+From: Francois Rouaix <rouaix@madiran.inria.fr>
+Message-Id: <199612121213.NAA03371@madiran.inria.fr>
+Replied: Thu, 12 Dec 1996 13:13:39 +0100
+Replied: gsi <gsi@indigo.ie>
+Sender: weis
+Content-Type: multipart/mixed;
+  boundary=">From rouaix@pauillac.inria.fr  Thu Dec 12 12: 50:21 1996"
+
+>From rouaix@pauillac.inria.fr  Thu Dec 12 12: 50:21 1996
+Received: from concorde.inria.fr (concorde.inria.fr [192.93.2.39]) by pauillac.inria.fr (8.7.6/8.7.3) with ESMTP id MAA12994 for <webmaster@pauillac.inria.fr>; Thu, 12 Dec 1996 12:50:20 +0100 (MET)
+Received: from siobhan.indigo.ie (siobhan.indigo.ie [194.125.133.15]) by concorde.inria.fr (8.7.6/8.7.1) with ESMTP id MAA19170 for <webmaster@pauillac.inria.fr>; Thu, 12 Dec 1996 12:50:16 +0100 (MET)
+Received: from aoife.indigo.ie (aoife.indigo.ie [194.125.133.9])
+          by siobhan.indigo.ie (8.8.4/8.8.4/INDIGO-OUTGOING) with ESMTP
+	  id LAA27496 for <webmaster@pauillac.inria.fr>; Thu, 12 Dec 1996 11:50:11 GMT
+Received: from ts08-10.dublin.indigo.ie (ts08-10.dublin.indigo.ie [194.125.148.151]) by aoife.indigo.ie (8.7.5/8.7.5) with SMTP id LAA01235 for <webmaster@pauillac.inria.fr>; Thu, 12 Dec 1996 11:50:10 GMT
+Message-Id: <199612121150.LAA01235@aoife.indigo.ie>
+Date: Thu, 12 Dec 96 11:49:33 -0800
+From: gsi <gsi@indigo.ie>
+X-Mailer: Mozilla 1.22 (Windows; I; 16bit)
+MIME-Version: 1.0
+To: webmaster@pauillac.inria.fr
+Subject: example program
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Resent-To: caml-list@pauillac
+Resent-Date: Thu, 12 Dec 1996 13:13:54 +0100
+Resent-From: Francois Rouaix <rouaix@madiran.inria.fr>
+
+Avez vous une example pour ML programme qui transfer au Mu recursive
+functions --> 1st Order Lamda calculus functions.
+
+
+                                                     Merci,
+
+                                                     Au revoir.
+
+
+
+
+
