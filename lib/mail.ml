@@ -168,7 +168,7 @@ let mail ?transfer_encoding g =
             >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
-    Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
+    Header.Decoder.header g <* Rfc2046.crlf >>= fun header ->
     match Content_type.ty (Header.content_type header) with
     | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
         heavy_octet ?transfer_encoding parent header >>| fun body ->
@@ -211,7 +211,7 @@ let stream :
             >>| fun parts -> Multipart parts
         | None -> fail "expected boundary")
   and mail parent =
-    Header.Decoder.header g <* char '\r' <* char '\n' >>= fun header ->
+    Header.Decoder.header g <* Rfc2046.crlf >>= fun header ->
     match Content_type.ty (Header.content_type header) with
     | #Content_type.Type.discrete | `Ietf_token _ | `X_token _ ->
         let emitter, id = emitters header in

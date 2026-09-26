@@ -40,6 +40,9 @@ let discard_all_to_dash_boundary boundary =
     Unsafe.peek expected_len (fun ba ~off ~len ->
         let raw = Bstr.sub_string ba ~off ~len in
         String.equal raw dash_boundary)
+    <|> return false
+    (* NOTE(dinosaure): if we don't have enough for the [dash-boundary], we
+       returns [false] instead of fail. *)
   in
   fix @@ fun m ->
   skip_while (( <> ) '-') *> peek_char >>= function
@@ -76,7 +79,9 @@ let discard_all_to_delimiter boundary =
   | None -> return ()
 
 let nothing_to_do = Format.kasprintf fail "nothing to do"
-let crlf = string "\r\n"
+let crlf = char '\r' *> skip_while (( = ) '\r') *> char '\n'
+(* NOTE(dinosaure): some emails have [\r(\r)*\n]. So we handle such bad case
+   and do our best effort... *)
 
 let possible_boundary boundary =
   peek_string (String.length (make_delimiter boundary)) >>= fun str ->
@@ -115,12 +120,20 @@ let epilogue parent =
 
 let multipart_body ?g ?parent boundary body =
   option () (preambule boundary) (* see [preambule]. *)
-  *> dash_boundary boundary
-  *> transport_padding
-  *> crlf
-  *> body_part g boundary body
-  >>= fun x ->
-  many (encapsulation g boundary body) >>= fun r ->
-  (close_delimiter boundary *> transport_padding *> option () (epilogue parent)
-  <|> return ())
-  *> return (x :: r)
+  *> at_end_of_input
+  >>= function
+  (* NOTE(dinosaure): this is clearly not a valid case but it can appears for
+     bad emails. The [boundary] never appears and we just discard everything. *)
+  | true -> return []
+  | false ->
+      dash_boundary boundary
+      *> transport_padding
+      *> crlf
+      *> body_part g boundary body
+      >>= fun x ->
+      many (encapsulation g boundary body) >>= fun r ->
+      (close_delimiter boundary
+       *> transport_padding
+       *> option () (epilogue parent)
+      <|> return ())
+      *> return (x :: r)
