@@ -437,7 +437,7 @@ module Encoder = struct
   let base64 = using (fun x -> Base64.encode_exn ~pad:true x) string
   let is_base64 = function Base64 -> true | _ -> false
 
-  let encoded_word ppf t =
+  let rec encoded_word ppf t =
     match t.data with
     | Ok data ->
         let fmt =
@@ -456,6 +456,8 @@ module Encoder = struct
           if is_base64 t.encoding then base64 else quoted_printable
         in
         eval ppf fmt t.charset t.encoding encoder data
-    | Error (`Msg err) ->
-        invalid_arg "Impossible to encode an invalid encoded-word: %s" err
+    | Error (`Msg _) ->
+        encoded_word ppf
+          { charset = `UTF_8; encoding = Quoted_printable; data = Ok "\u{FFFD}" }
+        (* NOTE(dinosaure): emit even if it's invalid. *)
 end

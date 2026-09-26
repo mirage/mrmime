@@ -22,6 +22,7 @@ module Decoder = struct
         when part = 2 && is_question_mark ch0 && is_equals_sign ch1 -> (
           Buffer.add_string buf "?=";
           match Encoded_word.of_string (Buffer.contents buf) with
+          | Ok { Encoded_word.data = Error _; _ } -> Error ()
           | Ok ew ->
               let charset =
                 Encoded_word.charset_to_string ew.Encoded_word.charset

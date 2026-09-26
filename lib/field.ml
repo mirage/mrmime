@@ -124,9 +124,12 @@ module Decoder = struct
           <.> (parse_string ~consume:Consume.Prefix) parser)
       >>| fun v -> Field (field_name, w, v)
     in
-    match res with
-    | Ok v -> return v
-    | Error _ ->
+    match (res, w) with
+    | Ok v, _ -> return v
+    | Error _, Unstructured_with_encoded ->
+        let v = Unstructured_with_encoded.Decoder.post_process v in
+        return (Field (field_name, Unstructured_with_encoded, v))
+    | Error _, _ ->
         return (Field (field_name, Unstructured, (v :> Unstructured.t)))
 end
 
