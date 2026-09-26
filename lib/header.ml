@@ -119,7 +119,21 @@ module Decoder = struct
     let location = Location.make a b in
     Location.inj ~location v
 
-  let header g = many (with_location (field g))
+  let garbage =
+    satisfy (function '\r' | ' ' | '\t' -> false | _ -> true)
+    *> skip_while (( <> ) '\r')
+    *> char '\r'
+    *> char '\n'
+    *> skip_many
+         (satisfy (function ' ' | '\t' -> true | _ -> false)
+         *> skip_while (( <> ) '\r')
+         *> char '\r'
+         *> char '\n')
+
+  let header g =
+    many
+      (with_location (field g) >>| Option.some <|> garbage *> return None)
+    >>| List.filter_map Fun.id
 end
 
 module Encoder = struct
