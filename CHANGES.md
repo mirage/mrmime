@@ -1,3 +1,15 @@
+### v0.8.0 2026-09-27 Paris (France)
+
+- Fix how we encode `addr-spec` (@dinosaure, #115)
+- Use `prettym.0.0.5` (@dinosaure, 7e0cdf4)
+- Remove some assert false and our best-effort when we decode base64 bodies (@dinosaure, #116)
+- Consume some garbage at the end of an email (@dinosaure, #117)
+- Handle `\r(\r)*\n` and empty multipart (@dinosaure, #118, ##119)
+- Handle bad fields (and ignore them) (@dinosaure, #120)
+- Clean-up unstructured value and specially `CR` value (@dinosaure, #121)
+- Post-process encoded words when they are a part of unstructured values (@dinosaure, #122)
+- Introduce some tests about really bad emails from the caml-list (@dinosaure, #123)
+
 ### v0.7.2 2026-04-20 Paris (France)
 
 - Add `Uchar.rep` when `pecu` is not able to parse ISO-8859 characters (@dinosaure, #112)
