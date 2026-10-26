@@ -51,11 +51,9 @@ module Encoder = struct
     | `d0 -> char ppf '\000'
     | `Invalid_char _ -> string ppf "\xEF\xBF\xBD"
     | #uchar as uchar ->
+        let (`Uchar u) = uchar in
         let output = Stdlib.Buffer.create 4 in
-        let encoder = Uutf.encoder `UTF_8 (`Buffer output) in
-        (* XXX(dinosaure): [Uutf.encoder_dst <> `Manual]. It's safe. *)
-        let[@warning "-8"] (`Ok : ok_or_partial) = Uutf.encode encoder uchar in
-        let[@warning "-8"] (`Ok : ok_or_partial) = Uutf.encode encoder `End in
+        Stdlib.Buffer.add_utf_8_uchar output u;
         string ppf (Stdlib.Buffer.contents output)
 
   let noop = ((fun ppf () -> ppf), ())
