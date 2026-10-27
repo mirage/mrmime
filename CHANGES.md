@@ -1,3 +1,7 @@
+### v0.8.1 2026-10-26 Paris (France)
+
+- Fix huge memory usage when we encode emails (@mabiede, #125)
+
 ### v0.8.0 2026-09-27 Paris (France)
 
 - Fix how we encode `addr-spec` (@dinosaure, #115)
